@@ -1,73 +1,197 @@
-# React + TypeScript + Vite
+# Aplicación de Expediente Médico
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Una aplicación web moderna para la gestión de expedientes médicos, construida con React, TypeScript, Vite y Chakra UI, con un diseño inspirado en iOS.
 
-Currently, two official plugins are available:
+## Características
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Diseño y UI
+- **Diseño inspirado en iOS** con colores azules claros y esquinas redondeadas
+- **Modo claro/oscuro** con soporte completo en toda la aplicación
+- **Sidebar colapsable** para una navegación moderna e intuitiva
+- **Diseño responsivo** que se adapta a diferentes tamaños de pantalla
 
-## React Compiler
+### Funcionalidades Principales
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+#### Dashboard
+- Resumen de citas del día con estados (pendiente, confirmada, cancelada)
+- Listado de pacientes recientes con última visita
+- Últimas notas médicas creadas
+- Estadísticas generales (total de pacientes, citas, notas)
+- Accesos rápidos a funciones principales
 
-## Expanding the ESLint configuration
+#### Gestión de Pacientes
+- **Listado de pacientes** con búsqueda en tiempo real
+- **Tarjetas (cards)** con información básica y visual atractiva
+- **Vista detallada** que incluye:
+  - Información personal y de contacto
+  - Datos legales/fiscales (CURP, RFC, NSS, seguros)
+  - Expediente médico completo
+  - Vista previa de última nota médica
+  - Archivos adjuntos
+  - Accesos rápidos a funciones
+- **Formulario de creación** con validación de campos obligatorios
+- **Capacidad de edición** de toda la información del paciente
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+#### Calendario de Citas
+- **Vista mensual** con visualización clara de citas
+- **Citas codificadas por color** según su estado:
+  - Verde: Confirmada
+  - Naranja: Pendiente
+  - Rojo: Cancelada
+- **Click en cita** para ver detalles del paciente
+- **Enlace directo** al perfil del paciente desde el calendario
+- **Acciones** para confirmar o cancelar citas
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+#### Notas Médicas
+- **Tipos de nota predefinidos**:
+  - Interrogatorio Inicial
+  - Nota de Evolución
+  - Exploración Física
+  - Nota Personalizada
+- **Templates automáticos** que se cargan según el tipo de nota
+- **Editor de Markdown** con vista previa en tiempo real
+- **Adjuntar archivos** con soporte para múltiples formatos médicos
+- **Firmado automático** al guardar (implementado en backend)
+- **Notas inmutables** después de ser firmadas
+- **Badge de firma** con nombre del doctor y fecha
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+#### Archivos Soportados
+- Imágenes (JPG, PNG, etc.)
+- Videos
+- Audio
+- PDF
+- Microsoft Office (Word, Excel, PowerPoint)
+- Archivos médicos especializados: DICOM, HL7, XML
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Stack Tecnológico
+
+- **React 19** - Framework UI
+- **TypeScript** - Tipado estático
+- **Vite** - Build tool y dev server
+- **Chakra UI v3** - Sistema de diseño y componentes
+- **React Router v7** - Navegación y rutas
+- **React Big Calendar** - Componente de calendario
+- **React Markdown** - Renderizado de Markdown
+- **date-fns** - Manejo de fechas
+- **React Icons** - Iconos
+- **ESLint + Prettier** - Linting y formateo de código
+
+## Instalación
+
+```bash
+# Clonar el repositorio
+git clone <repository-url>
+
+# Instalar dependencias
+npm install
+
+# Iniciar servidor de desarrollo
+npm run dev
+
+# Construir para producción
+npm run build
+
+# Vista previa de build de producción
+npm run preview
+
+# Ejecutar linter
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Uso
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Iniciar Sesión
+La aplicación incluye un sistema de autenticación básico. En desarrollo, usa cualquier email y contraseña para ingresar (usa mock data).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Datos de Prueba
+La aplicación incluye datos mock para desarrollo:
+- 5 pacientes de ejemplo
+- 6 citas médicas
+- 3 notas médicas
+- 3 templates de notas predefinidos
+- 2 archivos adjuntos de ejemplo
+
+### Navegación
+- **Dashboard**: Página principal con resumen de actividad
+- **Pacientes**: Gestión completa de pacientes
+- **Calendario**: Vista mensual de citas médicas
+
+## Estructura del Proyecto
+
 ```
+src/
+├── components/          # Componentes reutilizables
+│   └── Layout.tsx      # Layout principal con sidebar
+├── contexts/           # Contextos de React
+│   └── AuthContext.tsx # Gestión de autenticación
+├── data/              # Datos mock para desarrollo
+│   └── mockData.ts
+├── pages/             # Páginas de la aplicación
+│   ├── Dashboard.tsx
+│   ├── Login.tsx
+│   ├── PatientList.tsx
+│   ├── PatientDetail.tsx
+│   ├── PatientForm.tsx
+│   ├── Calendar.tsx
+│   └── NoteForm.tsx
+├── theme/             # Configuración de tema Chakra UI
+│   └── index.ts
+├── types/             # Definiciones de tipos TypeScript
+│   └── index.ts
+├── App.tsx            # Componente raíz con routing
+└── main.tsx          # Punto de entrada
+```
+
+## Próximos Pasos
+
+### Integración con API
+La aplicación está preparada para integrarse con una API REST. Los servicios necesarios están en:
+- `src/services/` (por crear)
+
+Endpoints recomendados:
+- `POST /api/auth/login` - Autenticación
+- `GET /api/patients` - Listar pacientes
+- `POST /api/patients` - Crear paciente
+- `GET /api/patients/:id` - Obtener paciente
+- `PUT /api/patients/:id` - Actualizar paciente
+- `GET /api/appointments` - Listar citas
+- `POST /api/appointments` - Crear cita
+- `PUT /api/appointments/:id` - Actualizar cita
+- `GET /api/notes` - Listar notas
+- `POST /api/notes` - Crear nota
+- `POST /api/files/upload` - Subir archivos
+
+### Funcionalidades Adicionales
+- Implementar búsqueda avanzada de pacientes
+- Agregar filtros en el calendario
+- Crear sistema de notificaciones
+- Implementar firma digital RSA (backend)
+- Agregar exportación de reportes en PDF
+- Implementar sistema de permisos por rol
+- Agregar gráficas y estadísticas
+- Implementar chat entre doctor y paciente
+
+## Configuración de API
+
+Para conectar con tu API, modifica las variables de entorno:
+
+```env
+VITE_API_URL=https://tu-api.com/api
+VITE_API_TIMEOUT=10000
+```
+
+## Contribuir
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## Licencia
+
+Este proyecto está bajo la Licencia MIT.
+
+## Soporte
+
+Para preguntas o soporte, contacta al equipo de desarrollo.
