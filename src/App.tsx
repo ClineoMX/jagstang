@@ -1,8 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
+import { Provider } from '@chakra-ui/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import theme from './theme';
+import system from './theme';
 
 // Pages
 import Login from './pages/Login';
@@ -133,14 +133,13 @@ const AppRoutes: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <ChakraProvider theme={theme}>
-      <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+    <Provider value={system}>
       <AuthProvider>
         <BrowserRouter>
           <AppRoutes />
         </BrowserRouter>
       </AuthProvider>
-    </ChakraProvider>
+    </Provider>
   );
 };
 

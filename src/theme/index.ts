@@ -1,9 +1,4 @@
-import { extendTheme, type ThemeConfig } from '@chakra-ui/react';
-
-const config: ThemeConfig = {
-  initialColorMode: 'light',
-  useSystemColorMode: true,
-};
+import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
 
 // iOS-inspired color palette
 const colors = {
@@ -50,149 +45,26 @@ const colors = {
   },
 };
 
-const fonts = {
-  heading: `-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif`,
-  body: `-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif`,
-  mono: `'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', 'Droid Sans Mono', 'Source Code Pro', monospace`,
-};
-
-const styles = {
-  global: (props: any) => ({
+const config = defineConfig({
+  theme: {
+    tokens: {
+      colors,
+      fonts: {
+        heading: `-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Roboto', sans-serif`,
+        body: `-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Roboto', sans-serif`,
+      },
+    },
+  },
+  globalCss: {
     body: {
-      bg: props.colorMode === 'dark' ? 'background.dark' : 'background.light',
-      color: props.colorMode === 'dark' ? 'white' : 'gray.800',
-    },
-  }),
-};
-
-const components = {
-  Button: {
-    baseStyle: {
-      fontWeight: '500',
-      borderRadius: 'lg',
-    },
-    variants: {
-      solid: (props: any) => ({
-        bg: props.colorMode === 'dark' ? 'brand.500' : 'brand.500',
-        color: 'white',
-        _hover: {
-          bg: props.colorMode === 'dark' ? 'brand.600' : 'brand.600',
-        },
-      }),
-      ghost: {
-        _hover: {
-          bg: 'ios.gray6',
-        },
+      bg: 'background.light',
+      _dark: {
+        bg: 'background.dark',
       },
     },
-    defaultProps: {
-      colorScheme: 'brand',
-    },
-  },
-  Card: {
-    baseStyle: (props: any) => ({
-      container: {
-        bg: props.colorMode === 'dark' ? 'card.dark' : 'card.light',
-        borderRadius: 'xl',
-        boxShadow: props.colorMode === 'dark' ? 'none' : 'sm',
-        border: props.colorMode === 'dark' ? '1px solid' : 'none',
-        borderColor: props.colorMode === 'dark' ? 'gray.700' : 'transparent',
-      },
-    }),
-  },
-  Input: {
-    variants: {
-      filled: (props: any) => ({
-        field: {
-          bg: props.colorMode === 'dark' ? 'surface.dark' : 'ios.gray6',
-          borderRadius: 'lg',
-          _hover: {
-            bg: props.colorMode === 'dark' ? 'surface.dark' : 'ios.gray5',
-          },
-          _focus: {
-            bg: props.colorMode === 'dark' ? 'surface.dark' : 'white',
-            borderColor: 'brand.500',
-          },
-        },
-      }),
-    },
-    defaultProps: {
-      variant: 'filled',
-    },
-  },
-  Textarea: {
-    variants: {
-      filled: (props: any) => ({
-        bg: props.colorMode === 'dark' ? 'surface.dark' : 'ios.gray6',
-        borderRadius: 'lg',
-        _hover: {
-          bg: props.colorMode === 'dark' ? 'surface.dark' : 'ios.gray5',
-        },
-        _focus: {
-          bg: props.colorMode === 'dark' ? 'surface.dark' : 'white',
-          borderColor: 'brand.500',
-        },
-      }),
-    },
-    defaultProps: {
-      variant: 'filled',
-    },
-  },
-  Select: {
-    variants: {
-      filled: (props: any) => ({
-        field: {
-          bg: props.colorMode === 'dark' ? 'surface.dark' : 'ios.gray6',
-          borderRadius: 'lg',
-          _hover: {
-            bg: props.colorMode === 'dark' ? 'surface.dark' : 'ios.gray5',
-          },
-          _focus: {
-            bg: props.colorMode === 'dark' ? 'surface.dark' : 'white',
-            borderColor: 'brand.500',
-          },
-        },
-      }),
-    },
-    defaultProps: {
-      variant: 'filled',
-    },
-  },
-  Badge: {
-    baseStyle: {
-      borderRadius: 'full',
-      px: 3,
-      py: 1,
-      fontWeight: '500',
-      fontSize: 'xs',
-    },
-  },
-};
-
-const theme = extendTheme({
-  config,
-  colors,
-  fonts,
-  styles,
-  components,
-  radii: {
-    none: '0',
-    sm: '0.25rem',
-    base: '0.5rem',
-    md: '0.75rem',
-    lg: '0.875rem',
-    xl: '1rem',
-    '2xl': '1.25rem',
-    '3xl': '1.5rem',
-    full: '9999px',
-  },
-  shadows: {
-    sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-    base: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-    md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-    lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-    xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
   },
 });
 
-export default theme;
+const system = createSystem(defaultConfig, config);
+
+export default system;
