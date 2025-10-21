@@ -7,7 +7,7 @@ import {
   VStack,
   Text,
   Button,
-  useColorModeValue,
+
   Modal,
   ModalOverlay,
   ModalContent,
@@ -20,6 +20,7 @@ import {
   Avatar,
   useToast,
 } from '@chakra-ui/react';
+import { useColorModeValue } from '../hooks/useColorMode';
 import { FiPlus } from 'react-icons/fi';
 import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';

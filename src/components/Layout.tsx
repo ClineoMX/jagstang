@@ -7,8 +7,6 @@ import {
   HStack,
   Text,
   Avatar,
-  useColorMode,
-  useColorModeValue,
   Tooltip,
   Divider,
   Menu,
@@ -17,6 +15,7 @@ import {
   MenuItem,
   Button,
 } from '@chakra-ui/react';
+import { useColorMode, useColorModeValue } from '../hooks/useColorMode';
 import {
   FiHome,
   FiUsers,

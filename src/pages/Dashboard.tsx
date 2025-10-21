@@ -17,7 +17,6 @@ import {
   Avatar,
   Badge,
   Button,
-  useColorModeValue,
   Divider,
   IconButton,
 } from '@chakra-ui/react';
@@ -30,6 +29,7 @@ import {
 } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useColorModeValue } from '../hooks/useColorMode';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();

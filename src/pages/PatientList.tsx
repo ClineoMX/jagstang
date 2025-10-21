@@ -18,6 +18,7 @@ import {
   useColorModeValue,
   IconButton,
 } from '@chakra-ui/react';
+import { useColorModeValue } from '../hooks/useColorMode';
 import { FiPlus, FiPhone, FiMail, FiSearch } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { mockPatients, searchPatients } from '../data/mockData';
