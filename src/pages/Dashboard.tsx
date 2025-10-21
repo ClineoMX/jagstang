@@ -19,6 +19,7 @@ import {
   Button,
   Divider,
   IconButton,
+  useColorModeValue,
 } from '@chakra-ui/react';
 import { FiPlus, FiCalendar, FiUsers, FiFileText } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
@@ -29,7 +30,6 @@ import {
 } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useColorModeValue } from '../hooks/useColorMode';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();

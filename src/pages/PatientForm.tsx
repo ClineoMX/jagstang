@@ -16,8 +16,8 @@ import {
   Card,
   CardBody,
   SimpleGrid,
+  useColorModeValue,
 } from '@chakra-ui/react';
-import { useColorModeValue } from '../hooks/useColorMode';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import type { Gender, BloodType } from '../types';

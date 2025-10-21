@@ -1,4 +1,9 @@
-import { createSystem, defaultConfig, defineConfig } from '@chakra-ui/react';
+import { extendTheme, type ThemeConfig } from '@chakra-ui/react';
+
+const config: ThemeConfig = {
+  initialColorMode: 'light',
+  useSystemColorMode: true,
+};
 
 // iOS-inspired color palette
 const colors = {
@@ -24,12 +29,6 @@ const colors = {
     red: '#FF3B30',
     teal: '#5AC8FA',
     yellow: '#FFCC00',
-    gray: '#8E8E93',
-    gray2: '#AEAEB2',
-    gray3: '#C7C7CC',
-    gray4: '#D1D1D6',
-    gray5: '#E5E5EA',
-    gray6: '#F2F2F7',
   },
   background: {
     light: '#F2F2F7',
@@ -45,26 +44,21 @@ const colors = {
   },
 };
 
-const config = defineConfig({
-  theme: {
-    tokens: {
-      colors,
-      fonts: {
-        heading: `-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Roboto', sans-serif`,
-        body: `-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Roboto', sans-serif`,
-      },
-    },
+const theme = extendTheme({
+  config,
+  colors,
+  fonts: {
+    heading: `-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Roboto', sans-serif`,
+    body: `-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Roboto', sans-serif`,
   },
-  globalCss: {
-    body: {
-      bg: 'background.light',
-      _dark: {
-        bg: 'background.dark',
+  styles: {
+    global: (props: any) => ({
+      body: {
+        bg: props.colorMode === 'dark' ? 'background.dark' : 'background.light',
+        color: props.colorMode === 'dark' ? 'white' : 'gray.800',
       },
-    },
+    }),
   },
 });
 
-const system = createSystem(defaultConfig, config);
-
-export default system;
+export default theme;

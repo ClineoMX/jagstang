@@ -14,8 +14,9 @@ import {
   MenuList,
   MenuItem,
   Button,
+  useColorMode,
+  useColorModeValue,
 } from '@chakra-ui/react';
-import { useColorMode, useColorModeValue } from '../hooks/useColorMode';
 import {
   FiHome,
   FiUsers,

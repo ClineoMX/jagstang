@@ -29,8 +29,8 @@ import {
   ModalBody,
   ModalCloseButton,
   useDisclosure,
+  useColorModeValue,
 } from '@chakra-ui/react';
-import { useColorModeValue } from '../hooks/useColorMode';
 import {
   FiCalendar,
   FiFileText,

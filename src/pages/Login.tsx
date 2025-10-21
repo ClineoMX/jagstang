@@ -14,11 +14,11 @@ import {
   InputRightElement,
   IconButton,
   Image,
+  useColorModeValue,
 } from '@chakra-ui/react';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useColorModeValue } from '../hooks/useColorMode';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');

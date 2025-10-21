@@ -26,8 +26,8 @@ import {
   TabPanels,
   Tab,
   TabPanel,
+  useColorModeValue,
 } from '@chakra-ui/react';
-import { useColorModeValue } from '../hooks/useColorMode';
 import { FiUpload, FiX, FiArrowLeft } from 'react-icons/fi';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getPatientById, mockNoteTemplates } from '../data/mockData';
