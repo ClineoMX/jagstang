@@ -476,37 +476,107 @@ const PatientDetail: React.FC = () => {
                         </HStack>
 
                         {/* Notes Stack */}
-                        <Box
-                          position="relative"
-                          cursor="pointer"
-                          onClick={() => toggleDateExpansion(dateKey)}
-                          role="group"
-                        >
-                          <AnimatePresence>
+                        {isExpanded ? (
+                          // Expanded view - show all notes in grid
+                          <SimpleGrid
+                            columns={{ base: 1, sm: 2, md: 3, lg: 4 }}
+                            spacing={4}
+                          >
+                            {dateNotes.map((note, noteIndex) => (
+                              <motion.div
+                                key={note.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{
+                                  duration: 0.3,
+                                  delay: noteIndex * 0.05,
+                                }}
+                              >
+                                <Card
+                                  bg={cardBg}
+                                  shadow="md"
+                                  borderWidth="1px"
+                                  borderColor={borderColor}
+                                  h="full"
+                                  transition="all 0.2s"
+                                  _hover={{
+                                    transform: 'translateY(-4px)',
+                                    shadow: 'lg',
+                                  }}
+                                  cursor="default"
+                                >
+                                  <CardBody>
+                                    <VStack spacing={3} align="stretch" h="full">
+                                      <VStack align="start" spacing={2} flex={1}>
+                                        <Heading size="xs" noOfLines={2} minH="40px">
+                                          {note.title}
+                                        </Heading>
+                                        <VStack align="start" spacing={1} w="full">
+                                          <Badge colorScheme="blue" fontSize="xs">
+                                            {getNoteTypeLabel(note.type)}
+                                          </Badge>
+                                          <Text fontSize="xs" color="gray.500">
+                                            {format(
+                                              new Date(note.createdAt),
+                                              'HH:mm',
+                                              { locale: es }
+                                            )}
+                                          </Text>
+                                        </VStack>
+                                      </VStack>
+
+                                      {note.isSigned && (
+                                        <Badge
+                                          colorScheme="green"
+                                          fontSize="xs"
+                                          textAlign="center"
+                                        >
+                                          ✓ Firmada
+                                        </Badge>
+                                      )}
+
+                                      <Button
+                                        size="sm"
+                                        w="full"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleViewNote(note);
+                                        }}
+                                      >
+                                        Ver Nota
+                                      </Button>
+                                    </VStack>
+                                  </CardBody>
+                                </Card>
+                              </motion.div>
+                            ))}
+                          </SimpleGrid>
+                        ) : (
+                          // Collapsed view - show stacked cards
+                          <Box
+                            position="relative"
+                            cursor="pointer"
+                            role="group"
+                            maxW="320px"
+                            mx="auto"
+                          >
                             {dateNotes.map((note, noteIndex) => {
-                              const isVisible = isExpanded || noteIndex === 0;
-                              const offsetIndex = isExpanded
-                                ? noteIndex
-                                : Math.min(noteIndex, 2);
+                              const isVisible = noteIndex < 3;
+                              const offsetIndex = Math.min(noteIndex, 2);
 
                               return (
                                 <motion.div
                                   key={note.id}
                                   initial={false}
                                   animate={{
-                                    y: isExpanded
-                                      ? 0
-                                      : offsetIndex * 8,
-                                    scale: isExpanded
-                                      ? 1
-                                      : 1 - offsetIndex * 0.02,
-                                    opacity: isVisible ? 1 : 0.7,
-                                    zIndex: dateNotes.length - noteIndex,
+                                    y: offsetIndex * 8,
+                                    scale: 1 - offsetIndex * 0.02,
+                                    opacity: isVisible ? 1 : 0,
                                   }}
                                   whileHover={
-                                    !isExpanded && noteIndex < 3
+                                    noteIndex < 3
                                       ? {
-                                          y: offsetIndex * 12,
+                                          y: offsetIndex * 14,
                                           transition: { duration: 0.2 },
                                         }
                                       : {}
@@ -516,101 +586,105 @@ const PatientDetail: React.FC = () => {
                                     ease: 'easeOut',
                                   }}
                                   style={{
-                                    position:
-                                      noteIndex === 0 ? 'relative' : 'absolute',
+                                    position: noteIndex === 0 ? 'relative' : 'absolute',
                                     top: 0,
                                     left: 0,
                                     right: 0,
-                                    marginBottom:
-                                      isExpanded && noteIndex < dateNotes.length - 1
-                                        ? '16px'
-                                        : 0,
+                                    zIndex: dateNotes.length - noteIndex,
                                   }}
+                                  onClick={() => toggleDateExpansion(dateKey)}
                                 >
                                   <Card
                                     bg={cardBg}
-                                    shadow={
-                                      noteIndex === 0 || isExpanded ? 'md' : 'sm'
-                                    }
+                                    shadow={noteIndex === 0 ? 'lg' : 'md'}
                                     borderWidth={noteIndex > 0 ? '2px' : '1px'}
                                     borderColor={
-                                      noteIndex > 0 ? 'brand.200' : borderColor
+                                      noteIndex > 0 ? 'brand.300' : borderColor
                                     }
+                                    minH="200px"
                                   >
                                     <CardBody>
                                       <VStack spacing={3} align="stretch">
-                                        <HStack justify="space-between">
-                                          <VStack align="start" spacing={1} flex={1}>
-                                            <Heading size="sm" noOfLines={1}>
-                                              {note.title}
-                                            </Heading>
-                                            <HStack spacing={2} flexWrap="wrap">
-                                              <Badge colorScheme="blue" fontSize="xs">
-                                                {getNoteTypeLabel(note.type)}
-                                              </Badge>
-                                              <Text fontSize="xs" color="gray.500">
-                                                {format(
-                                                  new Date(note.createdAt),
-                                                  'HH:mm',
-                                                  { locale: es }
-                                                )}
-                                              </Text>
-                                            </HStack>
-                                          </VStack>
-                                          <Button
-                                            size="sm"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleViewNote(note);
-                                            }}
-                                          >
-                                            Ver
-                                          </Button>
-                                        </HStack>
+                                        <VStack align="start" spacing={2}>
+                                          <Heading size="sm" noOfLines={2}>
+                                            {note.title}
+                                          </Heading>
+                                          <HStack spacing={2} flexWrap="wrap">
+                                            <Badge colorScheme="blue" fontSize="xs">
+                                              {getNoteTypeLabel(note.type)}
+                                            </Badge>
+                                            <Text fontSize="xs" color="gray.500">
+                                              {format(
+                                                new Date(note.createdAt),
+                                                'HH:mm',
+                                                { locale: es }
+                                              )}
+                                            </Text>
+                                          </HStack>
+                                        </VStack>
+
                                         {note.isSigned && (
                                           <Badge
                                             colorScheme="green"
                                             fontSize="xs"
                                             alignSelf="start"
                                           >
-                                            Firmado por {note.signedBy}
+                                            ✓ Firmado por {note.signedBy}
                                           </Badge>
                                         )}
+
+                                        <Button
+                                          size="sm"
+                                          mt="auto"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleViewNote(note);
+                                          }}
+                                        >
+                                          Ver Nota
+                                        </Button>
                                       </VStack>
                                     </CardBody>
                                   </Card>
                                 </motion.div>
                               );
                             })}
-                          </AnimatePresence>
 
-                          {/* Show count indicator when collapsed */}
-                          {!isExpanded && noteCount > 1 && (
-                            <Box
-                              position="absolute"
-                              bottom="-12px"
-                              left="50%"
-                              transform="translateX(-50%)"
-                              zIndex={dateNotes.length + 1}
-                            >
-                              <Badge
-                                colorScheme="brand"
-                                fontSize="xs"
-                                px={3}
-                                py={1}
-                                borderRadius="full"
-                                boxShadow="md"
+                            {/* Show count indicator when collapsed */}
+                            {noteCount > 1 && (
+                              <Box
+                                position="absolute"
+                                bottom="-16px"
+                                left="50%"
+                                transform="translateX(-50%)"
+                                zIndex={dateNotes.length + 1}
+                                pointerEvents="none"
                               >
-                                {noteCount} {noteCount === 1 ? 'nota' : 'notas'}
-                              </Badge>
-                            </Box>
-                          )}
-                        </Box>
-
-                        {/* Add spacing for stacked cards */}
-                        {!isExpanded && noteCount > 1 && (
-                          <Box h={`${Math.min(noteCount - 1, 2) * 8}px`} />
+                                <Badge
+                                  colorScheme="brand"
+                                  fontSize="sm"
+                                  px={4}
+                                  py={2}
+                                  borderRadius="full"
+                                  boxShadow="lg"
+                                >
+                                  {noteCount} {noteCount === 1 ? 'nota' : 'notas'}
+                                </Badge>
+                              </Box>
+                            )}
+                          </Box>
                         )}
+
+                        {/* Toggle button */}
+                        <Box textAlign="center" mt={isExpanded ? 4 : 8}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toggleDateExpansion(dateKey)}
+                          >
+                            {isExpanded ? 'Colapsar' : 'Ver todas'}
+                          </Button>
+                        </Box>
                       </Box>
                     );
                   })
