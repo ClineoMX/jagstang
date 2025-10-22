@@ -29,6 +29,8 @@ import {
   ModalBody,
   ModalCloseButton,
   useDisclosure,
+  Tooltip,
+  Icon,
 } from '@chakra-ui/react';
 import {
   FiCalendar,
@@ -41,6 +43,7 @@ import {
   FiDownload,
   FiArrowLeft,
 } from 'react-icons/fi';
+import { MdVerified } from 'react-icons/md';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   getPatientById,
@@ -354,7 +357,25 @@ const PatientDetail: React.FC = () => {
                     <CardBody>
                       <VStack spacing={3} align="stretch">
                         <VStack align="start" spacing={1}>
-                          <Text fontWeight="bold">{latestNote.title}</Text>
+                          <HStack align="center" spacing={2}>
+                            <Text fontWeight="bold">{latestNote.title}</Text>
+                            {latestNote.isSigned && (
+                              <Tooltip
+                                label={`Firmado por ${latestNote.signedBy} el ${latestNote.signedAt ? format(new Date(latestNote.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
+                                placement="top"
+                                hasArrow
+                              >
+                                <Box>
+                                  <Icon
+                                    as={MdVerified}
+                                    color="green.500"
+                                    boxSize={4}
+                                    cursor="help"
+                                  />
+                                </Box>
+                              </Tooltip>
+                            )}
+                          </HStack>
                           <Badge colorScheme="blue">
                             {getNoteTypeLabel(latestNote.type)}
                           </Badge>
@@ -362,17 +383,6 @@ const PatientDetail: React.FC = () => {
                         <Text fontSize="sm" color="gray.500" noOfLines={3}>
                           {latestNote.content.substring(0, 150)}...
                         </Text>
-                        {latestNote.isSigned && (
-                          <Badge colorScheme="green" fontSize="xs">
-                            Firmado por {latestNote.signedBy} el{' '}
-                            {latestNote.signedAt &&
-                              format(
-                                new Date(latestNote.signedAt),
-                                "d 'de' MMM 'a las' HH:mm",
-                                { locale: es }
-                              )}
-                          </Badge>
-                        )}
                       </VStack>
                     </CardBody>
                   </Card>
@@ -498,6 +508,7 @@ const PatientDetail: React.FC = () => {
                                   borderWidth="1px"
                                   borderColor={borderColor}
                                   h="full"
+                                  minH="280px"
                                   transition="all 0.2s"
                                   _hover={{
                                     transform: 'translateY(-4px)',
@@ -505,12 +516,30 @@ const PatientDetail: React.FC = () => {
                                   }}
                                   cursor="default"
                                 >
-                                  <CardBody>
-                                    <VStack spacing={3} align="stretch" h="full">
-                                      <VStack align="start" spacing={2} flex={1}>
-                                        <Heading size="xs" noOfLines={2} minH="40px">
-                                          {note.title}
-                                        </Heading>
+                                  <CardBody py={5} px={5}>
+                                    <VStack spacing={4} align="stretch" h="full">
+                                      <VStack align="start" spacing={3} flex={1}>
+                                        <HStack align="start" spacing={2} w="full">
+                                          <Heading size="xs" noOfLines={2} minH="40px" flex={1}>
+                                            {note.title}
+                                          </Heading>
+                                          {note.isSigned && (
+                                            <Tooltip
+                                              label={`Firmado por ${note.signedBy} el ${note.signedAt ? format(new Date(note.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
+                                              placement="top"
+                                              hasArrow
+                                            >
+                                              <Box>
+                                                <Icon
+                                                  as={MdVerified}
+                                                  color="green.500"
+                                                  boxSize={4}
+                                                  cursor="help"
+                                                />
+                                              </Box>
+                                            </Tooltip>
+                                          )}
+                                        </HStack>
                                         <VStack align="start" spacing={1} w="full">
                                           <Badge colorScheme="blue" fontSize="xs">
                                             {getNoteTypeLabel(note.type)}
@@ -524,16 +553,6 @@ const PatientDetail: React.FC = () => {
                                           </Text>
                                         </VStack>
                                       </VStack>
-
-                                      {note.isSigned && (
-                                        <Badge
-                                          colorScheme="green"
-                                          fontSize="xs"
-                                          textAlign="center"
-                                        >
-                                          ✓ Firmada
-                                        </Badge>
-                                      )}
 
                                       <Button
                                         size="sm"
@@ -601,14 +620,32 @@ const PatientDetail: React.FC = () => {
                                     borderColor={
                                       noteIndex > 0 ? 'brand.300' : borderColor
                                     }
-                                    minH="200px"
+                                    minH="280px"
                                   >
-                                    <CardBody>
-                                      <VStack spacing={3} align="stretch">
-                                        <VStack align="start" spacing={2}>
-                                          <Heading size="sm" noOfLines={2}>
-                                            {note.title}
-                                          </Heading>
+                                    <CardBody py={5} px={5}>
+                                      <VStack spacing={4} align="stretch" h="full">
+                                        <VStack align="start" spacing={3}>
+                                          <HStack align="start" spacing={2}>
+                                            <Heading size="sm" noOfLines={2} flex={1}>
+                                              {note.title}
+                                            </Heading>
+                                            {note.isSigned && (
+                                              <Tooltip
+                                                label={`Firmado por ${note.signedBy} el ${note.signedAt ? format(new Date(note.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
+                                                placement="top"
+                                                hasArrow
+                                              >
+                                                <Box>
+                                                  <Icon
+                                                    as={MdVerified}
+                                                    color="green.500"
+                                                    boxSize={5}
+                                                    cursor="help"
+                                                  />
+                                                </Box>
+                                              </Tooltip>
+                                            )}
+                                          </HStack>
                                           <HStack spacing={2} flexWrap="wrap">
                                             <Badge colorScheme="blue" fontSize="xs">
                                               {getNoteTypeLabel(note.type)}
@@ -622,16 +659,6 @@ const PatientDetail: React.FC = () => {
                                             </Text>
                                           </HStack>
                                         </VStack>
-
-                                        {note.isSigned && (
-                                          <Badge
-                                            colorScheme="green"
-                                            fontSize="xs"
-                                            alignSelf="start"
-                                          >
-                                            ✓ Firmado por {note.signedBy}
-                                          </Badge>
-                                        )}
 
                                         <Button
                                           size="sm"
@@ -754,16 +781,29 @@ const PatientDetail: React.FC = () => {
         <ModalContent>
           <ModalHeader>
             <VStack align="start" spacing={2}>
-              <Text>{selectedNote?.title}</Text>
+              <HStack align="center" spacing={2}>
+                <Text>{selectedNote?.title}</Text>
+                {selectedNote?.isSigned && (
+                  <Tooltip
+                    label={`Firmado por ${selectedNote.signedBy} el ${selectedNote.signedAt ? format(new Date(selectedNote.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
+                    placement="top"
+                    hasArrow
+                  >
+                    <Box>
+                      <Icon
+                        as={MdVerified}
+                        color="green.500"
+                        boxSize={5}
+                        cursor="help"
+                      />
+                    </Box>
+                  </Tooltip>
+                )}
+              </HStack>
               <HStack spacing={2}>
                 <Badge colorScheme="blue">
                   {selectedNote && getNoteTypeLabel(selectedNote.type)}
                 </Badge>
-                {selectedNote?.isSigned && (
-                  <Badge colorScheme="green" fontSize="xs">
-                    Firmado por {selectedNote.signedBy}
-                  </Badge>
-                )}
               </HStack>
             </VStack>
           </ModalHeader>
