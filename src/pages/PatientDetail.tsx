@@ -489,7 +489,7 @@ const PatientDetail: React.FC = () => {
                         {isExpanded ? (
                           // Expanded view - show all notes in grid
                           <SimpleGrid
-                            columns={{ base: 1, sm: 2, md: 3, lg: 4 }}
+                            columns={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
                             spacing={4}
                           >
                             {dateNotes.map((note, noteIndex) => (
@@ -508,7 +508,9 @@ const PatientDetail: React.FC = () => {
                                   borderWidth="1px"
                                   borderColor={borderColor}
                                   h="full"
-                                  minH="280px"
+                                  minH="420px"
+                                  maxW="280px"
+                                  mx="auto"
                                   transition="all 0.2s"
                                   _hover={{
                                     transform: 'translateY(-4px)',
@@ -518,7 +520,7 @@ const PatientDetail: React.FC = () => {
                                 >
                                   <CardBody py={5} px={5}>
                                     <VStack spacing={4} align="stretch" h="full">
-                                      <VStack align="start" spacing={3} flex={1}>
+                                      <VStack align="start" spacing={3}>
                                         <HStack align="start" spacing={2} w="full">
                                           <Heading size="xs" noOfLines={2} minH="40px" flex={1}>
                                             {note.title}
@@ -554,6 +556,23 @@ const PatientDetail: React.FC = () => {
                                         </VStack>
                                       </VStack>
 
+                                      {/* Preview del contenido */}
+                                      <Box
+                                        flex={1}
+                                        overflow="hidden"
+                                      >
+                                        <Text
+                                          fontSize="sm"
+                                          color="gray.600"
+                                          noOfLines={8}
+                                          fontFamily="Georgia, serif"
+                                          fontStyle="italic"
+                                          lineHeight="1.6"
+                                        >
+                                          {note.content}
+                                        </Text>
+                                      </Box>
+
                                       <Button
                                         size="sm"
                                         w="full"
@@ -576,7 +595,7 @@ const PatientDetail: React.FC = () => {
                             position="relative"
                             cursor="pointer"
                             role="group"
-                            maxW="320px"
+                            maxW="280px"
                             mx="auto"
                           >
                             {dateNotes.map((note, noteIndex) => {
@@ -620,7 +639,7 @@ const PatientDetail: React.FC = () => {
                                     borderColor={
                                       noteIndex > 0 ? 'brand.300' : borderColor
                                     }
-                                    minH="280px"
+                                    minH="420px"
                                   >
                                     <CardBody py={5} px={5}>
                                       <VStack spacing={4} align="stretch" h="full">
@@ -659,6 +678,23 @@ const PatientDetail: React.FC = () => {
                                             </Text>
                                           </HStack>
                                         </VStack>
+
+                                        {/* Preview del contenido */}
+                                        <Box
+                                          flex={1}
+                                          overflow="hidden"
+                                        >
+                                          <Text
+                                            fontSize="sm"
+                                            color="gray.600"
+                                            noOfLines={8}
+                                            fontFamily="Georgia, serif"
+                                            fontStyle="italic"
+                                            lineHeight="1.6"
+                                          >
+                                            {note.content}
+                                          </Text>
+                                        </Box>
 
                                         <Button
                                           size="sm"
