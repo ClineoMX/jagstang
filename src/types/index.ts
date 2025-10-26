@@ -167,3 +167,34 @@ export interface SearchParams {
   page?: number;
   pageSize?: number;
 }
+
+// Consent types
+export type ConsentStatus = 'granted' | 'revoked';
+
+export interface ConsentType {
+  id: string;
+  name: string;
+  description: string;
+  fullText: string; // Markdown content explaining the consent in detail
+  isRequired: boolean;
+  category: string;
+  version: string;
+  effectiveDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatientConsent {
+  id: string;
+  patientId: string;
+  consentTypeId: string;
+  consentType?: ConsentType;
+  status: ConsentStatus;
+  grantedAt?: string;
+  revokedAt?: string;
+  signature?: string; // Patient's autograph signature (base64 image or signature data)
+  signedBy: string; // Patient name
+  version: string; // Version of consent they agreed to
+  createdAt: string;
+  updatedAt: string;
+}
