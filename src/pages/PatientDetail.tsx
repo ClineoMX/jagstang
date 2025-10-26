@@ -82,6 +82,7 @@ const PatientDetail: React.FC = () => {
     id ? getPatientConsentsByPatientId(id) : []
   );
   const [pendingConsents, setPendingConsents] = useState<Set<string>>(new Set());
+  const [pendingRevocations, setPendingRevocations] = useState<Set<string>>(new Set());
   const [showSignature, setShowSignature] = useState(false);
   const [signature, setSignature] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -172,34 +173,36 @@ const PatientDetail: React.FC = () => {
 
   const handleConsentChange = (consentTypeId: string, checked: boolean) => {
     if (checked) {
+      // Remove from revocations if it was there
+      setPendingRevocations((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(consentTypeId);
+        return newSet;
+      });
+      // Add to pending consents
       setPendingConsents((prev) => new Set(prev).add(consentTypeId));
     } else {
+      // Remove from pending consents if it was there
       setPendingConsents((prev) => {
         const newSet = new Set(prev);
         newSet.delete(consentTypeId);
         return newSet;
       });
-      // If unchecking, also revoke if was previously granted
+      // If unchecking a previously granted consent, add to revocations
       const existingConsent = patientConsents.find(
         (pc) => pc.consentTypeId === consentTypeId && pc.status === 'granted'
       );
       if (existingConsent) {
-        setPatientConsents((prev) =>
-          prev.map((pc) =>
-            pc.id === existingConsent.id
-              ? { ...pc, status: 'revoked' as const, revokedAt: new Date().toISOString() }
-              : pc
-          )
-        );
+        setPendingRevocations((prev) => new Set(prev).add(consentTypeId));
       }
     }
   };
 
   const handleSaveConsents = () => {
-    if (pendingConsents.size === 0) {
+    if (pendingConsents.size === 0 && pendingRevocations.size === 0) {
       toast({
         title: 'No hay cambios',
-        description: 'No se han seleccionado nuevos consentimientos',
+        description: 'No se han seleccionado cambios en los consentimientos',
         status: 'info',
         duration: 3000,
       });
@@ -243,14 +246,43 @@ const PatientDetail: React.FC = () => {
       })
     );
 
-    setPatientConsents((prev) => [...prev, ...newConsents]);
+    // Update existing consents for revocations
+    const updatedConsents = patientConsents.map((pc) => {
+      if (pendingRevocations.has(pc.consentTypeId) && pc.status === 'granted') {
+        return {
+          ...pc,
+          status: 'revoked' as const,
+          revokedAt: new Date().toISOString(),
+          signature: signatureData, // Add revocation signature
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return pc;
+    });
+
+    setPatientConsents([...updatedConsents, ...newConsents]);
+
+    const totalChanges = newConsents.length + pendingRevocations.size;
+    const granted = newConsents.length;
+    const revoked = pendingRevocations.size;
+
+    let description = '';
+    if (granted > 0 && revoked > 0) {
+      description = `${granted} consentimiento(s) otorgado(s) y ${revoked} revocado(s)`;
+    } else if (granted > 0) {
+      description = `${granted} consentimiento(s) otorgado(s)`;
+    } else if (revoked > 0) {
+      description = `${revoked} consentimiento(s) revocado(s)`;
+    }
+
     setPendingConsents(new Set());
+    setPendingRevocations(new Set());
     setShowSignature(false);
     handleClearSignature();
 
     toast({
-      title: 'Consentimientos guardados',
-      description: `Se han guardado ${newConsents.length} consentimiento(s) exitosamente`,
+      title: 'Cambios guardados',
+      description,
       status: 'success',
       duration: 3000,
     });
@@ -1007,15 +1039,28 @@ const PatientDetail: React.FC = () => {
                       {consentTypes.map((consent) => {
                         const isGranted = isConsentGranted(consent.id);
                         const isPending = pendingConsents.has(consent.id);
-                        const isChecked = isGranted || isPending;
+                        const isPendingRevocation = pendingRevocations.has(consent.id);
+                        const isChecked = (isGranted && !isPendingRevocation) || isPending;
 
                         return (
                           <Card
                             key={consent.id}
                             variant="outline"
                             borderWidth="2px"
-                            borderColor={isGranted ? 'green.300' : borderColor}
-                            bg={isGranted ? 'green.50' : 'transparent'}
+                            borderColor={
+                              isPendingRevocation
+                                ? 'red.300'
+                                : isGranted
+                                  ? 'green.300'
+                                  : borderColor
+                            }
+                            bg={
+                              isPendingRevocation
+                                ? 'red.50'
+                                : isGranted
+                                  ? 'green.50'
+                                  : 'transparent'
+                            }
                           >
                             <CardBody>
                               <HStack spacing={4} align="start">
@@ -1026,7 +1071,6 @@ const PatientDetail: React.FC = () => {
                                   onChange={(e) =>
                                     handleConsentChange(consent.id, e.target.checked)
                                   }
-                                  isDisabled={isGranted}
                                 />
                                 <VStack
                                   align="start"
@@ -1042,9 +1086,19 @@ const PatientDetail: React.FC = () => {
                                         Requerido
                                       </Badge>
                                     )}
-                                    {isGranted && (
+                                    {isGranted && !isPendingRevocation && (
                                       <Badge colorScheme="green" fontSize="xs">
                                         Otorgado
+                                      </Badge>
+                                    )}
+                                    {isPendingRevocation && (
+                                      <Badge colorScheme="red" fontSize="xs">
+                                        Pendiente de revocación
+                                      </Badge>
+                                    )}
+                                    {isPending && (
+                                      <Badge colorScheme="blue" fontSize="xs">
+                                        Pendiente de otorgar
                                       </Badge>
                                     )}
                                   </HStack>
@@ -1055,7 +1109,7 @@ const PatientDetail: React.FC = () => {
                                     Categoría: {consent.category} • Versión:{' '}
                                     {consent.version}
                                   </Text>
-                                  {isGranted && (
+                                  {isGranted && !isPendingRevocation && (
                                     <Text fontSize="xs" color="green.600" fontWeight="medium">
                                       Otorgado el{' '}
                                       {patientConsents
@@ -1101,7 +1155,7 @@ const PatientDetail: React.FC = () => {
                     <CardHeader>
                       <Heading size="md">Firma del Paciente</Heading>
                       <Text fontSize="sm" color="gray.500" mt={2}>
-                        Por favor, firme en el recuadro a continuación para confirmar su consentimiento.
+                        Por favor, firme en el recuadro a continuación para confirmar los cambios en sus consentimientos.
                       </Text>
                     </CardHeader>
                     <CardBody>
@@ -1150,13 +1204,22 @@ const PatientDetail: React.FC = () => {
                 )}
 
                 {/* Save Button */}
-                {!showSignature && pendingConsents.size > 0 && (
+                {!showSignature && (pendingConsents.size > 0 || pendingRevocations.size > 0) && (
                   <Button
                     colorScheme="brand"
                     size="lg"
                     onClick={handleSaveConsents}
                   >
-                    Guardar Consentimientos ({pendingConsents.size})
+                    Guardar Cambios
+                    {pendingConsents.size > 0 && pendingRevocations.size > 0 && (
+                      <> ({pendingConsents.size} otorgar, {pendingRevocations.size} revocar)</>
+                    )}
+                    {pendingConsents.size > 0 && pendingRevocations.size === 0 && (
+                      <> ({pendingConsents.size} otorgar)</>
+                    )}
+                    {pendingConsents.size === 0 && pendingRevocations.size > 0 && (
+                      <> ({pendingRevocations.size} revocar)</>
+                    )}
                   </Button>
                 )}
               </VStack>
