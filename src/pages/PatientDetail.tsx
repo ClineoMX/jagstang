@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Box,
   Container,
@@ -31,6 +31,9 @@ import {
   useDisclosure,
   Tooltip,
   Icon,
+  Checkbox,
+  ModalFooter,
+  Input,
 } from '@chakra-ui/react';
 import {
   FiCalendar,
@@ -49,12 +52,14 @@ import {
   getPatientById,
   getNotesByPatientId,
   mockAttachments,
+  getConsentTypes,
+  getPatientConsentsByPatientId,
 } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { MedicalNote } from '../types';
+import type { MedicalNote, ConsentType, PatientConsent } from '../types';
 
 const PatientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -64,6 +69,23 @@ const PatientDetail: React.FC = () => {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedNote, setSelectedNote] = useState<any>(null);
+
+  // Consent states
+  const {
+    isOpen: isConsentModalOpen,
+    onOpen: onConsentModalOpen,
+    onClose: onConsentModalClose,
+  } = useDisclosure();
+  const [selectedConsent, setSelectedConsent] = useState<ConsentType | null>(null);
+  const [consentTypes] = useState<ConsentType[]>(getConsentTypes());
+  const [patientConsents, setPatientConsents] = useState<PatientConsent[]>(
+    id ? getPatientConsentsByPatientId(id) : []
+  );
+  const [pendingConsents, setPendingConsents] = useState<Set<string>>(new Set());
+  const [showSignature, setShowSignature] = useState(false);
+  const [signature, setSignature] = useState('');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
 
   const patient = id ? getPatientById(id) : undefined;
   const notes = id ? getNotesByPatientId(id) : [];
@@ -134,6 +156,135 @@ const PatientDetail: React.FC = () => {
 
   const getFileIcon = (fileType: string) => {
     return <FiFile />;
+  };
+
+  // Consent functions
+  const handleConsentClick = (consent: ConsentType) => {
+    setSelectedConsent(consent);
+    onConsentModalOpen();
+  };
+
+  const isConsentGranted = (consentTypeId: string) => {
+    return patientConsents.some(
+      (pc) => pc.consentTypeId === consentTypeId && pc.status === 'granted'
+    );
+  };
+
+  const handleConsentChange = (consentTypeId: string, checked: boolean) => {
+    if (checked) {
+      setPendingConsents((prev) => new Set(prev).add(consentTypeId));
+    } else {
+      setPendingConsents((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(consentTypeId);
+        return newSet;
+      });
+      // If unchecking, also revoke if was previously granted
+      const existingConsent = patientConsents.find(
+        (pc) => pc.consentTypeId === consentTypeId && pc.status === 'granted'
+      );
+      if (existingConsent) {
+        setPatientConsents((prev) =>
+          prev.map((pc) =>
+            pc.id === existingConsent.id
+              ? { ...pc, status: 'revoked' as const, revokedAt: new Date().toISOString() }
+              : pc
+          )
+        );
+      }
+    }
+  };
+
+  const handleSaveConsents = () => {
+    if (pendingConsents.size === 0) {
+      toast({
+        title: 'No hay cambios',
+        description: 'No se han seleccionado nuevos consentimientos',
+        status: 'info',
+        duration: 3000,
+      });
+      return;
+    }
+
+    setShowSignature(true);
+  };
+
+  const handleClearSignature = () => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    setSignature('');
+  };
+
+  const handleConfirmSignature = () => {
+    if (!canvasRef.current || !patient) {
+      return;
+    }
+
+    const signatureData = canvasRef.current.toDataURL();
+
+    // Create new consent records for pending consents
+    const newConsents: PatientConsent[] = Array.from(pendingConsents).map(
+      (consentTypeId) => ({
+        id: `pc-${Date.now()}-${Math.random()}`,
+        patientId: patient.id,
+        consentTypeId,
+        status: 'granted' as const,
+        grantedAt: new Date().toISOString(),
+        signedBy: `${patient.firstName} ${patient.lastName}`,
+        signature: signatureData,
+        version: consentTypes.find((c) => c.id === consentTypeId)?.version || '1.0',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+    );
+
+    setPatientConsents((prev) => [...prev, ...newConsents]);
+    setPendingConsents(new Set());
+    setShowSignature(false);
+    handleClearSignature();
+
+    toast({
+      title: 'Consentimientos guardados',
+      description: `Se han guardado ${newConsents.length} consentimiento(s) exitosamente`,
+      status: 'success',
+      duration: 3000,
+    });
+  };
+
+  // Canvas drawing functions
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    setIsDrawing(true);
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
   };
 
   return (
@@ -235,6 +386,7 @@ const PatientDetail: React.FC = () => {
             <Tab>Información General</Tab>
             <Tab>Expediente Médico ({notes.length})</Tab>
             <Tab>Archivos ({patientAttachments.length})</Tab>
+            <Tab>Consentimientos</Tab>
           </TabList>
 
           <TabPanels>
@@ -560,17 +712,33 @@ const PatientDetail: React.FC = () => {
                                       <Box
                                         flex={1}
                                         overflow="hidden"
+                                        position="relative"
+                                        maxH="180px"
                                       >
-                                        <Text
-                                          fontSize="sm"
-                                          color="gray.600"
-                                          noOfLines={8}
-                                          fontFamily="Georgia, serif"
-                                          fontStyle="italic"
-                                          lineHeight="1.6"
+                                        <Box
+                                          sx={{
+                                            fontFamily: 'Georgia, serif',
+                                            fontStyle: 'italic',
+                                            fontSize: 'sm',
+                                            color: 'gray.600',
+                                            lineHeight: '1.6',
+                                            '& p': { mb: 1, fontSize: 'sm' },
+                                            '& h1, & h2, & h3': { fontSize: 'sm', fontWeight: 'semibold', mb: 1 },
+                                            '& ul, & ol': { ml: 4, mb: 1, fontSize: 'sm' },
+                                            '& li': { mb: 0 },
+                                          }}
                                         >
-                                          {note.content}
-                                        </Text>
+                                          <ReactMarkdown>{note.content}</ReactMarkdown>
+                                        </Box>
+                                        <Box
+                                          position="absolute"
+                                          bottom={0}
+                                          left={0}
+                                          right={0}
+                                          h="40px"
+                                          bgGradient={`linear(to-t, ${cardBg}, transparent)`}
+                                          pointerEvents="none"
+                                        />
                                       </Box>
 
                                       <Button
@@ -683,17 +851,33 @@ const PatientDetail: React.FC = () => {
                                         <Box
                                           flex={1}
                                           overflow="hidden"
+                                          position="relative"
+                                          maxH="180px"
                                         >
-                                          <Text
-                                            fontSize="sm"
-                                            color="gray.600"
-                                            noOfLines={8}
-                                            fontFamily="Georgia, serif"
-                                            fontStyle="italic"
-                                            lineHeight="1.6"
+                                          <Box
+                                            sx={{
+                                              fontFamily: 'Georgia, serif',
+                                              fontStyle: 'italic',
+                                              fontSize: 'sm',
+                                              color: 'gray.600',
+                                              lineHeight: '1.6',
+                                              '& p': { mb: 1, fontSize: 'sm' },
+                                              '& h1, & h2, & h3': { fontSize: 'sm', fontWeight: 'semibold', mb: 1 },
+                                              '& ul, & ol': { ml: 4, mb: 1, fontSize: 'sm' },
+                                              '& li': { mb: 0 },
+                                            }}
                                           >
-                                            {note.content}
-                                          </Text>
+                                            <ReactMarkdown>{note.content}</ReactMarkdown>
+                                          </Box>
+                                          <Box
+                                            position="absolute"
+                                            bottom={0}
+                                            left={0}
+                                            right={0}
+                                            h="40px"
+                                            bgGradient={`linear(to-t, ${cardBg}, transparent)`}
+                                            pointerEvents="none"
+                                          />
                                         </Box>
 
                                         <Button
@@ -807,6 +991,176 @@ const PatientDetail: React.FC = () => {
                 )}
               </VStack>
             </TabPanel>
+
+            {/* Consents Tab */}
+            <TabPanel px={0} pt={6}>
+              <VStack spacing={6} align="stretch">
+                <Card bg={cardBg}>
+                  <CardHeader>
+                    <Heading size="md">Consentimientos del Paciente</Heading>
+                    <Text fontSize="sm" color="gray.500" mt={2}>
+                      Seleccione los consentimientos que el paciente desea otorgar. Click en cada item para leer los detalles.
+                    </Text>
+                  </CardHeader>
+                  <CardBody>
+                    <VStack spacing={4} align="stretch">
+                      {consentTypes.map((consent) => {
+                        const isGranted = isConsentGranted(consent.id);
+                        const isPending = pendingConsents.has(consent.id);
+                        const isChecked = isGranted || isPending;
+
+                        return (
+                          <Card
+                            key={consent.id}
+                            variant="outline"
+                            borderWidth="2px"
+                            borderColor={isGranted ? 'green.300' : borderColor}
+                            bg={isGranted ? 'green.50' : 'transparent'}
+                          >
+                            <CardBody>
+                              <HStack spacing={4} align="start">
+                                <Checkbox
+                                  size="lg"
+                                  colorScheme="green"
+                                  isChecked={isChecked}
+                                  onChange={(e) =>
+                                    handleConsentChange(consent.id, e.target.checked)
+                                  }
+                                  isDisabled={isGranted}
+                                />
+                                <VStack
+                                  align="start"
+                                  spacing={1}
+                                  flex={1}
+                                  cursor="pointer"
+                                  onClick={() => handleConsentClick(consent)}
+                                >
+                                  <HStack>
+                                    <Text fontWeight="bold">{consent.name}</Text>
+                                    {consent.isRequired && (
+                                      <Badge colorScheme="red" fontSize="xs">
+                                        Requerido
+                                      </Badge>
+                                    )}
+                                    {isGranted && (
+                                      <Badge colorScheme="green" fontSize="xs">
+                                        Otorgado
+                                      </Badge>
+                                    )}
+                                  </HStack>
+                                  <Text fontSize="sm" color="gray.600">
+                                    {consent.description}
+                                  </Text>
+                                  <Text fontSize="xs" color="gray.500">
+                                    Categoría: {consent.category} • Versión:{' '}
+                                    {consent.version}
+                                  </Text>
+                                  {isGranted && (
+                                    <Text fontSize="xs" color="green.600" fontWeight="medium">
+                                      Otorgado el{' '}
+                                      {patientConsents
+                                        .find(
+                                          (pc) =>
+                                            pc.consentTypeId === consent.id &&
+                                            pc.status === 'granted'
+                                        )
+                                        ?.grantedAt &&
+                                        format(
+                                          new Date(
+                                            patientConsents.find(
+                                              (pc) =>
+                                                pc.consentTypeId === consent.id &&
+                                                pc.status === 'granted'
+                                            )!.grantedAt!
+                                          ),
+                                          "d 'de' MMMM, yyyy 'a las' HH:mm",
+                                          { locale: es }
+                                        )}
+                                    </Text>
+                                  )}
+                                </VStack>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleConsentClick(consent)}
+                                >
+                                  Ver detalles
+                                </Button>
+                              </HStack>
+                            </CardBody>
+                          </Card>
+                        );
+                      })}
+                    </VStack>
+                  </CardBody>
+                </Card>
+
+                {/* Signature Section */}
+                {showSignature && (
+                  <Card bg={cardBg}>
+                    <CardHeader>
+                      <Heading size="md">Firma del Paciente</Heading>
+                      <Text fontSize="sm" color="gray.500" mt={2}>
+                        Por favor, firme en el recuadro a continuación para confirmar su consentimiento.
+                      </Text>
+                    </CardHeader>
+                    <CardBody>
+                      <VStack spacing={4}>
+                        <Box
+                          borderWidth="2px"
+                          borderColor={borderColor}
+                          borderRadius="md"
+                          overflow="hidden"
+                        >
+                          <canvas
+                            ref={canvasRef}
+                            width={600}
+                            height={200}
+                            style={{
+                              display: 'block',
+                              touchAction: 'none',
+                              cursor: 'crosshair',
+                            }}
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={stopDrawing}
+                            onMouseLeave={stopDrawing}
+                          />
+                        </Box>
+                        <HStack spacing={4}>
+                          <Button onClick={handleClearSignature} variant="outline">
+                            Limpiar
+                          </Button>
+                          <Button
+                            onClick={handleConfirmSignature}
+                            colorScheme="green"
+                          >
+                            Confirmar y Guardar
+                          </Button>
+                          <Button
+                            onClick={() => setShowSignature(false)}
+                            variant="ghost"
+                          >
+                            Cancelar
+                          </Button>
+                        </HStack>
+                      </VStack>
+                    </CardBody>
+                  </Card>
+                )}
+
+                {/* Save Button */}
+                {!showSignature && pendingConsents.size > 0 && (
+                  <Button
+                    colorScheme="brand"
+                    size="lg"
+                    onClick={handleSaveConsents}
+                  >
+                    Guardar Consentimientos ({pendingConsents.size})
+                  </Button>
+                )}
+              </VStack>
+            </TabPanel>
           </TabPanels>
         </Tabs>
       </Container>
@@ -858,6 +1212,58 @@ const PatientDetail: React.FC = () => {
               <ReactMarkdown>{selectedNote?.content || ''}</ReactMarkdown>
             </Box>
           </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* Consent Detail Modal */}
+      <Modal
+        isOpen={isConsentModalOpen}
+        onClose={onConsentModalClose}
+        size="4xl"
+        scrollBehavior="inside"
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            <VStack align="start" spacing={2}>
+              <HStack>
+                <Text>{selectedConsent?.name}</Text>
+                {selectedConsent?.isRequired && (
+                  <Badge colorScheme="red" fontSize="sm">
+                    Requerido
+                  </Badge>
+                )}
+              </HStack>
+              <Text fontSize="sm" fontWeight="normal" color="gray.500">
+                {selectedConsent?.description}
+              </Text>
+              <HStack fontSize="xs" color="gray.500">
+                <Text>Categoría: {selectedConsent?.category}</Text>
+                <Text>•</Text>
+                <Text>Versión: {selectedConsent?.version}</Text>
+              </HStack>
+            </VStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <Box
+              sx={{
+                '& h1': { fontSize: '2xl', fontWeight: 'bold', mb: 4 },
+                '& h2': { fontSize: 'xl', fontWeight: 'bold', mb: 3, mt: 6 },
+                '& h3': { fontSize: 'lg', fontWeight: 'semibold', mb: 2, mt: 4 },
+                '& p': { mb: 2 },
+                '& ul': { ml: 6, mb: 4 },
+                '& li': { mb: 1 },
+              }}
+            >
+              <ReactMarkdown>{selectedConsent?.fullText || ''}</ReactMarkdown>
+            </Box>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" onClick={onConsentModalClose}>
+              Cerrar
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
     </Box>

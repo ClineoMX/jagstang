@@ -5,6 +5,8 @@ import type {
   MedicalNote,
   NoteTemplate,
   Attachment,
+  ConsentType,
+  PatientConsent,
 } from '../types';
 
 // Mock Doctor
@@ -517,6 +519,171 @@ export const mockAppointments: Appointment[] = [
   },
 ];
 
+// Mock Consent Types
+export const mockConsentTypes: ConsentType[] = [
+  {
+    id: 'consent-1',
+    name: 'Tratamiento de Datos Personales',
+    description: 'Autorización para el tratamiento y almacenamiento de datos personales del paciente.',
+    fullText: `# Consentimiento para el Tratamiento de Datos Personales
+
+## Propósito
+Este consentimiento autoriza a la institución médica para recopilar, almacenar, procesar y utilizar sus datos personales con fines médicos y administrativos.
+
+## Datos que se recopilan
+- Nombre completo
+- Fecha de nacimiento
+- Dirección y contacto
+- Historia clínica
+- Información de seguro médico
+- Datos fiscales (CURP, RFC)
+
+## Uso de los datos
+Sus datos serán utilizados exclusivamente para:
+1. Brindar atención médica de calidad
+2. Mantener su expediente clínico actualizado
+3. Gestionar citas y seguimientos
+4. Facturación y cobros
+5. Cumplimiento de obligaciones legales
+
+## Protección
+Todos sus datos están protegidos conforme a la Ley Federal de Protección de Datos Personales en Posesión de Particulares (LFPDPPP).
+
+## Derechos ARCO
+Usted tiene derecho a Acceder, Rectificar, Cancelar u Oponerse al tratamiento de sus datos personales.`,
+    isRequired: true,
+    category: 'Privacidad',
+    version: '1.0',
+    effectiveDate: '2024-01-01T00:00:00Z',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'consent-2',
+    name: 'Procedimientos Médicos',
+    description: 'Consentimiento para realizar procedimientos médicos y tratamientos.',
+    fullText: `# Consentimiento para Procedimientos Médicos
+
+## Autorización General
+Al otorgar este consentimiento, usted autoriza al personal médico a realizar los procedimientos diagnósticos y terapéuticos que consideren necesarios para su atención.
+
+## Incluye
+- Exámenes físicos y exploraciones
+- Análisis de laboratorio
+- Estudios de imagenología (rayos X, ultrasonido, etc.)
+- Procedimientos menores ambulatorios
+- Administración de medicamentos
+
+## Información y Riesgos
+El médico le informará específicamente sobre:
+- El procedimiento a realizar
+- Los riesgos asociados
+- Las alternativas disponibles
+- Los beneficios esperados
+
+## Derecho a rechazar
+Usted tiene el derecho de rechazar cualquier procedimiento específico en cualquier momento.
+
+## Consentimiento informado específico
+Para procedimientos quirúrgicos o invasivos, se requerirá un consentimiento informado adicional y específico.`,
+    isRequired: false,
+    category: 'Atención Médica',
+    version: '1.0',
+    effectiveDate: '2024-01-01T00:00:00Z',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'consent-3',
+    name: 'Comunicaciones Electrónicas',
+    description: 'Autorización para recibir comunicaciones por medios electrónicos.',
+    fullText: `# Consentimiento para Comunicaciones Electrónicas
+
+## Medios de Comunicación
+Al otorgar este consentimiento, usted acepta recibir comunicaciones de la institución médica a través de:
+- Correo electrónico
+- Mensajes SMS
+- Llamadas telefónicas
+- WhatsApp u otras aplicaciones de mensajería
+
+## Tipo de Comunicaciones
+Las comunicaciones pueden incluir:
+1. Recordatorios de citas
+2. Resultados de estudios (cuando no requieran consulta presencial)
+3. Notificaciones administrativas
+4. Información sobre servicios y promociones
+5. Encuestas de satisfacción
+
+## Confidencialidad
+Todas las comunicaciones se manejarán de forma confidencial y segura.
+
+## Cancelación
+Puede revocar este consentimiento en cualquier momento, notificando a la institución por escrito o correo electrónico.`,
+    isRequired: false,
+    category: 'Comunicación',
+    version: '1.0',
+    effectiveDate: '2024-01-01T00:00:00Z',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+  {
+    id: 'consent-4',
+    name: 'Compartir Información con Aseguradoras',
+    description: 'Autorización para compartir información médica con compañías de seguros.',
+    fullText: `# Consentimiento para Compartir Información con Aseguradoras
+
+## Propósito
+Este consentimiento autoriza a la institución médica a compartir su información de salud con su compañía de seguros médicos para fines de facturación y cobertura.
+
+## Información Compartida
+Se compartirá únicamente la información necesaria para:
+- Procesamiento de reclamaciones
+- Verificación de elegibilidad
+- Autorización previa de procedimientos
+- Facturación de servicios cubiertos
+
+## Limitaciones
+No se compartirá información no relacionada con los servicios que está reclamando.
+
+## Revocación
+Puede revocar este consentimiento, aunque esto puede afectar su capacidad de usar su seguro médico en esta institución.`,
+    isRequired: false,
+    category: 'Seguros',
+    version: '1.0',
+    effectiveDate: '2024-01-01T00:00:00Z',
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+  },
+];
+
+// Mock Patient Consents (for patient p-1: Juan Pérez)
+export const mockPatientConsents: PatientConsent[] = [
+  {
+    id: 'pc-1',
+    patientId: 'p-1',
+    consentTypeId: 'consent-1',
+    status: 'granted',
+    grantedAt: '2024-10-01T10:30:00Z',
+    signedBy: 'Juan Pérez González',
+    signature: 'signature-data-base64', // In real app, this would be base64 image
+    version: '1.0',
+    createdAt: '2024-10-01T10:30:00Z',
+    updatedAt: '2024-10-01T10:30:00Z',
+  },
+  {
+    id: 'pc-2',
+    patientId: 'p-1',
+    consentTypeId: 'consent-3',
+    status: 'granted',
+    grantedAt: '2024-10-01T10:32:00Z',
+    signedBy: 'Juan Pérez González',
+    signature: 'signature-data-base64',
+    version: '1.0',
+    createdAt: '2024-10-01T10:32:00Z',
+    updatedAt: '2024-10-01T10:32:00Z',
+  },
+];
+
 // Helper function to get patient by ID
 export const getPatientById = (id: string): Patient | undefined => {
   return mockPatients.find((p) => p.id === id);
@@ -544,4 +711,16 @@ export const searchPatients = (query: string): Patient[] => {
       p.email?.toLowerCase().includes(lowerQuery) ||
       p.phone?.includes(query)
   );
+};
+
+// Helper function to get all consent types
+export const getConsentTypes = (): ConsentType[] => {
+  return mockConsentTypes;
+};
+
+// Helper function to get patient consents by patient ID
+export const getPatientConsentsByPatientId = (
+  patientId: string
+): PatientConsent[] => {
+  return mockPatientConsents.filter((pc) => pc.patientId === patientId);
 };
