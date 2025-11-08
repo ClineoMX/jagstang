@@ -54,7 +54,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { NoteTemplate, NoteType } from '../types';
-import ReactMarkdown from 'react-markdown';
+import RichTextEditor from '../components/RichTextEditor';
 
 const DoctorProfile: React.FC = () => {
   const { doctor } = useAuth();
@@ -79,28 +79,30 @@ const DoctorProfile: React.FC = () => {
       id: 'tpl-1',
       name: 'Interrogatorio Inicial Personalizado',
       type: 'initial_interrogation',
-      content: `# Interrogatorio Inicial
-
-## Datos del Paciente
-- **Nombre**: [Nombre del paciente]
-- **Edad**: [Edad]
-- **Fecha**: [Fecha]
-
-## Motivo de Consulta
-[Describir el motivo principal de la consulta]
-
-## Historia de la Enfermedad Actual
-[Detalles sobre la evolución de los síntomas]
-
-## Antecedentes
-### Personales Patológicos
-- [Lista de antecedentes]
-
-### Familiares
-- [Antecedentes familiares relevantes]
-
-## Revisión por Sistemas
-- [Revisar cada sistema]`,
+      content: `<h1>Interrogatorio Inicial</h1>
+<h2>Datos del Paciente</h2>
+<ul>
+<li><strong>Nombre</strong>: [Nombre del paciente]</li>
+<li><strong>Edad</strong>: [Edad]</li>
+<li><strong>Fecha</strong>: [Fecha]</li>
+</ul>
+<h2>Motivo de Consulta</h2>
+<p>[Describir el motivo principal de la consulta]</p>
+<h2>Historia de la Enfermedad Actual</h2>
+<p>[Detalles sobre la evolución de los síntomas]</p>
+<h2>Antecedentes</h2>
+<h3>Personales Patológicos</h3>
+<ul>
+<li>[Lista de antecedentes]</li>
+</ul>
+<h3>Familiares</h3>
+<ul>
+<li>[Antecedentes familiares relevantes]</li>
+</ul>
+<h2>Revisión por Sistemas</h2>
+<ul>
+<li>[Revisar cada sistema]</li>
+</ul>`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       isDefault: false,
@@ -616,19 +618,12 @@ const DoctorProfile: React.FC = () => {
               </FormControl>
 
               <FormControl isRequired>
-                <FormLabel>
-                  Contenido (Markdown)
-                  <Text as="span" fontSize="sm" color="gray.500" ml={2}>
-                    Puedes usar formato Markdown
-                  </Text>
-                </FormLabel>
-                <Textarea
+                <FormLabel>Contenido de la Plantilla</FormLabel>
+                <RichTextEditor
                   value={templateContent}
-                  onChange={(e) => setTemplateContent(e.target.value)}
-                  placeholder="# Título de la Nota&#10;&#10;## Sección 1&#10;[Tu contenido aquí]"
-                  rows={15}
-                  fontFamily="monospace"
-                  fontSize="sm"
+                  onChange={setTemplateContent}
+                  placeholder="Escribe el contenido de tu plantilla aquí..."
+                  minHeight="300px"
                 />
               </FormControl>
             </VStack>
@@ -669,12 +664,14 @@ const DoctorProfile: React.FC = () => {
                 '& h2': { fontSize: 'xl', fontWeight: 'bold', mb: 3, mt: 6 },
                 '& h3': { fontSize: 'lg', fontWeight: 'semibold', mb: 2, mt: 4 },
                 '& p': { mb: 2 },
-                '& ul': { ml: 6, mb: 4 },
+                '& ul, & ol': { ml: 6, mb: 4 },
                 '& li': { mb: 1 },
+                '& strong': { fontWeight: 'bold' },
+                '& em': { fontStyle: 'italic' },
+                '& a': { color: 'brand.500', textDecoration: 'underline' },
               }}
-            >
-              <ReactMarkdown>{previewTemplate?.content || ''}</ReactMarkdown>
-            </Box>
+              dangerouslySetInnerHTML={{ __html: previewTemplate?.content || '' }}
+            />
           </ModalBody>
           <ModalFooter>
             <Button onClick={onPreviewModalClose}>Cerrar</Button>

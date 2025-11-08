@@ -31,7 +31,7 @@ import {
 import { FiUpload, FiX, FiArrowLeft } from 'react-icons/fi';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getPatientById, mockNoteTemplates } from '../data/mockData';
-import ReactMarkdown from 'react-markdown';
+import RichTextEditor from '../components/RichTextEditor';
 import type { NoteType } from '../types';
 
 const NoteForm: React.FC = () => {
@@ -227,64 +227,12 @@ const NoteForm: React.FC = () => {
 
                   <FormControl isRequired>
                     <FormLabel>Contenido de la Nota</FormLabel>
-                    <Tabs colorScheme="brand">
-                      <TabList>
-                        <Tab>Editor</Tab>
-                        <Tab>Vista Previa</Tab>
-                      </TabList>
-
-                      <TabPanels>
-                        <TabPanel px={0}>
-                          <Textarea
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            placeholder="Escribe el contenido de la nota en formato Markdown..."
-                            rows={20}
-                            fontFamily="mono"
-                            fontSize="sm"
-                          />
-                          <Text fontSize="xs" color="gray.500" mt={2}>
-                            Puedes usar Markdown para formatear el texto
-                          </Text>
-                        </TabPanel>
-
-                        <TabPanel px={0}>
-                          <Box
-                            p={6}
-                            borderWidth="1px"
-                            borderColor={borderColor}
-                            borderRadius="lg"
-                            minH="500px"
-                            bg={useColorModeValue('white', 'gray.800')}
-                            sx={{
-                              '& h1': {
-                                fontSize: '2xl',
-                                fontWeight: 'bold',
-                                mb: 4,
-                              },
-                              '& h2': {
-                                fontSize: 'xl',
-                                fontWeight: 'bold',
-                                mb: 3,
-                                mt: 6,
-                              },
-                              '& h3': {
-                                fontSize: 'lg',
-                                fontWeight: 'semibold',
-                                mb: 2,
-                                mt: 4,
-                              },
-                              '& p': { mb: 2 },
-                              '& ul': { ml: 6, mb: 4 },
-                              '& li': { mb: 1 },
-                              '& strong': { fontWeight: 'bold' },
-                            }}
-                          >
-                            <ReactMarkdown>{content}</ReactMarkdown>
-                          </Box>
-                        </TabPanel>
-                      </TabPanels>
-                    </Tabs>
+                    <RichTextEditor
+                      value={content}
+                      onChange={setContent}
+                      placeholder="Escribe el contenido de la nota médica..."
+                      minHeight="400px"
+                    />
                   </FormControl>
 
                   <FormControl>

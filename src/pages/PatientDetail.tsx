@@ -57,7 +57,6 @@ import {
 } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MedicalNote, ConsentType, PatientConsent } from '../types';
 
@@ -605,9 +604,8 @@ const PatientDetail: React.FC = () => {
                                             '& ul, & ol': { ml: 4, mb: 1, fontSize: 'sm' },
                                             '& li': { mb: 0 },
                                           }}
-                                        >
-                                          <ReactMarkdown>{note.content}</ReactMarkdown>
-                                        </Box>
+                                          dangerouslySetInnerHTML={{ __html: note.content }}
+                                        />
                                         <Box
                                           position="absolute"
                                           bottom={0}
@@ -744,9 +742,8 @@ const PatientDetail: React.FC = () => {
                                               '& ul, & ol': { ml: 4, mb: 1, fontSize: 'sm' },
                                               '& li': { mb: 0 },
                                             }}
-                                          >
-                                            <ReactMarkdown>{note.content}</ReactMarkdown>
-                                          </Box>
+                                            dangerouslySetInnerHTML={{ __html: note.content }}
+                                          />
                                           <Box
                                             position="absolute"
                                             bottom={0}
@@ -1015,12 +1012,14 @@ const PatientDetail: React.FC = () => {
                 '& h2': { fontSize: 'xl', fontWeight: 'bold', mb: 3, mt: 6 },
                 '& h3': { fontSize: 'lg', fontWeight: 'semibold', mb: 2, mt: 4 },
                 '& p': { mb: 2 },
-                '& ul': { ml: 6, mb: 4 },
+                '& ul, & ol': { ml: 6, mb: 4 },
                 '& li': { mb: 1 },
+                '& strong': { fontWeight: 'bold' },
+                '& em': { fontStyle: 'italic' },
+                '& a': { color: 'brand.500', textDecoration: 'underline' },
               }}
-            >
-              <ReactMarkdown>{selectedNote?.content || ''}</ReactMarkdown>
-            </Box>
+              dangerouslySetInnerHTML={{ __html: selectedNote?.content || '' }}
+            />
           </ModalBody>
         </ModalContent>
       </Modal>
@@ -1062,12 +1061,14 @@ const PatientDetail: React.FC = () => {
                 '& h2': { fontSize: 'xl', fontWeight: 'bold', mb: 3, mt: 6 },
                 '& h3': { fontSize: 'lg', fontWeight: 'semibold', mb: 2, mt: 4 },
                 '& p': { mb: 2 },
-                '& ul': { ml: 6, mb: 4 },
+                '& ul, & ol': { ml: 6, mb: 4 },
                 '& li': { mb: 1 },
+                '& strong': { fontWeight: 'bold' },
+                '& em': { fontStyle: 'italic' },
+                '& a': { color: 'brand.500', textDecoration: 'underline' },
               }}
-            >
-              <ReactMarkdown>{selectedConsent?.fullText || ''}</ReactMarkdown>
-            </Box>
+              dangerouslySetInnerHTML={{ __html: selectedConsent?.fullText || '' }}
+            />
           </ModalBody>
           <ModalFooter>
             <Button variant="ghost" onClick={onConsentModalClose}>
