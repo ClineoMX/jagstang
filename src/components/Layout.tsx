@@ -26,6 +26,7 @@ import {
   FiMoon,
   FiChevronLeft,
   FiChevronRight,
+  FiUser,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -202,6 +203,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </HStack>
               </MenuButton>
               <MenuList>
+                <MenuItem icon={<FiUser />} onClick={() => navigate('/profile')}>
+                  Mi Perfil
+                </MenuItem>
                 <MenuItem icon={<FiLogOut />} onClick={handleLogout}>
                   Cerrar Sesión
                 </MenuItem>
@@ -222,6 +226,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Flex>
               </MenuButton>
               <MenuList>
+                <MenuItem icon={<FiUser />} onClick={() => navigate('/profile')}>
+                  Mi Perfil
+                </MenuItem>
                 <MenuItem icon={<FiLogOut />} onClick={handleLogout}>
                   Cerrar Sesión
                 </MenuItem>

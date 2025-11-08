@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -78,15 +78,9 @@ const PatientDetail: React.FC = () => {
   } = useDisclosure();
   const [selectedConsent, setSelectedConsent] = useState<ConsentType | null>(null);
   const [consentTypes] = useState<ConsentType[]>(getConsentTypes());
-  const [patientConsents, setPatientConsents] = useState<PatientConsent[]>(
+  const [patientConsents] = useState<PatientConsent[]>(
     id ? getPatientConsentsByPatientId(id) : []
   );
-  const [pendingConsents, setPendingConsents] = useState<Set<string>>(new Set());
-  const [pendingRevocations, setPendingRevocations] = useState<Set<string>>(new Set());
-  const [showSignature, setShowSignature] = useState(false);
-  const [signature, setSignature] = useState('');
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
 
   const patient = id ? getPatientById(id) : undefined;
   const notes = id ? getNotesByPatientId(id) : [];
@@ -169,154 +163,6 @@ const PatientDetail: React.FC = () => {
     return patientConsents.some(
       (pc) => pc.consentTypeId === consentTypeId && pc.status === 'granted'
     );
-  };
-
-  const handleConsentChange = (consentTypeId: string, checked: boolean) => {
-    if (checked) {
-      // Remove from revocations if it was there
-      setPendingRevocations((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(consentTypeId);
-        return newSet;
-      });
-      // Add to pending consents
-      setPendingConsents((prev) => new Set(prev).add(consentTypeId));
-    } else {
-      // Remove from pending consents if it was there
-      setPendingConsents((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(consentTypeId);
-        return newSet;
-      });
-      // If unchecking a previously granted consent, add to revocations
-      const existingConsent = patientConsents.find(
-        (pc) => pc.consentTypeId === consentTypeId && pc.status === 'granted'
-      );
-      if (existingConsent) {
-        setPendingRevocations((prev) => new Set(prev).add(consentTypeId));
-      }
-    }
-  };
-
-  const handleSaveConsents = () => {
-    if (pendingConsents.size === 0 && pendingRevocations.size === 0) {
-      toast({
-        title: 'No hay cambios',
-        description: 'No se han seleccionado cambios en los consentimientos',
-        status: 'info',
-        duration: 3000,
-      });
-      return;
-    }
-
-    setShowSignature(true);
-  };
-
-  const handleClearSignature = () => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    }
-    setSignature('');
-  };
-
-  const handleConfirmSignature = () => {
-    if (!canvasRef.current || !patient) {
-      return;
-    }
-
-    const signatureData = canvasRef.current.toDataURL();
-
-    // Create new consent records for pending consents
-    const newConsents: PatientConsent[] = Array.from(pendingConsents).map(
-      (consentTypeId) => ({
-        id: `pc-${Date.now()}-${Math.random()}`,
-        patientId: patient.id,
-        consentTypeId,
-        status: 'granted' as const,
-        grantedAt: new Date().toISOString(),
-        signedBy: `${patient.firstName} ${patient.lastName}`,
-        signature: signatureData,
-        version: consentTypes.find((c) => c.id === consentTypeId)?.version || '1.0',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
-    );
-
-    // Update existing consents for revocations
-    const updatedConsents = patientConsents.map((pc) => {
-      if (pendingRevocations.has(pc.consentTypeId) && pc.status === 'granted') {
-        return {
-          ...pc,
-          status: 'revoked' as const,
-          revokedAt: new Date().toISOString(),
-          signature: signatureData, // Add revocation signature
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      return pc;
-    });
-
-    setPatientConsents([...updatedConsents, ...newConsents]);
-
-    const totalChanges = newConsents.length + pendingRevocations.size;
-    const granted = newConsents.length;
-    const revoked = pendingRevocations.size;
-
-    let description = '';
-    if (granted > 0 && revoked > 0) {
-      description = `${granted} consentimiento(s) otorgado(s) y ${revoked} revocado(s)`;
-    } else if (granted > 0) {
-      description = `${granted} consentimiento(s) otorgado(s)`;
-    } else if (revoked > 0) {
-      description = `${revoked} consentimiento(s) revocado(s)`;
-    }
-
-    setPendingConsents(new Set());
-    setPendingRevocations(new Set());
-    setShowSignature(false);
-    handleClearSignature();
-
-    toast({
-      title: 'Cambios guardados',
-      description,
-      status: 'success',
-      duration: 3000,
-    });
-  };
-
-  // Canvas drawing functions
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    setIsDrawing(true);
-    ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
   };
 
   return (
@@ -1031,46 +877,31 @@ const PatientDetail: React.FC = () => {
                   <CardHeader>
                     <Heading size="md">Consentimientos del Paciente</Heading>
                     <Text fontSize="sm" color="gray.500" mt={2}>
-                      Seleccione los consentimientos que el paciente desea otorgar. Click en cada item para leer los detalles.
+                      Vista de solo lectura de los consentimientos otorgados por el paciente.
+                      Solo el paciente puede modificar sus consentimientos.
                     </Text>
                   </CardHeader>
                   <CardBody>
                     <VStack spacing={4} align="stretch">
                       {consentTypes.map((consent) => {
                         const isGranted = isConsentGranted(consent.id);
-                        const isPending = pendingConsents.has(consent.id);
-                        const isPendingRevocation = pendingRevocations.has(consent.id);
-                        const isChecked = (isGranted && !isPendingRevocation) || isPending;
 
                         return (
                           <Card
                             key={consent.id}
                             variant="outline"
                             borderWidth="2px"
-                            borderColor={
-                              isPendingRevocation
-                                ? 'red.300'
-                                : isGranted
-                                  ? 'green.300'
-                                  : borderColor
-                            }
-                            bg={
-                              isPendingRevocation
-                                ? 'red.50'
-                                : isGranted
-                                  ? 'green.50'
-                                  : 'transparent'
-                            }
+                            borderColor={isGranted ? 'green.300' : borderColor}
+                            bg={isGranted ? 'green.50' : 'transparent'}
                           >
                             <CardBody>
                               <HStack spacing={4} align="start">
                                 <Checkbox
                                   size="lg"
                                   colorScheme="green"
-                                  isChecked={isChecked}
-                                  onChange={(e) =>
-                                    handleConsentChange(consent.id, e.target.checked)
-                                  }
+                                  isChecked={isGranted}
+                                  isDisabled={true}
+                                  pointerEvents="none"
                                 />
                                 <VStack
                                   align="start"
@@ -1086,19 +917,9 @@ const PatientDetail: React.FC = () => {
                                         Requerido
                                       </Badge>
                                     )}
-                                    {isGranted && !isPendingRevocation && (
+                                    {isGranted && (
                                       <Badge colorScheme="green" fontSize="xs">
                                         Otorgado
-                                      </Badge>
-                                    )}
-                                    {isPendingRevocation && (
-                                      <Badge colorScheme="red" fontSize="xs">
-                                        Pendiente de revocación
-                                      </Badge>
-                                    )}
-                                    {isPending && (
-                                      <Badge colorScheme="blue" fontSize="xs">
-                                        Pendiente de otorgar
                                       </Badge>
                                     )}
                                   </HStack>
@@ -1109,7 +930,7 @@ const PatientDetail: React.FC = () => {
                                     Categoría: {consent.category} • Versión:{' '}
                                     {consent.version}
                                   </Text>
-                                  {isGranted && !isPendingRevocation && (
+                                  {isGranted && (
                                     <Text fontSize="xs" color="green.600" fontWeight="medium">
                                       Otorgado el{' '}
                                       {patientConsents
@@ -1148,80 +969,6 @@ const PatientDetail: React.FC = () => {
                     </VStack>
                   </CardBody>
                 </Card>
-
-                {/* Signature Section */}
-                {showSignature && (
-                  <Card bg={cardBg}>
-                    <CardHeader>
-                      <Heading size="md">Firma del Paciente</Heading>
-                      <Text fontSize="sm" color="gray.500" mt={2}>
-                        Por favor, firme en el recuadro a continuación para confirmar los cambios en sus consentimientos.
-                      </Text>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack spacing={4}>
-                        <Box
-                          borderWidth="2px"
-                          borderColor={borderColor}
-                          borderRadius="md"
-                          overflow="hidden"
-                        >
-                          <canvas
-                            ref={canvasRef}
-                            width={600}
-                            height={200}
-                            style={{
-                              display: 'block',
-                              touchAction: 'none',
-                              cursor: 'crosshair',
-                            }}
-                            onMouseDown={startDrawing}
-                            onMouseMove={draw}
-                            onMouseUp={stopDrawing}
-                            onMouseLeave={stopDrawing}
-                          />
-                        </Box>
-                        <HStack spacing={4}>
-                          <Button onClick={handleClearSignature} variant="outline">
-                            Limpiar
-                          </Button>
-                          <Button
-                            onClick={handleConfirmSignature}
-                            colorScheme="green"
-                          >
-                            Confirmar y Guardar
-                          </Button>
-                          <Button
-                            onClick={() => setShowSignature(false)}
-                            variant="ghost"
-                          >
-                            Cancelar
-                          </Button>
-                        </HStack>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                )}
-
-                {/* Save Button */}
-                {!showSignature && (pendingConsents.size > 0 || pendingRevocations.size > 0) && (
-                  <Button
-                    colorScheme="brand"
-                    size="lg"
-                    onClick={handleSaveConsents}
-                  >
-                    Guardar Cambios
-                    {pendingConsents.size > 0 && pendingRevocations.size > 0 && (
-                      <> ({pendingConsents.size} otorgar, {pendingRevocations.size} revocar)</>
-                    )}
-                    {pendingConsents.size > 0 && pendingRevocations.size === 0 && (
-                      <> ({pendingConsents.size} otorgar)</>
-                    )}
-                    {pendingConsents.size === 0 && pendingRevocations.size > 0 && (
-                      <> ({pendingRevocations.size} revocar)</>
-                    )}
-                  </Button>
-                )}
               </VStack>
             </TabPanel>
           </TabPanels>

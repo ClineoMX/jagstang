@@ -12,6 +12,7 @@ import PatientDetail from './pages/PatientDetail';
 import PatientForm from './pages/PatientForm';
 import CalendarPage from './pages/Calendar';
 import NoteForm from './pages/NoteForm';
+import DoctorProfile from './pages/DoctorProfile';
 
 // Components
 import Layout from './components/Layout';
@@ -120,6 +121,16 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <CalendarPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <DoctorProfile />
             </Layout>
           </ProtectedRoute>
         }
