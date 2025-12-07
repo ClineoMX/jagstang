@@ -7,7 +7,6 @@ import {
   VStack,
   Text,
   Button,
-
   Modal,
   ModalOverlay,
   ModalContent,
@@ -20,8 +19,9 @@ import {
   Avatar,
   useToast,
   useColorModeValue,
+  Icon,
 } from '@chakra-ui/react';
-import { FiPlus } from 'react-icons/fi';
+import { FiPlus, FiCalendar as FiCalendarIcon } from 'react-icons/fi';
 import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -167,13 +167,14 @@ const CalendarPage: React.FC = () => {
     return {
       style: {
         backgroundColor,
-        borderRadius: '6px',
+        borderRadius: '8px',
         opacity: 0.9,
         color: 'white',
         border: 'none',
         display: 'block',
         fontSize: '13px',
         padding: '4px 8px',
+        fontWeight: '500',
       },
     };
   };
@@ -184,21 +185,38 @@ const CalendarPage: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
+      {/* Header with Gradient */}
       <Box
-        bg={cardBg}
-        borderBottom="1px"
-        borderColor={borderColor}
+        bgGradient="linear(135deg, brand.500 0%, brand.600 100%)"
+        color="white"
         px={8}
-        py={6}
+        py={8}
       >
         <Container maxW="container.xl">
-          <HStack justify="space-between">
-            <Heading size="lg">Calendario de Citas</Heading>
+          <HStack justify="space-between" flexWrap="wrap" gap={4}>
+            <VStack align="start" spacing={2}>
+              <Heading size="xl">Calendario 📅</Heading>
+              <Text fontSize="md" opacity={0.9}>
+                Gestiona tus citas y agenda
+              </Text>
+            </VStack>
             <Button
               leftIcon={<FiPlus />}
-              colorScheme="brand"
+              size="lg"
+              colorScheme="whiteAlpha"
+              bg="whiteAlpha.300"
+              backdropFilter="blur(10px)"
+              _hover={{
+                bg: 'whiteAlpha.400',
+                transform: 'translateY(-2px)',
+                boxShadow: 'xl',
+              }}
+              _active={{
+                bg: 'whiteAlpha.500',
+                transform: 'translateY(0)',
+              }}
               onClick={handleSelectSlot}
+              transition="all 0.2s"
             >
               Nueva Cita
             </Button>
@@ -210,19 +228,22 @@ const CalendarPage: React.FC = () => {
       <Container maxW="container.xl" py={8}>
         <Box
           bg={calendarBg}
-          p={6}
-          borderRadius="xl"
-          boxShadow="md"
+          p={8}
+          borderRadius="2xl"
+          boxShadow="xl"
+          borderWidth="1px"
+          borderColor={borderColor}
           sx={{
             '& .rbc-calendar': {
               fontFamily: 'inherit',
             },
             '& .rbc-header': {
-              padding: '12px 4px',
+              padding: '16px 4px',
               fontWeight: '600',
-              fontSize: '14px',
+              fontSize: '15px',
               borderBottom: '2px solid',
               borderColor: borderColor,
+              color: useColorModeValue('gray.700', 'gray.200'),
             },
             '& .rbc-today': {
               backgroundColor: useColorModeValue('#E6F2FF', '#1A365D'),
@@ -231,16 +252,18 @@ const CalendarPage: React.FC = () => {
               backgroundColor: useColorModeValue('#F7FAFC', '#1A202C'),
             },
             '& .rbc-date-cell': {
-              padding: '8px',
+              padding: '12px',
               fontSize: '14px',
+              fontWeight: '500',
             },
             '& .rbc-event': {
-              padding: '4px 8px',
+              padding: '6px 10px',
             },
             '& .rbc-month-view': {
               border: '1px solid',
               borderColor: borderColor,
-              borderRadius: 'lg',
+              borderRadius: 'xl',
+              overflow: 'hidden',
             },
             '& .rbc-day-bg': {
               borderColor: borderColor,
@@ -253,22 +276,37 @@ const CalendarPage: React.FC = () => {
               borderColor: borderColor,
             },
             '& .rbc-toolbar': {
-              padding: '16px 0',
-              marginBottom: '16px',
+              padding: '20px 0',
+              marginBottom: '20px',
+              flexWrap: 'wrap',
+              gap: '12px',
               '& button': {
                 color: useColorModeValue('gray.800', 'white'),
-                borderRadius: 'md',
-                padding: '8px 16px',
+                borderRadius: 'lg',
+                padding: '10px 20px',
+                fontWeight: '500',
+                fontSize: '14px',
+                border: '1px solid',
+                borderColor: borderColor,
+                transition: 'all 0.2s',
                 '&:hover': {
                   backgroundColor: useColorModeValue('gray.100', 'gray.700'),
+                  transform: 'translateY(-2px)',
+                  boxShadow: 'md',
                 },
                 '&.rbc-active': {
                   backgroundColor: 'brand.500',
                   color: 'white',
+                  borderColor: 'brand.500',
                   '&:hover': {
                     backgroundColor: 'brand.600',
                   },
                 },
+              },
+              '& .rbc-toolbar-label': {
+                fontSize: '20px',
+                fontWeight: '700',
+                color: useColorModeValue('gray.800', 'white'),
               },
             },
           }}
@@ -304,51 +342,83 @@ const CalendarPage: React.FC = () => {
         </Box>
 
         {/* Legend */}
-        <HStack spacing={6} mt={4} justify="center">
-          <HStack spacing={2}>
-            <Box w={4} h={4} bg="green.500" borderRadius="sm" />
-            <Text fontSize="sm">Confirmada</Text>
+        <HStack spacing={8} mt={6} justify="center" flexWrap="wrap">
+          <HStack spacing={3}>
+            <Box
+              w={6}
+              h={6}
+              bg="green.500"
+              borderRadius="md"
+              boxShadow="sm"
+            />
+            <Text fontSize="md" fontWeight="medium">
+              Confirmada
+            </Text>
           </HStack>
-          <HStack spacing={2}>
-            <Box w={4} h={4} bg="orange.500" borderRadius="sm" />
-            <Text fontSize="sm">Pendiente</Text>
+          <HStack spacing={3}>
+            <Box
+              w={6}
+              h={6}
+              bg="orange.500"
+              borderRadius="md"
+              boxShadow="sm"
+            />
+            <Text fontSize="md" fontWeight="medium">
+              Pendiente
+            </Text>
           </HStack>
-          <HStack spacing={2}>
-            <Box w={4} h={4} bg="red.500" borderRadius="sm" />
-            <Text fontSize="sm">Cancelada</Text>
+          <HStack spacing={3}>
+            <Box w={6} h={6} bg="red.500" borderRadius="md" boxShadow="sm" />
+            <Text fontSize="md" fontWeight="medium">
+              Cancelada
+            </Text>
           </HStack>
         </HStack>
       </Container>
 
       {/* Event Details Modal */}
       <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Detalles de la Cita</ModalHeader>
+        <ModalOverlay backdropFilter="blur(4px)" />
+        <ModalContent borderRadius="2xl">
+          <ModalHeader>
+            <HStack spacing={3}>
+              <Box
+                bg="brand.500"
+                p={2}
+                borderRadius="lg"
+                color="white"
+              >
+                <Icon as={FiCalendarIcon} boxSize={5} />
+              </Box>
+              <Text>Detalles de la Cita</Text>
+            </HStack>
+          </ModalHeader>
           <ModalCloseButton />
-          <ModalBody>
+          <ModalBody pb={6}>
             {selectedEvent && patient && (
-              <VStack spacing={4} align="stretch">
+              <VStack spacing={5} align="stretch">
                 {/* Patient Info */}
                 <HStack
-                  spacing={3}
+                  spacing={4}
                   p={4}
-                  bg={useColorModeValue('gray.50', 'gray.700')}
-                  borderRadius="lg"
+                  bg={useColorModeValue('brand.50', 'gray.700')}
+                  borderRadius="xl"
                   cursor="pointer"
                   onClick={() => {
                     navigate(`/patients/${patient.id}`);
                     onClose();
                   }}
-                  _hover={{ bg: useColorModeValue('gray.100', 'gray.600') }}
+                  _hover={{ bg: useColorModeValue('brand.100', 'gray.600') }}
+                  transition="all 0.2s"
                 >
                   <Avatar
-                    size="md"
+                    size="lg"
                     name={`${patient.firstName} ${patient.lastName}`}
                     src={patient.avatar}
+                    bg="brand.500"
                   />
                   <VStack align="start" spacing={0} flex={1}>
-                    <Text fontWeight="bold">
+                    <Text fontWeight="bold" fontSize="lg">
                       {patient.firstName} {patient.lastName}
                     </Text>
                     <Text fontSize="sm" color="gray.500">
@@ -358,18 +428,26 @@ const CalendarPage: React.FC = () => {
                 </HStack>
 
                 {/* Appointment Details */}
-                <VStack spacing={3} align="stretch">
+                <VStack spacing={4} align="stretch">
                   <HStack justify="space-between">
-                    <Text fontWeight="medium">Estado:</Text>
+                    <Text fontWeight="semibold" fontSize="md">
+                      Estado:
+                    </Text>
                     <Badge
                       colorScheme={getStatusColor(selectedEvent.resource.status)}
+                      fontSize="sm"
+                      px={3}
+                      py={1}
+                      borderRadius="full"
                     >
                       {getStatusLabel(selectedEvent.resource.status)}
                     </Badge>
                   </HStack>
 
                   <HStack justify="space-between">
-                    <Text fontWeight="medium">Fecha:</Text>
+                    <Text fontWeight="semibold" fontSize="md">
+                      Fecha:
+                    </Text>
                     <Text>
                       {format(
                         selectedEvent.start,
@@ -380,21 +458,27 @@ const CalendarPage: React.FC = () => {
                   </HStack>
 
                   <HStack justify="space-between">
-                    <Text fontWeight="medium">Hora:</Text>
-                    <Text>
+                    <Text fontWeight="semibold" fontSize="md">
+                      Hora:
+                    </Text>
+                    <Text fontWeight="medium">
                       {format(selectedEvent.start, 'HH:mm', { locale: es })} -{' '}
                       {format(selectedEvent.end, 'HH:mm', { locale: es })}
                     </Text>
                   </HStack>
 
                   <HStack justify="space-between">
-                    <Text fontWeight="medium">Duración:</Text>
+                    <Text fontWeight="semibold" fontSize="md">
+                      Duración:
+                    </Text>
                     <Text>{selectedEvent.resource.duration} minutos</Text>
                   </HStack>
 
                   {selectedEvent.resource.description && (
-                    <VStack align="stretch" spacing={1}>
-                      <Text fontWeight="medium">Descripción:</Text>
+                    <VStack align="stretch" spacing={2}>
+                      <Text fontWeight="semibold" fontSize="md">
+                        Descripción:
+                      </Text>
                       <Text fontSize="sm" color="gray.600">
                         {selectedEvent.resource.description}
                       </Text>
@@ -407,16 +491,24 @@ const CalendarPage: React.FC = () => {
           <ModalFooter>
             <HStack spacing={3}>
               {selectedEvent?.resource.status === 'pending' && (
-                <Button colorScheme="green" onClick={handleConfirmAppointment}>
+                <Button
+                  colorScheme="green"
+                  onClick={handleConfirmAppointment}
+                  borderRadius="lg"
+                >
                   Confirmar
                 </Button>
               )}
               {selectedEvent?.resource.status !== 'cancelled' && (
-                <Button colorScheme="red" onClick={handleCancelAppointment}>
+                <Button
+                  colorScheme="red"
+                  onClick={handleCancelAppointment}
+                  borderRadius="lg"
+                >
                   Cancelar Cita
                 </Button>
               )}
-              <Button variant="ghost" onClick={onClose}>
+              <Button variant="ghost" onClick={onClose} borderRadius="lg">
                 Cerrar
               </Button>
             </HStack>
@@ -426,17 +518,31 @@ const CalendarPage: React.FC = () => {
 
       {/* New Appointment Modal */}
       <Modal isOpen={isNewOpen} onClose={onNewClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Nueva Cita</ModalHeader>
+        <ModalOverlay backdropFilter="blur(4px)" />
+        <ModalContent borderRadius="2xl">
+          <ModalHeader>
+            <HStack spacing={3}>
+              <Box
+                bg="brand.500"
+                p={2}
+                borderRadius="lg"
+                color="white"
+              >
+                <Icon as={FiPlus} boxSize={5} />
+              </Box>
+              <Text>Nueva Cita</Text>
+            </HStack>
+          </ModalHeader>
           <ModalCloseButton />
-          <ModalBody>
+          <ModalBody pb={6}>
             <VStack spacing={4} align="stretch">
               <Text color="gray.500">
                 Funcionalidad en desarrollo. Usa el formulario de nueva cita.
               </Text>
               <Button
                 colorScheme="brand"
+                size="lg"
+                borderRadius="lg"
                 onClick={() => {
                   navigate('/appointments/new', {
                     state: location.state,
