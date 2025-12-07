@@ -166,40 +166,53 @@ const PatientDetail: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
+      {/* Header with Gradient */}
       <Box
-        bg={cardBg}
-        borderBottom="1px"
-        borderColor={borderColor}
+        bgGradient="linear(135deg, purple.500 0%, purple.600 100%)"
+        color="white"
         px={8}
-        py={6}
+        py={8}
       >
         <Container maxW="container.xl">
-          <VStack spacing={4} align="stretch">
+          <VStack spacing={6} align="stretch">
             <HStack>
               <IconButton
                 aria-label="Volver"
                 icon={<FiArrowLeft />}
                 onClick={() => navigate('/patients')}
                 variant="ghost"
+                colorScheme="whiteAlpha"
+                _hover={{
+                  bg: 'whiteAlpha.300',
+                }}
               />
-              <Heading size="lg">Detalle del Paciente</Heading>
+              <Heading size="lg">Expediente del Paciente</Heading>
             </HStack>
 
-            <HStack justify="space-between" flexWrap="wrap" gap={3}>
-              <HStack spacing={4}>
+            <HStack justify="space-between" flexWrap="wrap" gap={4}>
+              <HStack spacing={6}>
                 <Avatar
-                  size="xl"
+                  size="2xl"
                   name={`${patient.firstName} ${patient.lastName}`}
                   src={patient.avatar}
+                  bg="whiteAlpha.300"
+                  color="white"
+                  borderWidth="4px"
+                  borderColor="whiteAlpha.400"
                 />
-                <VStack align="start" spacing={1}>
-                  <Heading size="md">
+                <VStack align="start" spacing={2}>
+                  <Heading size="xl">
                     {patient.firstName} {patient.lastName}
                   </Heading>
                   <HStack spacing={2}>
                     {patient.gender && (
-                      <Badge colorScheme="blue">
+                      <Badge
+                        colorScheme={patient.gender === 'male' ? 'blue' : 'pink'}
+                        fontSize="sm"
+                        px={3}
+                        py={1}
+                        borderRadius="full"
+                      >
                         {patient.gender === 'male'
                           ? 'Masculino'
                           : patient.gender === 'female'
@@ -208,11 +221,19 @@ const PatientDetail: React.FC = () => {
                       </Badge>
                     )}
                     {patient.bloodType && (
-                      <Badge colorScheme="red">{patient.bloodType}</Badge>
+                      <Badge
+                        colorScheme="red"
+                        fontSize="sm"
+                        px={3}
+                        py={1}
+                        borderRadius="full"
+                      >
+                        {patient.bloodType}
+                      </Badge>
                     )}
                   </HStack>
                   {patient.dateOfBirth && (
-                    <Text fontSize="sm" color="gray.500">
+                    <Text fontSize="md" opacity={0.9}>
                       Fecha de nacimiento:{' '}
                       {format(new Date(patient.dateOfBirth), "d 'de' MMMM, yyyy", {
                         locale: es,
@@ -222,25 +243,63 @@ const PatientDetail: React.FC = () => {
                 </VStack>
               </HStack>
 
-              <HStack spacing={3}>
+              <HStack spacing={3} flexWrap="wrap">
                 <Button
                   leftIcon={<FiCalendar />}
-                  colorScheme="brand"
+                  size="lg"
+                  colorScheme="whiteAlpha"
+                  bg="whiteAlpha.300"
+                  backdropFilter="blur(10px)"
+                  _hover={{
+                    bg: 'whiteAlpha.400',
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'xl',
+                  }}
+                  _active={{
+                    bg: 'whiteAlpha.500',
+                    transform: 'translateY(0)',
+                  }}
                   onClick={() => navigate('/calendar', { state: { patientId: patient.id } })}
+                  transition="all 0.2s"
                 >
                   Nueva Cita
                 </Button>
                 <Button
                   leftIcon={<FiFileText />}
-                  variant="outline"
+                  size="lg"
+                  colorScheme="whiteAlpha"
+                  bg="whiteAlpha.300"
+                  backdropFilter="blur(10px)"
+                  _hover={{
+                    bg: 'whiteAlpha.400',
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'xl',
+                  }}
+                  _active={{
+                    bg: 'whiteAlpha.500',
+                    transform: 'translateY(0)',
+                  }}
                   onClick={() => navigate(`/patients/${patient.id}/notes/new`)}
+                  transition="all 0.2s"
                 >
                   Nueva Nota
                 </Button>
                 <IconButton
                   aria-label="Editar paciente"
                   icon={<FiEdit />}
-                  variant="outline"
+                  size="lg"
+                  colorScheme="whiteAlpha"
+                  bg="whiteAlpha.300"
+                  backdropFilter="blur(10px)"
+                  _hover={{
+                    bg: 'whiteAlpha.400',
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'xl',
+                  }}
+                  _active={{
+                    bg: 'whiteAlpha.500',
+                    transform: 'translateY(0)',
+                  }}
                   onClick={() =>
                     toast({
                       title: 'Editar paciente',
@@ -249,6 +308,7 @@ const PatientDetail: React.FC = () => {
                       duration: 2000,
                     })
                   }
+                  transition="all 0.2s"
                 />
               </HStack>
             </HStack>
@@ -271,9 +331,29 @@ const PatientDetail: React.FC = () => {
             <TabPanel px={0} pt={6}>
               <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
                 {/* Personal Information */}
-                <Card bg={cardBg}>
-                  <CardHeader>
-                    <Heading size="md">Información Personal</Heading>
+                <Card
+                  bg={cardBg}
+                  borderRadius="2xl"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  transition="all 0.2s"
+                  _hover={{
+                    transform: 'translateY(-4px)',
+                    shadow: 'xl',
+                  }}
+                >
+                  <CardHeader bg={useColorModeValue('purple.50', 'gray.700')} borderTopRadius="2xl">
+                    <HStack spacing={3}>
+                      <Box
+                        bg="purple.500"
+                        p={2}
+                        borderRadius="lg"
+                        color="white"
+                      >
+                        <Icon as={FiUser} boxSize={5} />
+                      </Box>
+                      <Heading size="md">Información Personal</Heading>
+                    </HStack>
                   </CardHeader>
                   <CardBody>
                     <VStack spacing={4} align="stretch">
@@ -320,9 +400,29 @@ const PatientDetail: React.FC = () => {
                 </Card>
 
                 {/* Legal/Fiscal Information */}
-                <Card bg={cardBg}>
-                  <CardHeader>
-                    <Heading size="md">Información Legal/Fiscal</Heading>
+                <Card
+                  bg={cardBg}
+                  borderRadius="2xl"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  transition="all 0.2s"
+                  _hover={{
+                    transform: 'translateY(-4px)',
+                    shadow: 'xl',
+                  }}
+                >
+                  <CardHeader bg={useColorModeValue('blue.50', 'gray.700')} borderTopRadius="2xl">
+                    <HStack spacing={3}>
+                      <Box
+                        bg="blue.500"
+                        p={2}
+                        borderRadius="lg"
+                        color="white"
+                      >
+                        <Icon as={FiFile} boxSize={5} />
+                      </Box>
+                      <Heading size="md">Información Legal/Fiscal</Heading>
+                    </HStack>
                   </CardHeader>
                   <CardBody>
                     <VStack spacing={4} align="stretch">
@@ -370,10 +470,30 @@ const PatientDetail: React.FC = () => {
 
                 {/* Latest Note Preview */}
                 {latestNote && (
-                  <Card bg={cardBg}>
-                    <CardHeader>
+                  <Card
+                    bg={cardBg}
+                    borderRadius="2xl"
+                    borderWidth="1px"
+                    borderColor={borderColor}
+                    transition="all 0.2s"
+                    _hover={{
+                      transform: 'translateY(-4px)',
+                      shadow: 'xl',
+                    }}
+                  >
+                    <CardHeader bg={useColorModeValue('green.50', 'gray.700')} borderTopRadius="2xl">
                       <HStack justify="space-between">
-                        <Heading size="md">Última Nota Médica</Heading>
+                        <HStack spacing={3}>
+                          <Box
+                            bg="success.500"
+                            p={2}
+                            borderRadius="lg"
+                            color="white"
+                          >
+                            <Icon as={FiFileText} boxSize={5} />
+                          </Box>
+                          <Heading size="md">Última Nota Médica</Heading>
+                        </HStack>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -418,9 +538,29 @@ const PatientDetail: React.FC = () => {
                 )}
 
                 {/* Quick Links */}
-                <Card bg={cardBg}>
-                  <CardHeader>
-                    <Heading size="md">Accesos Rápidos</Heading>
+                <Card
+                  bg={cardBg}
+                  borderRadius="2xl"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  transition="all 0.2s"
+                  _hover={{
+                    transform: 'translateY(-4px)',
+                    shadow: 'xl',
+                  }}
+                >
+                  <CardHeader bg={useColorModeValue('orange.50', 'gray.700')} borderTopRadius="2xl">
+                    <HStack spacing={3}>
+                      <Box
+                        bg="orange.500"
+                        p={2}
+                        borderRadius="lg"
+                        color="white"
+                      >
+                        <Icon as={FiCalendar} boxSize={5} />
+                      </Box>
+                      <Heading size="md">Accesos Rápidos</Heading>
+                    </HStack>
                   </CardHeader>
                   <CardBody>
                     <VStack spacing={3} align="stretch">
