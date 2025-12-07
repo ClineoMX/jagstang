@@ -27,6 +27,9 @@ import {
   FiMoon,
   FiUser,
   FiActivity,
+  FiMessageSquare,
+  FiClipboard,
+  FiSettings,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -49,43 +52,31 @@ const NavItem: React.FC<NavItemProps> = ({
   isActive,
   onClick,
 }) => {
-  const activeBg = useColorModeValue('whiteAlpha.200', 'whiteAlpha.100');
-  const hoverBg = useColorModeValue('whiteAlpha.100', 'whiteAlpha.50');
+  const activeBg = useColorModeValue('whiteAlpha.100', 'whiteAlpha.50');
+  const hoverBg = useColorModeValue('whiteAlpha.50', 'whiteAlpha.30');
 
   return (
     <VStack
       spacing={2}
       cursor="pointer"
       onClick={onClick}
-      py={4}
-      px={3}
-      borderRadius="xl"
+      py={3}
+      px={2}
+      borderRadius="lg"
       bg={isActive ? activeBg : 'transparent'}
       _hover={{ bg: isActive ? activeBg : hoverBg }}
       transition="all 0.2s"
       position="relative"
     >
-      {isActive && (
-        <Box
-          position="absolute"
-          left={0}
-          top="50%"
-          transform="translateY(-50%)"
-          w="4px"
-          h="60%"
-          bg="white"
-          borderRadius="0 4px 4px 0"
-        />
-      )}
       <Icon
         as={ItemIcon}
-        boxSize={6}
-        color={isActive ? 'white' : 'whiteAlpha.700'}
+        boxSize={5}
+        color={isActive ? 'white' : 'whiteAlpha.600'}
       />
       <Text
-        fontSize="xs"
+        fontSize="2xs"
         fontWeight={isActive ? 'semibold' : 'medium'}
-        color={isActive ? 'white' : 'whiteAlpha.700'}
+        color={isActive ? 'white' : 'whiteAlpha.600'}
         textAlign="center"
         lineHeight="1.2"
       >
@@ -101,14 +92,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const sidebarBg = useColorModeValue('gray.800', 'gray.900');
+  const sidebarBg = useColorModeValue('#1E293B', '#0F172A');
   const bgColor = useColorModeValue('background.light', 'background.dark');
 
   const navItems = [
     { icon: FiHome, label: 'Dashboard', path: '/' },
     { icon: FiUsers, label: 'Pacientes', path: '/patients' },
     { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
-    { icon: FiActivity, label: 'Cumplimiento', path: '/compliance' },
+    { icon: FiClipboard, label: 'Solicitudes', path: '/requests' },
+    { icon: FiMessageSquare, label: 'Mensajes', path: '/messages' },
   ];
 
   const handleLogout = () => {
@@ -128,10 +120,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         {/* Logo/Header */}
         <Flex
-          h="100px"
+          h="80px"
           alignItems="center"
           justifyContent="center"
-          mb={8}
+          mt={6}
+          mb={12}
         >
           <Box
             bg="whiteAlpha.200"
@@ -148,7 +141,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Flex>
 
         {/* Navigation */}
-        <VStack spacing={2} px={2} flex={1} align="stretch">
+        <VStack spacing={3} px={2} flex={1} align="stretch">
           {navItems.map((item) => (
             <NavItem
               key={item.path}
@@ -162,32 +155,45 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </VStack>
 
         {/* Footer */}
-        <VStack spacing={4} p={3} pb={6}>
-          <Tooltip label="Cambiar tema" placement="right">
-            <IconButton
-              aria-label="Toggle color mode"
-              icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
-              onClick={toggleColorMode}
-              variant="ghost"
-              colorScheme="whiteAlpha"
-              color="whiteAlpha.700"
-              _hover={{ bg: 'whiteAlpha.100', color: 'white' }}
-              borderRadius="xl"
-              size="md"
-            />
-          </Tooltip>
+        <VStack spacing={3} p={3} pb={6}>
+          <VStack spacing={2} align="stretch">
+            <Tooltip label="Configuración" placement="right">
+              <VStack
+                spacing={1}
+                cursor="pointer"
+                onClick={() => navigate('/settings')}
+                py={2}
+                px={2}
+                borderRadius="lg"
+                _hover={{ bg: 'whiteAlpha.50' }}
+                transition="all 0.2s"
+              >
+                <Icon
+                  as={FiSettings}
+                  boxSize={5}
+                  color="whiteAlpha.600"
+                />
+                <Text
+                  fontSize="2xs"
+                  fontWeight="medium"
+                  color="whiteAlpha.600"
+                  textAlign="center"
+                  lineHeight="1.2"
+                >
+                  Settings
+                </Text>
+              </VStack>
+            </Tooltip>
+          </VStack>
 
           <Divider borderColor="whiteAlpha.200" />
 
           {doctor && (
             <Menu>
               <MenuButton as={Box} cursor="pointer">
-                <Tooltip
-                  label={`${doctor.firstName} ${doctor.lastName}`}
-                  placement="right"
-                >
+                <VStack spacing={1}>
                   <Avatar
-                    size="md"
+                    size="sm"
                     name={`${doctor.firstName} ${doctor.lastName}`}
                     src={doctor.avatar}
                     border="2px solid"
@@ -198,7 +204,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     }}
                     transition="all 0.2s"
                   />
-                </Tooltip>
+                  <Text
+                    fontSize="2xs"
+                    fontWeight="medium"
+                    color="whiteAlpha.600"
+                    textAlign="center"
+                    lineHeight="1.2"
+                  >
+                    Log out
+                  </Text>
+                </VStack>
               </MenuButton>
               <MenuList>
                 <MenuItem icon={<FiUser />} onClick={() => navigate('/profile')}>
