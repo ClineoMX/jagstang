@@ -16,8 +16,7 @@ import {
   Avatar,
   Badge,
   useColorModeValue,
-  IconButton,
-  useColorModeValue,
+  Icon,
 } from '@chakra-ui/react';
 import { FiPlus, FiPhone, FiMail, FiSearch } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
@@ -44,38 +43,79 @@ const PatientList: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
+      {/* Header with Gradient */}
       <Box
-        bg={cardBg}
-        borderBottom="1px"
-        borderColor={borderColor}
+        bgGradient="linear(135deg, purple.500 0%, purple.600 100%)"
+        color="white"
         px={8}
-        py={6}
+        py={8}
       >
         <Container maxW="container.xl">
-          <VStack spacing={4} align="stretch">
-            <HStack justify="space-between">
-              <Heading size="lg">Pacientes</Heading>
+          <VStack spacing={6} align="stretch">
+            <HStack justify="space-between" flexWrap="wrap" gap={4}>
+              <VStack align="start" spacing={2}>
+                <Heading size="xl">Pacientes 👥</Heading>
+                <Text fontSize="md" opacity={0.9}>
+                  Gestiona tu lista de pacientes
+                </Text>
+              </VStack>
               <Button
                 leftIcon={<FiPlus />}
-                colorScheme="brand"
+                size="lg"
+                colorScheme="whiteAlpha"
+                bg="whiteAlpha.300"
+                backdropFilter="blur(10px)"
+                _hover={{
+                  bg: 'whiteAlpha.400',
+                  transform: 'translateY(-2px)',
+                  boxShadow: 'xl',
+                }}
+                _active={{
+                  bg: 'whiteAlpha.500',
+                  transform: 'translateY(0)',
+                }}
                 onClick={() => navigate('/patients/new')}
+                transition="all 0.2s"
               >
                 Nuevo Paciente
               </Button>
             </HStack>
 
-            <InputGroup maxW="500px">
+            <InputGroup maxW="600px" size="lg">
               <InputLeftElement pointerEvents="none">
-                <FiSearch color="gray.400" />
+                <Icon as={FiSearch} color="whiteAlpha.700" boxSize={5} />
               </InputLeftElement>
               <Input
                 placeholder="Buscar por nombre, email o teléfono..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                size="lg"
+                bg="whiteAlpha.300"
+                backdropFilter="blur(10px)"
+                border="1px solid"
+                borderColor="whiteAlpha.400"
+                color="white"
+                _placeholder={{ color: 'whiteAlpha.700' }}
+                _hover={{
+                  bg: 'whiteAlpha.400',
+                  borderColor: 'whiteAlpha.500',
+                }}
+                _focus={{
+                  bg: 'whiteAlpha.400',
+                  borderColor: 'white',
+                  boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.1)',
+                }}
+                fontSize="md"
+                borderRadius="xl"
               />
             </InputGroup>
+
+            <HStack justify="space-between">
+              <Text fontSize="sm" opacity={0.9}>
+                {filteredPatients.length}{' '}
+                {filteredPatients.length === 1 ? 'paciente' : 'pacientes'}{' '}
+                {searchQuery && 'encontrados'}
+              </Text>
+            </HStack>
           </VStack>
         </Container>
       </Box>
@@ -83,23 +123,16 @@ const PatientList: React.FC = () => {
       {/* Content */}
       <Container maxW="container.xl" py={8}>
         <VStack spacing={6} align="stretch">
-          <HStack justify="space-between">
-            <Text color="gray.500">
-              {filteredPatients.length}{' '}
-              {filteredPatients.length === 1 ? 'paciente' : 'pacientes'}{' '}
-              {searchQuery && 'encontrados'}
-            </Text>
-          </HStack>
-
           {filteredPatients.length === 0 ? (
-            <Card bg={cardBg}>
+            <Card bg={cardBg} borderRadius="2xl">
               <CardBody>
-                <VStack spacing={4} py={8}>
-                  <Text fontSize="lg" color="gray.500">
+                <VStack spacing={4} py={12}>
+                  <Box fontSize="4xl">🔍</Box>
+                  <Text fontSize="xl" fontWeight="semibold" color="gray.500">
                     No se encontraron pacientes
                   </Text>
                   {searchQuery && (
-                    <Text fontSize="sm" color="gray.400">
+                    <Text fontSize="md" color="gray.400">
                       Intenta con otro término de búsqueda
                     </Text>
                   )}
@@ -113,33 +146,57 @@ const PatientList: React.FC = () => {
                   key={patient.id}
                   bg={cardBg}
                   cursor="pointer"
-                  transition="all 0.2s"
+                  transition="all 0.3s"
+                  borderRadius="2xl"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  position="relative"
+                  overflow="hidden"
                   _hover={{
-                    transform: 'translateY(-4px)',
-                    shadow: 'lg',
+                    transform: 'translateY(-8px)',
+                    shadow: '2xl',
+                    borderColor: 'purple.300',
                   }}
                   onClick={() => navigate(`/patients/${patient.id}`)}
                 >
-                  <CardBody>
-                    <VStack spacing={4} align="stretch">
+                  {/* Decorative gradient circle */}
+                  <Box
+                    position="absolute"
+                    top="-40px"
+                    right="-40px"
+                    w="120px"
+                    h="120px"
+                    bgGradient="linear(135deg, purple.400 0%, purple.500 100%)"
+                    borderRadius="full"
+                    opacity={0.1}
+                    pointerEvents="none"
+                  />
+
+                  <CardBody p={6}>
+                    <VStack spacing={5} align="stretch">
                       {/* Header */}
-                      <HStack spacing={3}>
+                      <HStack spacing={4}>
                         <Avatar
-                          size="lg"
+                          size="xl"
                           name={`${patient.firstName} ${patient.lastName}`}
                           src={patient.avatar}
+                          bg="purple.500"
+                          color="white"
                         />
                         <VStack align="start" spacing={1} flex={1}>
                           <Text fontWeight="bold" fontSize="lg" noOfLines={1}>
                             {patient.firstName} {patient.lastName}
                           </Text>
-                          <HStack spacing={2}>
+                          <HStack spacing={2} flexWrap="wrap">
                             {patient.gender && (
                               <Badge
                                 colorScheme={
                                   patient.gender === 'male' ? 'blue' : 'pink'
                                 }
                                 fontSize="xs"
+                                px={2}
+                                py={1}
+                                borderRadius="full"
                               >
                                 {patient.gender === 'male'
                                   ? 'M'
@@ -154,6 +211,9 @@ const PatientList: React.FC = () => {
                                   patient.bloodType
                                 )}
                                 fontSize="xs"
+                                px={2}
+                                py={1}
+                                borderRadius="full"
                               >
                                 {patient.bloodType}
                               </Badge>
@@ -163,16 +223,32 @@ const PatientList: React.FC = () => {
                       </HStack>
 
                       {/* Contact Info */}
-                      <VStack align="stretch" spacing={2}>
+                      <VStack align="stretch" spacing={3}>
                         {patient.email && (
-                          <HStack spacing={2} fontSize="sm" color="gray.500">
-                            <FiMail />
+                          <HStack
+                            spacing={3}
+                            fontSize="sm"
+                            color="gray.600"
+                            bg={useColorModeValue('gray.50', 'gray.700')}
+                            px={3}
+                            py={2}
+                            borderRadius="lg"
+                          >
+                            <Icon as={FiMail} color="purple.500" boxSize={4} />
                             <Text noOfLines={1}>{patient.email}</Text>
                           </HStack>
                         )}
                         {patient.phone && (
-                          <HStack spacing={2} fontSize="sm" color="gray.500">
-                            <FiPhone />
+                          <HStack
+                            spacing={3}
+                            fontSize="sm"
+                            color="gray.600"
+                            bg={useColorModeValue('gray.50', 'gray.700')}
+                            px={3}
+                            py={2}
+                            borderRadius="lg"
+                          >
+                            <Icon as={FiPhone} color="purple.500" boxSize={4} />
                             <Text>{patient.phone}</Text>
                           </HStack>
                         )}
@@ -185,17 +261,16 @@ const PatientList: React.FC = () => {
                           borderTop="1px"
                           borderColor={borderColor}
                           fontSize="sm"
-                          color="gray.500"
                         >
-                          <Text>
-                            Última visita:{' '}
-                            <Text as="span" fontWeight="medium">
-                              {format(
-                                new Date(patient.lastVisit),
-                                "d 'de' MMMM, yyyy",
-                                { locale: es }
-                              )}
-                            </Text>
+                          <Text color="gray.500" fontSize="xs" mb={1}>
+                            Última visita
+                          </Text>
+                          <Text fontWeight="semibold" color="purple.600">
+                            {format(
+                              new Date(patient.lastVisit),
+                              "d 'de' MMMM, yyyy",
+                              { locale: es }
+                            )}
                           </Text>
                         </Box>
                       )}
