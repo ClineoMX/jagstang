@@ -33,19 +33,19 @@ import {
   Icon,
   Checkbox,
   ModalFooter,
-  Input,
 } from '@chakra-ui/react';
 import {
-  FiCalendar,
-  FiFileText,
-  FiEdit,
-  FiPhone,
-  FiMail,
-  FiMapPin,
-  FiFile,
-  FiDownload,
-  FiArrowLeft,
-} from 'react-icons/fi';
+  Calendar,
+  Document,
+  Edit,
+  Phone,
+  Email,
+  Location,
+  DocumentBlank,
+  Download,
+  ArrowLeft,
+  User,
+} from '@carbon/icons-react';
 import { MdVerified } from 'react-icons/md';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -57,7 +57,7 @@ import {
 } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import type { MedicalNote, ConsentType, PatientConsent } from '../types';
 
 const PatientDetail: React.FC = () => {
@@ -65,7 +65,7 @@ const PatientDetail: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const borderColor = useColorModeValue('gray.20', 'gray.70');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedNote, setSelectedNote] = useState<any>(null);
 
@@ -148,8 +148,8 @@ const PatientDetail: React.FC = () => {
     }
   };
 
-  const getFileIcon = (fileType: string) => {
-    return <FiFile />;
+  const getFileIcon = (_fileType: string) => {
+    return <DocumentBlank size={24} />;
   };
 
   // Consent functions
@@ -178,7 +178,7 @@ const PatientDetail: React.FC = () => {
             <HStack>
               <IconButton
                 aria-label="Volver"
-                icon={<FiArrowLeft />}
+                icon={<ArrowLeft size={24} />}
                 onClick={() => navigate('/patients')}
                 variant="ghost"
                 colorScheme="whiteAlpha"
@@ -245,7 +245,7 @@ const PatientDetail: React.FC = () => {
 
               <HStack spacing={3} flexWrap="wrap">
                 <Button
-                  leftIcon={<FiCalendar />}
+                  leftIcon={<Calendar size={24} />}
                   size="lg"
                   colorScheme="whiteAlpha"
                   bg="whiteAlpha.300"
@@ -265,7 +265,7 @@ const PatientDetail: React.FC = () => {
                   Nueva Cita
                 </Button>
                 <Button
-                  leftIcon={<FiFileText />}
+                  leftIcon={<Document size={24} />}
                   size="lg"
                   colorScheme="whiteAlpha"
                   bg="whiteAlpha.300"
@@ -286,7 +286,7 @@ const PatientDetail: React.FC = () => {
                 </Button>
                 <IconButton
                   aria-label="Editar paciente"
-                  icon={<FiEdit />}
+                  icon={<Edit size={24} />}
                   size="lg"
                   colorScheme="whiteAlpha"
                   bg="whiteAlpha.300"
@@ -342,7 +342,7 @@ const PatientDetail: React.FC = () => {
                     shadow: 'xl',
                   }}
                 >
-                  <CardHeader bg={useColorModeValue('purple.50', 'gray.700')} borderTopRadius="2xl">
+                  <CardHeader bg={useColorModeValue('purple.50', 'gray.70')} borderTopRadius="2xl">
                     <HStack spacing={3}>
                       <Box
                         bg="purple.500"
@@ -350,7 +350,7 @@ const PatientDetail: React.FC = () => {
                         borderRadius="lg"
                         color="white"
                       >
-                        <Icon as={FiUser} boxSize={5} />
+                        <Icon as={User} boxSize={5} />
                       </Box>
                       <Heading size="md">Información Personal</Heading>
                     </HStack>
@@ -359,9 +359,9 @@ const PatientDetail: React.FC = () => {
                     <VStack spacing={4} align="stretch">
                       {patient.email && (
                         <HStack spacing={3}>
-                          <FiMail />
+                          <Email size={20} />
                           <VStack align="start" spacing={0} flex={1}>
-                            <Text fontSize="sm" color="gray.500">
+                            <Text fontSize="sm" color="text.secondary">
                               Email
                             </Text>
                             <Text>{patient.email}</Text>
@@ -370,9 +370,9 @@ const PatientDetail: React.FC = () => {
                       )}
                       {patient.phone && (
                         <HStack spacing={3}>
-                          <FiPhone />
+                          <Phone size={20} />
                           <VStack align="start" spacing={0} flex={1}>
-                            <Text fontSize="sm" color="gray.500">
+                            <Text fontSize="sm" color="text.secondary">
                               Teléfono
                             </Text>
                             <Text>{patient.phone}</Text>
@@ -381,9 +381,9 @@ const PatientDetail: React.FC = () => {
                       )}
                       {(patient.address || patient.city || patient.state) && (
                         <HStack spacing={3} align="start">
-                          <FiMapPin />
+                          <Location size={20} />
                           <VStack align="start" spacing={0} flex={1}>
-                            <Text fontSize="sm" color="gray.500">
+                            <Text fontSize="sm" color="text.secondary">
                               Dirección
                             </Text>
                             <Text>
@@ -411,7 +411,7 @@ const PatientDetail: React.FC = () => {
                     shadow: 'xl',
                   }}
                 >
-                  <CardHeader bg={useColorModeValue('blue.50', 'gray.700')} borderTopRadius="2xl">
+                  <CardHeader bg={useColorModeValue('blue.50', 'gray.70')} borderTopRadius="2xl">
                     <HStack spacing={3}>
                       <Box
                         bg="blue.500"
@@ -419,7 +419,7 @@ const PatientDetail: React.FC = () => {
                         borderRadius="lg"
                         color="white"
                       >
-                        <Icon as={FiFile} boxSize={5} />
+                        <Icon as={DocumentBlank} boxSize={5} />
                       </Box>
                       <Heading size="md">Información Legal/Fiscal</Heading>
                     </HStack>
@@ -428,7 +428,7 @@ const PatientDetail: React.FC = () => {
                     <VStack spacing={4} align="stretch">
                       {patient.curp && (
                         <VStack align="start" spacing={1}>
-                          <Text fontSize="sm" color="gray.500">
+                          <Text fontSize="sm" color="text.secondary">
                             CURP
                           </Text>
                           <Text fontFamily="mono">{patient.curp}</Text>
@@ -436,7 +436,7 @@ const PatientDetail: React.FC = () => {
                       )}
                       {patient.rfc && (
                         <VStack align="start" spacing={1}>
-                          <Text fontSize="sm" color="gray.500">
+                          <Text fontSize="sm" color="text.secondary">
                             RFC
                           </Text>
                           <Text fontFamily="mono">{patient.rfc}</Text>
@@ -444,7 +444,7 @@ const PatientDetail: React.FC = () => {
                       )}
                       {patient.socialSecurityNumber && (
                         <VStack align="start" spacing={1}>
-                          <Text fontSize="sm" color="gray.500">
+                          <Text fontSize="sm" color="text.secondary">
                             Número de Seguro Social
                           </Text>
                           <Text fontFamily="mono">
@@ -454,7 +454,7 @@ const PatientDetail: React.FC = () => {
                       )}
                       {patient.insuranceProvider && (
                         <VStack align="start" spacing={1}>
-                          <Text fontSize="sm" color="gray.500">
+                          <Text fontSize="sm" color="text.secondary">
                             Seguro Médico
                           </Text>
                           <Text>
@@ -481,7 +481,7 @@ const PatientDetail: React.FC = () => {
                       shadow: 'xl',
                     }}
                   >
-                    <CardHeader bg={useColorModeValue('green.50', 'gray.700')} borderTopRadius="2xl">
+                    <CardHeader bg={useColorModeValue('green.50', 'gray.70')} borderTopRadius="2xl">
                       <HStack justify="space-between">
                         <HStack spacing={3}>
                           <Box
@@ -490,7 +490,7 @@ const PatientDetail: React.FC = () => {
                             borderRadius="lg"
                             color="white"
                           >
-                            <Icon as={FiFileText} boxSize={5} />
+                            <Icon as={Document} boxSize={5} />
                           </Box>
                           <Heading size="md">Última Nota Médica</Heading>
                         </HStack>
@@ -529,7 +529,7 @@ const PatientDetail: React.FC = () => {
                             {getNoteTypeLabel(latestNote.type)}
                           </Badge>
                         </VStack>
-                        <Text fontSize="sm" color="gray.500" noOfLines={3}>
+                        <Text fontSize="sm" color="text.secondary" noOfLines={3}>
                           {latestNote.content.substring(0, 150)}...
                         </Text>
                       </VStack>
@@ -549,7 +549,7 @@ const PatientDetail: React.FC = () => {
                     shadow: 'xl',
                   }}
                 >
-                  <CardHeader bg={useColorModeValue('orange.50', 'gray.700')} borderTopRadius="2xl">
+                  <CardHeader bg={useColorModeValue('orange.50', 'gray.70')} borderTopRadius="2xl">
                     <HStack spacing={3}>
                       <Box
                         bg="orange.500"
@@ -557,7 +557,7 @@ const PatientDetail: React.FC = () => {
                         borderRadius="lg"
                         color="white"
                       >
-                        <Icon as={FiCalendar} boxSize={5} />
+                        <Icon as={Calendar} boxSize={5} />
                       </Box>
                       <Heading size="md">Accesos Rápidos</Heading>
                     </HStack>
@@ -565,7 +565,7 @@ const PatientDetail: React.FC = () => {
                   <CardBody>
                     <VStack spacing={3} align="stretch">
                       <Button
-                        leftIcon={<FiFileText />}
+                        leftIcon={<Document size={20} />}
                         variant="outline"
                         justifyContent="start"
                         onClick={() =>
@@ -577,7 +577,7 @@ const PatientDetail: React.FC = () => {
                         Crear Interrogatorio Inicial
                       </Button>
                       <Button
-                        leftIcon={<FiCalendar />}
+                        leftIcon={<Calendar size={20} />}
                         variant="outline"
                         justifyContent="start"
                         onClick={() =>
@@ -589,7 +589,7 @@ const PatientDetail: React.FC = () => {
                         Agendar Cita
                       </Button>
                       <Button
-                        leftIcon={<FiEdit />}
+                        leftIcon={<Edit size={20} />}
                         variant="outline"
                         justifyContent="start"
                         onClick={() =>
@@ -616,11 +616,11 @@ const PatientDetail: React.FC = () => {
                   <Card bg={cardBg}>
                     <CardBody>
                       <VStack spacing={4} py={8}>
-                        <Text fontSize="lg" color="gray.500">
+                        <Text fontSize="lg" color="text.secondary">
                           No hay notas médicas registradas
                         </Text>
                         <Button
-                          leftIcon={<FiFileText />}
+                          leftIcon={<Document size={20} />}
                           colorScheme="brand"
                           onClick={() =>
                             navigate(`/patients/${patient.id}/notes/new`)
@@ -632,7 +632,7 @@ const PatientDetail: React.FC = () => {
                     </CardBody>
                   </Card>
                 ) : (
-                  groupedNotes.map(([dateKey, dateNotes], index) => {
+                  groupedNotes.map(([dateKey, dateNotes], _index) => {
                     const isExpanded = expandedDates.has(dateKey);
                     const noteCount = dateNotes.length;
 
@@ -644,7 +644,7 @@ const PatientDetail: React.FC = () => {
                           <Text
                             fontSize="sm"
                             fontWeight="semibold"
-                            color="gray.500"
+                            color="text.secondary"
                             whiteSpace="nowrap"
                           >
                             {format(new Date(dateKey), "d 'de' MMMM, yyyy", {
@@ -961,7 +961,7 @@ const PatientDetail: React.FC = () => {
                   <Card bg={cardBg}>
                     <CardBody>
                       <VStack spacing={4} py={8}>
-                        <Text fontSize="lg" color="gray.500">
+                        <Text fontSize="lg" color="text.secondary">
                           No hay archivos adjuntos
                         </Text>
                       </VStack>
@@ -980,11 +980,11 @@ const PatientDetail: React.FC = () => {
                               <Text fontWeight="medium" noOfLines={1}>
                                 {attachment.fileName}
                               </Text>
-                              <Text fontSize="sm" color="gray.500">
+                              <Text fontSize="sm" color="text.secondary">
                                 {(attachment.fileSize / 1024 / 1024).toFixed(2)}{' '}
                                 MB
                               </Text>
-                              <Text fontSize="xs" color="gray.400">
+                              <Text fontSize="xs" color="text.placeholder">
                                 {format(
                                   new Date(attachment.uploadedAt),
                                   "d 'de' MMM, yyyy",
@@ -994,7 +994,7 @@ const PatientDetail: React.FC = () => {
                             </VStack>
                             <IconButton
                               aria-label="Descargar"
-                              icon={<FiDownload />}
+                              icon={<Download size={20} />}
                               variant="ghost"
                               size="sm"
                             />
@@ -1013,7 +1013,7 @@ const PatientDetail: React.FC = () => {
                 <Card bg={cardBg}>
                   <CardHeader>
                     <Heading size="md">Consentimientos del Paciente</Heading>
-                    <Text fontSize="sm" color="gray.500" mt={2}>
+                    <Text fontSize="sm" color="text.secondary" mt={2}>
                       Vista de solo lectura de los consentimientos otorgados por el paciente.
                       Solo el paciente puede modificar sus consentimientos.
                     </Text>
@@ -1060,10 +1060,10 @@ const PatientDetail: React.FC = () => {
                                       </Badge>
                                     )}
                                   </HStack>
-                                  <Text fontSize="sm" color="gray.600">
+                                  <Text fontSize="sm" color="text.secondary">
                                     {consent.description}
                                   </Text>
-                                  <Text fontSize="xs" color="gray.500">
+                                  <Text fontSize="xs" color="text.secondary">
                                     Categoría: {consent.category} • Versión:{' '}
                                     {consent.version}
                                   </Text>
@@ -1183,10 +1183,10 @@ const PatientDetail: React.FC = () => {
                   </Badge>
                 )}
               </HStack>
-              <Text fontSize="sm" fontWeight="normal" color="gray.500">
+              <Text fontSize="sm" fontWeight="normal" color="text.secondary">
                 {selectedConsent?.description}
               </Text>
-              <HStack fontSize="xs" color="gray.500">
+              <HStack fontSize="xs" color="text.secondary">
                 <Text>Categoría: {selectedConsent?.category}</Text>
                 <Text>•</Text>
                 <Text>Versión: {selectedConsent?.version}</Text>

@@ -32,7 +32,6 @@ import {
   ModalCloseButton,
   ModalFooter,
   useDisclosure,
-  Textarea,
   Select,
   Table,
   Thead,
@@ -43,13 +42,13 @@ import {
   Divider,
 } from '@chakra-ui/react';
 import {
-  FiEdit,
-  FiTrash2,
-  FiPlus,
-  FiUpload,
-  FiDownload,
-  FiFile,
-} from 'react-icons/fi';
+  Edit,
+  TrashCan,
+  Add,
+  Upload,
+  Download,
+  Document,
+} from '@carbon/icons-react';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -60,7 +59,7 @@ const DoctorProfile: React.FC = () => {
   const { doctor } = useAuth();
   const toast = useToast();
   const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const borderColor = useColorModeValue('gray.20', 'gray.70');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile states
@@ -291,7 +290,7 @@ const DoctorProfile: React.FC = () => {
         <Container maxW="container.xl">
           <VStack spacing={4} align="stretch">
             <Heading size="lg">Mi Perfil</Heading>
-            <Text color="gray.500">
+            <Text color="text.secondary">
               Administra tu información personal, documentos y plantillas
             </Text>
           </VStack>
@@ -332,7 +331,7 @@ const DoctorProfile: React.FC = () => {
                           onChange={handleFileChange}
                         />
                         <Button
-                          leftIcon={<FiUpload />}
+                          leftIcon={<Upload size={20} />}
                           size="sm"
                           onClick={handleAvatarUpload}
                         >
@@ -411,7 +410,7 @@ const DoctorProfile: React.FC = () => {
                   <CardHeader>
                     <HStack justify="space-between">
                       <Heading size="md">Mis Documentos</Heading>
-                      <Button leftIcon={<FiPlus />} colorScheme="brand" size="sm">
+                      <Button leftIcon={<Add size={20} />} colorScheme="brand" size="sm">
                         Subir Documento
                       </Button>
                     </HStack>
@@ -419,8 +418,8 @@ const DoctorProfile: React.FC = () => {
                   <CardBody>
                     {documents.length === 0 ? (
                       <VStack py={8} spacing={3}>
-                        <FiFile size={48} color="gray" />
-                        <Text color="gray.500">No hay documentos subidos</Text>
+                        <Document size={48} />
+                        <Text color="text.secondary">No hay documentos subidos</Text>
                       </VStack>
                     ) : (
                       <Table variant="simple">
@@ -438,7 +437,7 @@ const DoctorProfile: React.FC = () => {
                             <Tr key={doc.id}>
                               <Td>
                                 <HStack>
-                                  <FiFile />
+                                  <Document size={20} />
                                   <Text>{doc.name}</Text>
                                 </HStack>
                               </Td>
@@ -455,13 +454,13 @@ const DoctorProfile: React.FC = () => {
                                 <HStack spacing={2}>
                                   <IconButton
                                     aria-label="Descargar"
-                                    icon={<FiDownload />}
+                                    icon={<Download size={20} />}
                                     size="sm"
                                     variant="ghost"
                                   />
                                   <IconButton
                                     aria-label="Eliminar"
-                                    icon={<FiTrash2 />}
+                                    icon={<TrashCan size={20} />}
                                     size="sm"
                                     variant="ghost"
                                     colorScheme="red"
@@ -486,7 +485,7 @@ const DoctorProfile: React.FC = () => {
                     <HStack justify="space-between">
                       <Heading size="md">Plantillas de Notas</Heading>
                       <Button
-                        leftIcon={<FiPlus />}
+                        leftIcon={<Add size={20} />}
                         colorScheme="brand"
                         onClick={handleCreateTemplate}
                       >
@@ -497,9 +496,9 @@ const DoctorProfile: React.FC = () => {
                   <CardBody>
                     {templates.length === 0 ? (
                       <VStack py={8} spacing={3}>
-                        <FiFile size={48} color="gray" />
-                        <Text color="gray.500">No hay plantillas creadas</Text>
-                        <Text fontSize="sm" color="gray.400" textAlign="center">
+                        <Document size={48} />
+                        <Text color="text.secondary">No hay plantillas creadas</Text>
+                        <Text fontSize="sm" color="text.placeholder" textAlign="center">
                           Crea plantillas personalizadas para agilizar la creación de
                           notas médicas
                         </Text>
@@ -525,14 +524,14 @@ const DoctorProfile: React.FC = () => {
                                   </VStack>
                                 </HStack>
 
-                                <Text fontSize="sm" color="gray.600" noOfLines={3}>
+                                <Text fontSize="sm" color="text.secondary" noOfLines={3}>
                                   {template.content.substring(0, 100)}...
                                 </Text>
 
                                 <Divider />
 
                                 <HStack justify="space-between">
-                                  <Text fontSize="xs" color="gray.500">
+                                  <Text fontSize="xs" color="text.secondary">
                                     Actualizado:{' '}
                                     {format(
                                       new Date(template.updatedAt),
@@ -550,14 +549,14 @@ const DoctorProfile: React.FC = () => {
                                     </Button>
                                     <IconButton
                                       aria-label="Editar"
-                                      icon={<FiEdit />}
+                                      icon={<Edit size={20} />}
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => handleEditTemplate(template)}
                                     />
                                     <IconButton
                                       aria-label="Eliminar"
-                                      icon={<FiTrash2 />}
+                                      icon={<TrashCan size={20} />}
                                       size="sm"
                                       variant="ghost"
                                       colorScheme="red"

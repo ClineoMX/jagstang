@@ -22,13 +22,12 @@ import {
   Flex,
 } from '@chakra-ui/react';
 import {
-  FiPlus,
-  FiCalendar,
-  FiUsers,
-  FiFileText,
-  FiClock,
-  FiCheckCircle,
-} from 'react-icons/fi';
+  Calendar,
+  UserMultiple,
+  Document,
+  Time,
+  CheckmarkOutline,
+} from '@carbon/icons-react';
 import { useNavigate } from 'react-router-dom';
 import {
   mockPatients,
@@ -40,8 +39,8 @@ import { es } from 'date-fns/locale';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const cardBg = useColorModeValue('white', 'gray.80');
+  const borderColor = useColorModeValue('gray.20', 'gray.70');
 
   // Get today's appointments
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -104,7 +103,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <Box bg={useColorModeValue('gray.50', 'gray.900')} minH="100vh">
+    <Box bg={useColorModeValue('gray.50', 'gray.90')} minH="100vh">
       {/* Header with Gradient - Medtters Style */}
       <Box
         bgGradient="linear(135deg, brand.500 0%, brand.600 100%)"
@@ -126,7 +125,7 @@ const Dashboard: React.FC = () => {
             </VStack>
             <HStack spacing={3}>
               <Button
-                leftIcon={<FiUsers />}
+                leftIcon={<UserMultiple size={24} />}
                 colorScheme="whiteAlpha"
                 bg="whiteAlpha.300"
                 backdropFilter="blur(10px)"
@@ -138,7 +137,7 @@ const Dashboard: React.FC = () => {
                 Nuevo Paciente
               </Button>
               <Button
-                leftIcon={<FiCalendar />}
+                leftIcon={<Calendar size={24} />}
                 bg="white"
                 color="brand.600"
                 _hover={{ bg: 'gray.50' }}
@@ -181,7 +180,7 @@ const Dashboard: React.FC = () => {
                     borderRadius="xl"
                     color="brand.500"
                   >
-                    <Icon as={FiCalendar} boxSize={6} />
+                    <Icon as={Calendar} boxSize={6} />
                   </Box>
                   <Badge
                     colorScheme="brand"
@@ -194,15 +193,15 @@ const Dashboard: React.FC = () => {
                   </Badge>
                 </HStack>
                 <Stat>
-                  <StatNumber fontSize="4xl" fontWeight="bold" color="gray.800">
+                  <StatNumber fontSize="4xl" fontWeight="bold" color="gray.80">
                     {todayAppointments.length}
                   </StatNumber>
-                  <StatLabel fontSize="md" color="gray.600" mt={2}>
+                  <StatLabel fontSize="md" color="gray.60" mt={2}>
                     Citas Programadas
                   </StatLabel>
                   <StatHelpText mt={3}>
                     <HStack spacing={1}>
-                      <Icon as={FiCheckCircle} color="success.500" />
+                      <Icon as={CheckmarkOutline} color="success.500" />
                       <Text color="success.600" fontWeight="medium">
                         {todayAppointments.filter((a) => a.status === 'confirmed').length} confirmadas
                       </Text>
@@ -241,7 +240,7 @@ const Dashboard: React.FC = () => {
                     borderRadius="xl"
                     color="purple.500"
                   >
-                    <Icon as={FiUsers} boxSize={6} />
+                    <Icon as={UserMultiple} boxSize={6} />
                   </Box>
                   <Badge
                     colorScheme="purple"
@@ -254,14 +253,14 @@ const Dashboard: React.FC = () => {
                   </Badge>
                 </HStack>
                 <Stat>
-                  <StatNumber fontSize="4xl" fontWeight="bold" color="gray.800">
+                  <StatNumber fontSize="4xl" fontWeight="bold" color="gray.80">
                     {mockPatients.length}
                   </StatNumber>
-                  <StatLabel fontSize="md" color="gray.600" mt={2}>
+                  <StatLabel fontSize="md" color="gray.60" mt={2}>
                     Pacientes Activos
                   </StatLabel>
                   <StatHelpText mt={3}>
-                    <Text color="gray.500">
+                    <Text color="text.secondary">
                       En el sistema
                     </Text>
                   </StatHelpText>
@@ -298,7 +297,7 @@ const Dashboard: React.FC = () => {
                     borderRadius="xl"
                     color="success.600"
                   >
-                    <Icon as={FiFileText} boxSize={6} />
+                    <Icon as={Document} boxSize={6} />
                   </Box>
                   <Badge
                     colorScheme="green"
@@ -311,14 +310,14 @@ const Dashboard: React.FC = () => {
                   </Badge>
                 </HStack>
                 <Stat>
-                  <StatNumber fontSize="4xl" fontWeight="bold" color="gray.800">
+                  <StatNumber fontSize="4xl" fontWeight="bold" color="gray.80">
                     {mockMedicalNotes.length}
                   </StatNumber>
-                  <StatLabel fontSize="md" color="gray.600" mt={2}>
+                  <StatLabel fontSize="md" color="gray.60" mt={2}>
                     Notas Médicas
                   </StatLabel>
                   <StatHelpText mt={3}>
-                    <Text color="gray.500">
+                    <Text color="text.secondary">
                       Total de registros
                     </Text>
                   </StatHelpText>
@@ -339,7 +338,7 @@ const Dashboard: React.FC = () => {
             overflow="hidden"
           >
             <CardHeader
-              bg={useColorModeValue('gray.50', 'gray.700')}
+              bg={useColorModeValue('gray.50', 'gray.70')}
               borderBottom="1px"
               borderColor={borderColor}
               py={4}
@@ -352,7 +351,7 @@ const Dashboard: React.FC = () => {
                     borderRadius="lg"
                     color="white"
                   >
-                    <Icon as={FiClock} boxSize={5} />
+                    <Icon as={Time} boxSize={5} />
                   </Box>
                   <Heading size="md">Próximas Citas</Heading>
                 </HStack>
@@ -370,8 +369,8 @@ const Dashboard: React.FC = () => {
               <VStack spacing={4} align="stretch">
                 {upcomingAppointments.length === 0 ? (
                   <VStack py={8} spacing={3}>
-                    <Icon as={FiCalendar} boxSize={12} color="gray.300" />
-                    <Text color="gray.500" textAlign="center">
+                    <Icon as={Calendar} boxSize={12} color="gray.30" />
+                    <Text color="text.secondary" textAlign="center">
                       No hay citas próximas
                     </Text>
                     <Button
@@ -415,8 +414,8 @@ const Dashboard: React.FC = () => {
                               {patient?.firstName} {patient?.lastName}
                             </Text>
                             <HStack spacing={2}>
-                              <Icon as={FiClock} boxSize={3} color="gray.500" />
-                              <Text fontSize="sm" color="gray.600">
+                              <Icon as={Time} boxSize={3} color="text.secondary" />
+                              <Text fontSize="sm" color="text.secondary">
                                 {format(
                                   new Date(`${apt.date}T${apt.startTime}`),
                                   "d MMM, HH:mm 'hrs'",
@@ -451,7 +450,7 @@ const Dashboard: React.FC = () => {
             overflow="hidden"
           >
             <CardHeader
-              bg={useColorModeValue('gray.50', 'gray.700')}
+              bg={useColorModeValue('gray.50', 'gray.70')}
               borderBottom="1px"
               borderColor={borderColor}
               py={4}
@@ -464,7 +463,7 @@ const Dashboard: React.FC = () => {
                     borderRadius="lg"
                     color="white"
                   >
-                    <Icon as={FiUsers} boxSize={5} />
+                    <Icon as={UserMultiple} boxSize={5} />
                   </Box>
                   <Heading size="md">Pacientes Recientes</Heading>
                 </HStack>
@@ -509,7 +508,7 @@ const Dashboard: React.FC = () => {
                         <Text fontWeight="semibold" fontSize="md">
                           {patient.firstName} {patient.lastName}
                         </Text>
-                        <Text fontSize="sm" color="gray.600">
+                        <Text fontSize="sm" color="text.secondary">
                           Última visita:{' '}
                           {patient.lastVisit
                             ? format(
@@ -537,7 +536,7 @@ const Dashboard: React.FC = () => {
           mt={6}
         >
           <CardHeader
-            bg={useColorModeValue('gray.50', 'gray.700')}
+            bg={useColorModeValue('gray.50', 'gray.70')}
             borderBottom="1px"
             borderColor={borderColor}
             py={4}
@@ -549,7 +548,7 @@ const Dashboard: React.FC = () => {
                 borderRadius="lg"
                 color="white"
               >
-                <Icon as={FiFileText} boxSize={5} />
+                <Icon as={Document} boxSize={5} />
               </Box>
               <Heading size="md">Últimas Notas Médicas</Heading>
             </HStack>
@@ -596,12 +595,12 @@ const Dashboard: React.FC = () => {
                             )}
                           </Text>
                         </HStack>
-                        <Text fontSize="sm" color="gray.600">
+                        <Text fontSize="sm" color="text.secondary">
                           Paciente: {patient?.firstName} {patient?.lastName}
                         </Text>
                         {note.isSigned && (
                           <HStack spacing={2}>
-                            <Icon as={FiCheckCircle} color="success.500" boxSize={4} />
+                            <Icon as={CheckmarkOutline} color="success.500" boxSize={4} />
                             <Text fontSize="xs" color="success.600" fontWeight="medium">
                               Firmado por {note.signedBy}
                             </Text>

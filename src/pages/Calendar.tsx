@@ -21,7 +21,7 @@ import {
   useColorModeValue,
   Icon,
 } from '@chakra-ui/react';
-import { FiPlus, FiCalendar as FiCalendarIcon } from 'react-icons/fi';
+import { Add, Calendar as CalendarIcon } from '@carbon/icons-react';
 import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -64,9 +64,8 @@ const CalendarPage: React.FC = () => {
     null
   );
 
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const calendarBg = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('gray.20', 'gray.70');
+  const calendarBg = useColorModeValue('white', 'gray.80');
 
   // Convert appointments to calendar events
   const events: CalendarEvent[] = useMemo(() => {
@@ -201,7 +200,7 @@ const CalendarPage: React.FC = () => {
               </Text>
             </VStack>
             <Button
-              leftIcon={<FiPlus />}
+              leftIcon={<Add size={24} />}
               size="lg"
               colorScheme="whiteAlpha"
               bg="whiteAlpha.300"
@@ -243,13 +242,13 @@ const CalendarPage: React.FC = () => {
               fontSize: '15px',
               borderBottom: '2px solid',
               borderColor: borderColor,
-              color: useColorModeValue('gray.700', 'gray.200'),
+              color: useColorModeValue('gray.70', 'gray.20'),
             },
             '& .rbc-today': {
               backgroundColor: useColorModeValue('#E6F2FF', '#1A365D'),
             },
             '& .rbc-off-range-bg': {
-              backgroundColor: useColorModeValue('#F7FAFC', '#1A202C'),
+              backgroundColor: useColorModeValue('gray.10', 'gray.90'),
             },
             '& .rbc-date-cell': {
               padding: '12px',
@@ -281,7 +280,7 @@ const CalendarPage: React.FC = () => {
               flexWrap: 'wrap',
               gap: '12px',
               '& button': {
-                color: useColorModeValue('gray.800', 'white'),
+                color: useColorModeValue('gray.80', 'white'),
                 borderRadius: 'lg',
                 padding: '10px 20px',
                 fontWeight: '500',
@@ -290,7 +289,7 @@ const CalendarPage: React.FC = () => {
                 borderColor: borderColor,
                 transition: 'all 0.2s',
                 '&:hover': {
-                  backgroundColor: useColorModeValue('gray.100', 'gray.700'),
+                  backgroundColor: useColorModeValue('gray.10', 'gray.70'),
                   transform: 'translateY(-2px)',
                   boxShadow: 'md',
                 },
@@ -306,7 +305,7 @@ const CalendarPage: React.FC = () => {
               '& .rbc-toolbar-label': {
                 fontSize: '20px',
                 fontWeight: '700',
-                color: useColorModeValue('gray.800', 'white'),
+                color: useColorModeValue('gray.80', 'white'),
               },
             },
           }}
@@ -334,7 +333,7 @@ const CalendarPage: React.FC = () => {
               time: 'Hora',
               event: 'Cita',
               noEventsInRange: 'No hay citas en este rango',
-              showMore: (total) => `+ Ver más (${total})`,
+              showMore: (total: number) => `+ Ver más (${total})`,
             }}
             eventPropGetter={eventStyleGetter}
             culture="es"
@@ -388,7 +387,7 @@ const CalendarPage: React.FC = () => {
                 borderRadius="lg"
                 color="white"
               >
-                <Icon as={FiCalendarIcon} boxSize={5} />
+                <Icon as={CalendarIcon} boxSize={5} />
               </Box>
               <Text>Detalles de la Cita</Text>
             </HStack>
@@ -421,7 +420,7 @@ const CalendarPage: React.FC = () => {
                     <Text fontWeight="bold" fontSize="lg">
                       {patient.firstName} {patient.lastName}
                     </Text>
-                    <Text fontSize="sm" color="gray.500">
+                    <Text fontSize="sm" color="text.secondary">
                       Click para ver perfil
                     </Text>
                   </VStack>
@@ -479,7 +478,7 @@ const CalendarPage: React.FC = () => {
                       <Text fontWeight="semibold" fontSize="md">
                         Descripción:
                       </Text>
-                      <Text fontSize="sm" color="gray.600">
+                      <Text fontSize="sm" color="text.secondary">
                         {selectedEvent.resource.description}
                       </Text>
                     </VStack>
@@ -528,7 +527,7 @@ const CalendarPage: React.FC = () => {
                 borderRadius="lg"
                 color="white"
               >
-                <Icon as={FiPlus} boxSize={5} />
+                <Icon as={Add} boxSize={5} />
               </Box>
               <Text>Nueva Cita</Text>
             </HStack>
@@ -536,7 +535,7 @@ const CalendarPage: React.FC = () => {
           <ModalCloseButton />
           <ModalBody pb={6}>
             <VStack spacing={4} align="stretch">
-              <Text color="gray.500">
+              <Text color="text.secondary">
                 Funcionalidad en desarrollo. Usa el formulario de nueva cita.
               </Text>
               <Button

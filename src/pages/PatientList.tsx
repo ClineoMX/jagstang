@@ -18,18 +18,17 @@ import {
   useColorModeValue,
   Icon,
 } from '@chakra-ui/react';
-import { FiPlus, FiPhone, FiMail, FiSearch } from 'react-icons/fi';
+import { Add, Phone, Email, Search } from '@carbon/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { mockPatients, searchPatients } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { Patient } from '../types';
 
 const PatientList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const borderColor = useColorModeValue('gray.20', 'gray.70');
 
   const filteredPatients =
     searchQuery.trim() === ''
@@ -60,7 +59,7 @@ const PatientList: React.FC = () => {
                 </Text>
               </VStack>
               <Button
-                leftIcon={<FiPlus />}
+                leftIcon={<Add size={24} />}
                 size="lg"
                 colorScheme="whiteAlpha"
                 bg="whiteAlpha.300"
@@ -83,7 +82,7 @@ const PatientList: React.FC = () => {
 
             <InputGroup maxW="600px" size="lg">
               <InputLeftElement pointerEvents="none">
-                <Icon as={FiSearch} color="whiteAlpha.700" boxSize={5} />
+                <Icon as={Search} color="whiteAlpha.700" boxSize={5} />
               </InputLeftElement>
               <Input
                 placeholder="Buscar por nombre, email o teléfono..."
@@ -128,11 +127,11 @@ const PatientList: React.FC = () => {
               <CardBody>
                 <VStack spacing={4} py={12}>
                   <Box fontSize="4xl">🔍</Box>
-                  <Text fontSize="xl" fontWeight="semibold" color="gray.500">
+                  <Text fontSize="xl" fontWeight="semibold" color="text.secondary">
                     No se encontraron pacientes
                   </Text>
                   {searchQuery && (
-                    <Text fontSize="md" color="gray.400">
+                    <Text fontSize="md" color="text.placeholder">
                       Intenta con otro término de búsqueda
                     </Text>
                   )}
@@ -228,13 +227,13 @@ const PatientList: React.FC = () => {
                           <HStack
                             spacing={3}
                             fontSize="sm"
-                            color="gray.600"
-                            bg={useColorModeValue('gray.50', 'gray.700')}
+                            color="text.secondary"
+                            bg={useColorModeValue('gray.50', 'gray.70')}
                             px={3}
                             py={2}
                             borderRadius="lg"
                           >
-                            <Icon as={FiMail} color="purple.500" boxSize={4} />
+                            <Icon as={Email} color="purple.500" boxSize={4} />
                             <Text noOfLines={1}>{patient.email}</Text>
                           </HStack>
                         )}
@@ -242,13 +241,13 @@ const PatientList: React.FC = () => {
                           <HStack
                             spacing={3}
                             fontSize="sm"
-                            color="gray.600"
-                            bg={useColorModeValue('gray.50', 'gray.700')}
+                            color="text.secondary"
+                            bg={useColorModeValue('gray.50', 'gray.70')}
                             px={3}
                             py={2}
                             borderRadius="lg"
                           >
-                            <Icon as={FiPhone} color="purple.500" boxSize={4} />
+                            <Icon as={Phone} color="purple.500" boxSize={4} />
                             <Text>{patient.phone}</Text>
                           </HStack>
                         )}
@@ -262,7 +261,7 @@ const PatientList: React.FC = () => {
                           borderColor={borderColor}
                           fontSize="sm"
                         >
-                          <Text color="gray.500" fontSize="xs" mb={1}>
+                          <Text color="text.secondary" fontSize="xs" mb={1}>
                             Última visita
                           </Text>
                           <Text fontWeight="semibold" color="purple.600">

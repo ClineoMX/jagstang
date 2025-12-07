@@ -5,7 +5,6 @@ import {
   Heading,
   HStack,
   VStack,
-  Text,
   Button,
   FormControl,
   FormLabel,
@@ -18,7 +17,7 @@ import {
   SimpleGrid,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { FiArrowLeft } from 'react-icons/fi';
+import { ArrowLeft } from '@carbon/icons-react';
 import { useNavigate } from 'react-router-dom';
 import type { Gender, BloodType } from '../types';
 
@@ -26,7 +25,7 @@ const PatientForm: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const borderColor = useColorModeValue('gray.20', 'gray.70');
 
   // Personal Information
   const [firstName, setFirstName] = useState('');
@@ -91,7 +90,7 @@ const PatientForm: React.FC = () => {
           <HStack spacing={4}>
             <IconButton
               aria-label="Volver"
-              icon={<FiArrowLeft />}
+              icon={<ArrowLeft size={24} />}
               onClick={() => navigate('/patients')}
               variant="ghost"
             />

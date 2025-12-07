@@ -13,7 +13,6 @@ import {
   Progress,
   Badge,
   Button,
-  Divider,
   Alert,
   AlertIcon,
   AlertTitle,
@@ -26,21 +25,21 @@ import {
   StatHelpText,
 } from '@chakra-ui/react';
 import {
-  FiCheckCircle,
-  FiAlertTriangle,
-  FiXCircle,
-  FiFileText,
-  FiDownload,
-  FiSettings,
-  FiTrendingUp,
-  FiShield,
-} from 'react-icons/fi';
+  CheckmarkOutline,
+  WarningAlt,
+  CloseOutline,
+  Document,
+  Download,
+  Settings,
+  ChartLine,
+  Security,
+} from '@carbon/icons-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const Compliance: React.FC = () => {
   const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const borderColor = useColorModeValue('gray.20', 'gray.70');
 
   // Mock compliance data
   const complianceData = {
@@ -117,22 +116,22 @@ const Compliance: React.FC = () => {
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case 'critical':
-        return FiXCircle;
+        return CloseOutline;
       case 'warning':
-        return FiAlertTriangle;
+        return WarningAlt;
       default:
-        return FiCheckCircle;
+        return CheckmarkOutline;
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'complete':
-        return FiCheckCircle;
+        return CheckmarkOutline;
       case 'warning':
-        return FiAlertTriangle;
+        return WarningAlt;
       default:
-        return FiXCircle;
+        return CloseOutline;
     }
   };
 
@@ -166,7 +165,7 @@ const Compliance: React.FC = () => {
                 </Text>
               </VStack>
               <Button
-                leftIcon={<FiDownload />}
+                leftIcon={<Download size={24} />}
                 size="lg"
                 colorScheme="whiteAlpha"
                 bg="whiteAlpha.300"
@@ -237,7 +236,7 @@ const Compliance: React.FC = () => {
                         borderRadius="xl"
                         color="white"
                       >
-                        <Icon as={FiTrendingUp} boxSize={6} />
+                        <ChartLine size={24} />
                       </Box>
                       <Text fontSize="md" fontWeight="semibold">
                         Cumplimiento Global
@@ -265,7 +264,7 @@ const Compliance: React.FC = () => {
                     mt={4}
                     borderRadius="full"
                   />
-                  <Text fontSize="sm" color="gray.500" mt={3}>
+                  <Text fontSize="sm" color="text.secondary" mt={3}>
                     {complianceData.activeIssues} issues pendientes
                   </Text>
                 </Stat>
@@ -309,7 +308,7 @@ const Compliance: React.FC = () => {
                         borderRadius="xl"
                         color="white"
                       >
-                        <Icon as={FiFileText} boxSize={6} />
+                        <Icon as={Document} boxSize={6} />
                       </Box>
                       <Text fontSize="md" fontWeight="semibold">
                         NOM-004
@@ -337,7 +336,7 @@ const Compliance: React.FC = () => {
                     mt={4}
                     borderRadius="full"
                   />
-                  <Text fontSize="sm" color="gray.500" mt={3}>
+                  <Text fontSize="sm" color="text.secondary" mt={3}>
                     Expediente Clínico
                   </Text>
                 </Stat>
@@ -381,7 +380,7 @@ const Compliance: React.FC = () => {
                         borderRadius="xl"
                         color="white"
                       >
-                        <Icon as={FiShield} boxSize={6} />
+                        <Icon as={Security} boxSize={6} />
                       </Box>
                       <Text fontSize="md" fontWeight="semibold">
                         NOM-024
@@ -409,7 +408,7 @@ const Compliance: React.FC = () => {
                     mt={4}
                     borderRadius="full"
                   />
-                  <Text fontSize="sm" color="gray.500" mt={3}>
+                  <Text fontSize="sm" color="text.secondary" mt={3}>
                     Sistemas de Información
                   </Text>
                 </Stat>
@@ -424,7 +423,7 @@ const Compliance: React.FC = () => {
             borderWidth="1px"
             borderColor={borderColor}
           >
-            <CardHeader bg={useColorModeValue('red.50', 'gray.700')} borderTopRadius="2xl">
+            <CardHeader bg={useColorModeValue('red.50', 'gray.70')} borderTopRadius="2xl">
               <HStack justify="space-between">
                 <HStack spacing={3}>
                   <Box
@@ -433,7 +432,7 @@ const Compliance: React.FC = () => {
                     borderRadius="lg"
                     color="white"
                   >
-                    <Icon as={FiAlertTriangle} boxSize={5} />
+                    <Icon as={WarningAlt} boxSize={5} />
                   </Box>
                   <Heading size="md">
                     Alertas Activas ({alerts.length})
@@ -443,7 +442,7 @@ const Compliance: React.FC = () => {
                   size="sm"
                   variant="ghost"
                   _hover={{
-                    bg: useColorModeValue('red.100', 'gray.600'),
+                    bg: useColorModeValue('red.100', 'gray.60'),
                   }}
                 >
                   Ver todas →
@@ -470,7 +469,7 @@ const Compliance: React.FC = () => {
                           <Badge size="sm" borderRadius="full">
                             {alert.category}
                           </Badge>
-                          <Text color="gray.500">Hace {alert.timestamp}</Text>
+                          <Text color="text.secondary">Hace {alert.timestamp}</Text>
                         </HStack>
                       </AlertDescription>
                     </Box>
@@ -478,7 +477,7 @@ const Compliance: React.FC = () => {
                       size="sm"
                       variant="ghost"
                       _hover={{
-                        bg: useColorModeValue('gray.100', 'gray.700'),
+                        bg: useColorModeValue('gray.10', 'gray.70'),
                       }}
                     >
                       Ver detalles →
@@ -498,7 +497,7 @@ const Compliance: React.FC = () => {
               borderWidth="1px"
               borderColor={borderColor}
             >
-              <CardHeader bg={useColorModeValue('blue.50', 'gray.700')} borderTopRadius="2xl">
+              <CardHeader bg={useColorModeValue('blue.50', 'gray.70')} borderTopRadius="2xl">
                 <HStack justify="space-between">
                   <HStack spacing={3}>
                     <Box
@@ -507,7 +506,7 @@ const Compliance: React.FC = () => {
                       borderRadius="lg"
                       color="white"
                     >
-                      <Icon as={FiFileText} boxSize={5} />
+                      <Icon as={Document} boxSize={5} />
                     </Box>
                     <Heading size="md">NOM-004 Detalle</Heading>
                   </HStack>
@@ -515,7 +514,7 @@ const Compliance: React.FC = () => {
                     size="sm"
                     variant="ghost"
                     _hover={{
-                      bg: useColorModeValue('blue.100', 'gray.600'),
+                      bg: useColorModeValue('blue.100', 'gray.60'),
                     }}
                   >
                     Ver todo →
@@ -571,7 +570,7 @@ const Compliance: React.FC = () => {
               borderWidth="1px"
               borderColor={borderColor}
             >
-              <CardHeader bg={useColorModeValue('purple.50', 'gray.700')} borderTopRadius="2xl">
+              <CardHeader bg={useColorModeValue('purple.50', 'gray.70')} borderTopRadius="2xl">
                 <HStack justify="space-between">
                   <HStack spacing={3}>
                     <Box
@@ -580,7 +579,7 @@ const Compliance: React.FC = () => {
                       borderRadius="lg"
                       color="white"
                     >
-                      <Icon as={FiShield} boxSize={5} />
+                      <Icon as={Security} boxSize={5} />
                     </Box>
                     <Heading size="md">NOM-024 Detalle</Heading>
                   </HStack>
@@ -588,7 +587,7 @@ const Compliance: React.FC = () => {
                     size="sm"
                     variant="ghost"
                     _hover={{
-                      bg: useColorModeValue('purple.100', 'gray.600'),
+                      bg: useColorModeValue('purple.100', 'gray.60'),
                     }}
                   >
                     Ver todo →
@@ -645,15 +644,15 @@ const Compliance: React.FC = () => {
             borderWidth="1px"
             borderColor={borderColor}
           >
-            <CardHeader bg={useColorModeValue('gray.50', 'gray.700')} borderTopRadius="2xl">
+            <CardHeader bg={useColorModeValue('gray.50', 'gray.70')} borderTopRadius="2xl">
               <HStack spacing={3}>
                 <Box
-                  bg="gray.600"
+                  bg="gray.60"
                   p={2}
                   borderRadius="lg"
                   color="white"
                 >
-                  <Icon as={FiSettings} boxSize={5} />
+                  <Icon as={Settings} boxSize={5} />
                 </Box>
                 <Heading size="md">Acciones Rápidas</Heading>
               </HStack>
@@ -661,7 +660,7 @@ const Compliance: React.FC = () => {
             <CardBody>
               <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4}>
                 <Button
-                  leftIcon={<FiFileText />}
+                  leftIcon={<Document size={24} />}
                   variant="outline"
                   size="lg"
                   h="auto"
@@ -672,19 +671,19 @@ const Compliance: React.FC = () => {
                     transform: 'translateY(-4px)',
                     shadow: 'lg',
                     borderColor: 'brand.500',
-                    bg: useColorModeValue('brand.50', 'gray.700'),
+                    bg: useColorModeValue('brand.50', 'gray.70'),
                   }}
                   transition="all 0.2s"
                 >
                   <VStack spacing={1}>
                     <Text fontWeight="semibold">Generar Reporte</Text>
-                    <Text fontSize="xs" color="gray.500">
+                    <Text fontSize="xs" color="text.secondary">
                       Completo
                     </Text>
                   </VStack>
                 </Button>
                 <Button
-                  leftIcon={<FiDownload />}
+                  leftIcon={<Download size={24} />}
                   variant="outline"
                   size="lg"
                   h="auto"
@@ -695,19 +694,19 @@ const Compliance: React.FC = () => {
                     transform: 'translateY(-4px)',
                     shadow: 'lg',
                     borderColor: 'success.500',
-                    bg: useColorModeValue('success.50', 'gray.700'),
+                    bg: useColorModeValue('success.50', 'gray.70'),
                   }}
                   transition="all 0.2s"
                 >
                   <VStack spacing={1}>
                     <Text fontWeight="semibold">Exportar</Text>
-                    <Text fontSize="xs" color="gray.500">
+                    <Text fontSize="xs" color="text.secondary">
                       Métricas
                     </Text>
                   </VStack>
                 </Button>
                 <Button
-                  leftIcon={<FiCheckCircle />}
+                  leftIcon={<CheckmarkOutline size={24} />}
                   variant="outline"
                   size="lg"
                   h="auto"
@@ -718,19 +717,19 @@ const Compliance: React.FC = () => {
                     transform: 'translateY(-4px)',
                     shadow: 'lg',
                     borderColor: 'purple.500',
-                    bg: useColorModeValue('purple.50', 'gray.700'),
+                    bg: useColorModeValue('purple.50', 'gray.70'),
                   }}
                   transition="all 0.2s"
                 >
                   <VStack spacing={1}>
                     <Text fontWeight="semibold">Ver Requisitos</Text>
-                    <Text fontSize="xs" color="gray.500">
+                    <Text fontSize="xs" color="text.secondary">
                       Completos
                     </Text>
                   </VStack>
                 </Button>
                 <Button
-                  leftIcon={<FiSettings />}
+                  leftIcon={<Settings size={24} />}
                   variant="outline"
                   size="lg"
                   h="auto"
@@ -741,13 +740,13 @@ const Compliance: React.FC = () => {
                     transform: 'translateY(-4px)',
                     shadow: 'lg',
                     borderColor: 'orange.500',
-                    bg: useColorModeValue('orange.50', 'gray.700'),
+                    bg: useColorModeValue('orange.50', 'gray.70'),
                   }}
                   transition="all 0.2s"
                 >
                   <VStack spacing={1}>
                     <Text fontWeight="semibold">Configurar</Text>
-                    <Text fontSize="xs" color="gray.500">
+                    <Text fontSize="xs" color="text.secondary">
                       Alertas
                     </Text>
                   </VStack>

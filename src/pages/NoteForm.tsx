@@ -11,7 +11,6 @@ import {
   FormLabel,
   Input,
   Select,
-  Textarea,
 
   IconButton,
   useToast,
@@ -21,14 +20,9 @@ import {
   AlertDescription,
   Card,
   CardBody,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { FiUpload, FiX, FiArrowLeft } from 'react-icons/fi';
+import { Upload, Close, ArrowLeft } from '@carbon/icons-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getPatientById, mockNoteTemplates } from '../data/mockData';
 import RichTextEditor from '../components/RichTextEditor';
@@ -41,7 +35,7 @@ const NoteForm: React.FC = () => {
   const toast = useToast();
 
   const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const borderColor = useColorModeValue('gray.20', 'gray.70');
 
   const patient = patientId ? getPatientById(patientId) : null;
 
@@ -126,21 +120,6 @@ const NoteForm: React.FC = () => {
     }, 1000);
   };
 
-  const getNoteTypeLabel = (type: NoteType) => {
-    switch (type) {
-      case 'initial_interrogation':
-        return 'Interrogatorio Inicial';
-      case 'evolution_note':
-        return 'Nota de Evolución';
-      case 'physical_examination':
-        return 'Exploración Física';
-      case 'custom':
-        return 'Nota Personalizada';
-      default:
-        return 'Nota Médica';
-    }
-  };
-
   return (
     <Box>
       {/* Header */}
@@ -155,13 +134,13 @@ const NoteForm: React.FC = () => {
           <HStack spacing={4}>
             <IconButton
               aria-label="Volver"
-              icon={<FiArrowLeft />}
+              icon={<ArrowLeft size={24} />}
               onClick={() => navigate(`/patients/${patientId}`)}
               variant="ghost"
             />
             <VStack align="start" spacing={1} flex={1}>
               <Heading size="lg">Nueva Nota Médica</Heading>
-              <Text color="gray.500">
+              <Text color="text.secondary">
                 {patient.firstName} {patient.lastName}
               </Text>
             </VStack>
@@ -219,7 +198,7 @@ const NoteForm: React.FC = () => {
                       </option>
                       <option value="custom">Nota Personalizada</option>
                     </Select>
-                    <Text fontSize="sm" color="gray.500" mt={2}>
+                    <Text fontSize="sm" color="text.secondary" mt={2}>
                       El template se cargará automáticamente según el tipo de
                       nota seleccionado
                     </Text>
@@ -240,7 +219,7 @@ const NoteForm: React.FC = () => {
                     <VStack spacing={3} align="stretch">
                       <Button
                         as="label"
-                        leftIcon={<FiUpload />}
+                        leftIcon={<Upload size={20} />}
                         variant="outline"
                         cursor="pointer"
                         htmlFor="file-upload"
@@ -271,13 +250,13 @@ const NoteForm: React.FC = () => {
                                 <Text fontSize="sm" fontWeight="medium">
                                   {file.name}
                                 </Text>
-                                <Text fontSize="xs" color="gray.500">
+                                <Text fontSize="xs" color="text.secondary">
                                   {(file.size / 1024 / 1024).toFixed(2)} MB
                                 </Text>
                               </VStack>
                               <IconButton
                                 aria-label="Eliminar archivo"
-                                icon={<FiX />}
+                                icon={<Close size={20} />}
                                 size="sm"
                                 variant="ghost"
                                 colorScheme="red"
@@ -288,7 +267,7 @@ const NoteForm: React.FC = () => {
                         </VStack>
                       )}
 
-                      <Text fontSize="xs" color="gray.500">
+                      <Text fontSize="xs" color="text.secondary">
                         Tipos de archivo aceptados: Imágenes, videos, audio,
                         PDF, Word, Excel, PowerPoint, DICOM, HL7, XML
                       </Text>

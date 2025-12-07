@@ -13,10 +13,9 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
-  Image,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { View, ViewOff, Activity } from '@carbon/icons-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -71,38 +70,40 @@ const Login: React.FC = () => {
       <Container maxW="md">
         <Box
           bg={cardBg}
-          p={8}
-          borderRadius="2xl"
+          p={10}
+          borderRadius="xl"
           boxShadow="xl"
           border="1px solid"
-          borderColor={useColorModeValue('gray.200', 'gray.700')}
+          borderColor={useColorModeValue('gray.20', 'gray.80')}
         >
-          <VStack spacing={6}>
-            <VStack spacing={2}>
+          <VStack spacing={8}>
+            <VStack spacing={3}>
               <Box
-                bg="brand.500"
+                bg={useColorModeValue('brand.50', 'brand.900')}
                 p={4}
-                borderRadius="2xl"
+                borderRadius="xl"
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
+                border="2px solid"
+                borderColor={useColorModeValue('brand.100', 'brand.800')}
               >
-                <Text fontSize="4xl" color="white">
-                  🏥
-                </Text>
+                <Activity size={48} color={useColorModeValue('#0f62fe', '#78a9ff')} />
               </Box>
-              <Heading size="lg" textAlign="center">
+              <Heading size="xl" textAlign="center" fontWeight="semibold">
                 Expediente Médico
               </Heading>
-              <Text color="gray.500" textAlign="center">
+              <Text color={useColorModeValue('text.secondary', 'gray.30')} textAlign="center" fontSize="md">
                 Ingresa tus credenciales para continuar
               </Text>
             </VStack>
 
             <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-              <VStack spacing={4}>
+              <VStack spacing={5}>
                 <FormControl isRequired>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel fontWeight="medium" color={useColorModeValue('text.primary', 'text.onColor')}>
+                    Email
+                  </FormLabel>
                   <Input
                     type="email"
                     value={email}
@@ -114,7 +115,9 @@ const Login: React.FC = () => {
                 </FormControl>
 
                 <FormControl isRequired>
-                  <FormLabel>Contraseña</FormLabel>
+                  <FormLabel fontWeight="medium" color={useColorModeValue('text.primary', 'text.onColor')}>
+                    Contraseña
+                  </FormLabel>
                   <InputGroup size="lg">
                     <Input
                       type={showPassword ? 'text' : 'password'}
@@ -130,7 +133,7 @@ const Login: React.FC = () => {
                             ? 'Ocultar contraseña'
                             : 'Mostrar contraseña'
                         }
-                        icon={showPassword ? <FiEyeOff /> : <FiEye />}
+                        icon={showPassword ? <ViewOff size={20} /> : <View size={20} />}
                         onClick={() => setShowPassword(!showPassword)}
                         variant="ghost"
                         size="sm"
@@ -146,13 +149,14 @@ const Login: React.FC = () => {
                   width="full"
                   isLoading={isLoading}
                   loadingText="Iniciando sesión..."
+                  mt={2}
                 >
                   Iniciar Sesión
                 </Button>
               </VStack>
             </form>
 
-            <Text fontSize="sm" color="gray.500" textAlign="center">
+            <Text fontSize="sm" color={useColorModeValue('text.secondary', 'gray.30')} textAlign="center">
               ¿Problemas para acceder? Contacta al equipo de ventas
             </Text>
           </VStack>
