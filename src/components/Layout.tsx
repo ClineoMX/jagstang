@@ -27,6 +27,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiUser,
+  FiActivity,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -90,6 +91,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { icon: FiHome, label: 'Dashboard', path: '/' },
     { icon: FiUsers, label: 'Pacientes', path: '/patients' },
     { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
+    { icon: FiActivity, label: 'Cumplimiento', path: '/compliance' },
   ];
 
   const handleLogout = () => {
