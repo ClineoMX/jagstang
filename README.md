@@ -44,7 +44,7 @@ Una aplicación web moderna para la gestión de expedientes médicos, construida
 
 #### Notas Médicas
 - **Tipos de nota predefinidos**:
-  - Interrogatorio Inicial
+  - Interrogatorio
   - Nota de Evolución
   - Exploración Física
   - Nota Personalizada

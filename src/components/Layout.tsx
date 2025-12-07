@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Flex,
   IconButton,
   VStack,
-  HStack,
   Text,
   Avatar,
   Tooltip,
@@ -13,7 +12,6 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Button,
   useColorMode,
   useColorModeValue,
   Icon,
@@ -27,6 +25,7 @@ import {
   FiMoon,
   FiUser,
   FiActivity,
+  FiBook,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -105,10 +104,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const bgColor = useColorModeValue('background.light', 'background.dark');
 
   const navItems = [
-    { icon: FiHome, label: 'Dashboard', path: '/' },
+    { icon: FiHome, label: 'Home', path: '/' },
     { icon: FiUsers, label: 'Pacientes', path: '/patients' },
     { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
-    { icon: FiActivity, label: 'Cumplimiento', path: '/compliance' },
+    { icon: FiBook, label: 'Contactos', path: '/contacts' },
+    { icon: FiActivity, label: 'NOM', path: '/compliance' },
+
   ];
 
   const handleLogout = () => {
@@ -155,7 +156,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               icon={item.icon}
               label={item.label}
               path={item.path}
-              isActive={location.pathname === item.path}
+              isActive={
+                location.pathname === item.path ||
+                (item.path === '/contacts' && location.pathname.startsWith('/contacts'))
+              }
               onClick={() => navigate(item.path)}
             />
           ))}

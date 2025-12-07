@@ -67,7 +67,9 @@ const DoctorProfile: React.FC = () => {
   const [firstName, setFirstName] = useState(doctor?.firstName || '');
   const [lastName, setLastName] = useState(doctor?.lastName || '');
   const [speciality, setSpeciality] = useState(doctor?.speciality || '');
-  const [licenseNumber, setLicenseNumber] = useState(doctor?.licenseNumber || '');
+  const [licenseNumber, setLicenseNumber] = useState(
+    doctor?.licenseNumber || ''
+  );
   const [phone, setPhone] = useState(doctor?.phone || '');
   const [email, setEmail] = useState(doctor?.email || '');
   const [avatarUrl, setAvatarUrl] = useState(doctor?.avatar || '');
@@ -77,9 +79,9 @@ const DoctorProfile: React.FC = () => {
     // Mock data - in real app this would come from API
     {
       id: 'tpl-1',
-      name: 'Interrogatorio Inicial Personalizado',
+      name: 'Interrogatorio Personalizado',
       type: 'initial_interrogation',
-      content: `<h1>Interrogatorio Inicial</h1>
+      content: `<h1>Interrogatorio</h1>
 <h2>Datos del Paciente</h2>
 <ul>
 <li><strong>Nombre</strong>: [Nombre del paciente]</li>
@@ -122,8 +124,12 @@ const DoctorProfile: React.FC = () => {
     onClose: onPreviewModalClose,
   } = useDisclosure();
 
-  const [editingTemplate, setEditingTemplate] = useState<NoteTemplate | null>(null);
-  const [previewTemplate, setPreviewTemplate] = useState<NoteTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<NoteTemplate | null>(
+    null
+  );
+  const [previewTemplate, setPreviewTemplate] = useState<NoteTemplate | null>(
+    null
+  );
   const [templateName, setTemplateName] = useState('');
   const [templateType, setTemplateType] = useState<NoteType>('custom');
   const [templateContent, setTemplateContent] = useState('');
@@ -268,7 +274,7 @@ const DoctorProfile: React.FC = () => {
   const getNoteTypeLabel = (type: NoteType) => {
     switch (type) {
       case 'initial_interrogation':
-        return 'Interrogatorio Inicial';
+        return 'Interrogatorio';
       case 'evolution_note':
         return 'Nota de Evolución';
       case 'physical_examination':
@@ -280,18 +286,17 @@ const DoctorProfile: React.FC = () => {
 
   return (
     <Box>
-      {/* Header */}
+      {/* Header with Gradient */}
       <Box
-        bg={cardBg}
-        borderBottom="1px"
-        borderColor={borderColor}
+        bgGradient="linear(135deg, brand.500 0%, brand.600 100%)"
+        color="white"
         px={8}
-        py={6}
+        py={8}
       >
         <Container maxW="container.xl">
           <VStack spacing={4} align="stretch">
             <Heading size="lg">Mi Perfil</Heading>
-            <Text color="gray.500">
+            <Text fontSize="md" opacity={0.9}>
               Administra tu información personal, documentos y plantillas
             </Text>
           </VStack>
@@ -411,7 +416,11 @@ const DoctorProfile: React.FC = () => {
                   <CardHeader>
                     <HStack justify="space-between">
                       <Heading size="md">Mis Documentos</Heading>
-                      <Button leftIcon={<FiPlus />} colorScheme="brand" size="sm">
+                      <Button
+                        leftIcon={<FiPlus />}
+                        colorScheme="brand"
+                        size="sm"
+                      >
                         Subir Documento
                       </Button>
                     </HStack>
@@ -446,9 +455,13 @@ const DoctorProfile: React.FC = () => {
                                 <Badge colorScheme="blue">{doc.type}</Badge>
                               </Td>
                               <Td>
-                                {format(new Date(doc.uploadedAt), "d 'de' MMM, yyyy", {
-                                  locale: es,
-                                })}
+                                {format(
+                                  new Date(doc.uploadedAt),
+                                  "d 'de' MMM, yyyy",
+                                  {
+                                    locale: es,
+                                  }
+                                )}
                               </Td>
                               <Td>{doc.size.toFixed(1)} MB</Td>
                               <Td>
@@ -500,8 +513,8 @@ const DoctorProfile: React.FC = () => {
                         <FiFile size={48} color="gray" />
                         <Text color="gray.500">No hay plantillas creadas</Text>
                         <Text fontSize="sm" color="gray.400" textAlign="center">
-                          Crea plantillas personalizadas para agilizar la creación de
-                          notas médicas
+                          Crea plantillas personalizadas para agilizar la
+                          creación de notas médicas
                         </Text>
                       </VStack>
                     ) : (
@@ -525,7 +538,11 @@ const DoctorProfile: React.FC = () => {
                                   </VStack>
                                 </HStack>
 
-                                <Text fontSize="sm" color="gray.600" noOfLines={3}>
+                                <Text
+                                  fontSize="sm"
+                                  color="gray.600"
+                                  noOfLines={3}
+                                >
                                   {template.content.substring(0, 100)}...
                                 </Text>
 
@@ -544,7 +561,9 @@ const DoctorProfile: React.FC = () => {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => handlePreviewTemplate(template)}
+                                      onClick={() =>
+                                        handlePreviewTemplate(template)
+                                      }
                                     >
                                       Ver
                                     </Button>
@@ -553,7 +572,9 @@ const DoctorProfile: React.FC = () => {
                                       icon={<FiEdit />}
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => handleEditTemplate(template)}
+                                      onClick={() =>
+                                        handleEditTemplate(template)
+                                      }
                                     />
                                     <IconButton
                                       aria-label="Eliminar"
@@ -561,7 +582,9 @@ const DoctorProfile: React.FC = () => {
                                       size="sm"
                                       variant="ghost"
                                       colorScheme="red"
-                                      onClick={() => handleDeleteTemplate(template.id)}
+                                      onClick={() =>
+                                        handleDeleteTemplate(template.id)
+                                      }
                                     />
                                   </HStack>
                                 </HStack>
@@ -608,11 +631,11 @@ const DoctorProfile: React.FC = () => {
                   value={templateType}
                   onChange={(e) => setTemplateType(e.target.value as NoteType)}
                 >
-                  <option value="initial_interrogation">
-                    Interrogatorio Inicial
-                  </option>
+                  <option value="initial_interrogation">Interrogatorio</option>
                   <option value="evolution_note">Nota de Evolución</option>
-                  <option value="physical_examination">Exploración Física</option>
+                  <option value="physical_examination">
+                    Exploración Física
+                  </option>
                   <option value="custom">Personalizada</option>
                 </Select>
               </FormControl>
@@ -662,7 +685,12 @@ const DoctorProfile: React.FC = () => {
               sx={{
                 '& h1': { fontSize: '2xl', fontWeight: 'bold', mb: 4 },
                 '& h2': { fontSize: 'xl', fontWeight: 'bold', mb: 3, mt: 6 },
-                '& h3': { fontSize: 'lg', fontWeight: 'semibold', mb: 2, mt: 4 },
+                '& h3': {
+                  fontSize: 'lg',
+                  fontWeight: 'semibold',
+                  mb: 2,
+                  mt: 4,
+                },
                 '& p': { mb: 2 },
                 '& ul, & ol': { ml: 6, mb: 4 },
                 '& li': { mb: 1 },
@@ -670,7 +698,9 @@ const DoctorProfile: React.FC = () => {
                 '& em': { fontStyle: 'italic' },
                 '& a': { color: 'brand.500', textDecoration: 'underline' },
               }}
-              dangerouslySetInnerHTML={{ __html: previewTemplate?.content || '' }}
+              dangerouslySetInnerHTML={{
+                __html: previewTemplate?.content || '',
+              }}
             />
           </ModalBody>
           <ModalFooter>

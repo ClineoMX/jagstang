@@ -129,7 +129,7 @@ const NoteForm: React.FC = () => {
   const getNoteTypeLabel = (type: NoteType) => {
     switch (type) {
       case 'initial_interrogation':
-        return 'Interrogatorio Inicial';
+        return 'Interrogatorio';
       case 'evolution_note':
         return 'Nota de Evolución';
       case 'physical_examination':
@@ -211,7 +211,7 @@ const NoteForm: React.FC = () => {
                       size="lg"
                     >
                       <option value="initial_interrogation">
-                        Interrogatorio Inicial
+                        Interrogatorio
                       </option>
                       <option value="evolution_note">Nota de Evolución</option>
                       <option value="physical_examination">

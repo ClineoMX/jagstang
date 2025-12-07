@@ -14,6 +14,8 @@ import CalendarPage from './pages/Calendar';
 import NoteForm from './pages/NoteForm';
 import DoctorProfile from './pages/DoctorProfile';
 import Compliance from './pages/Compliance';
+import ContactList from './pages/ContactList';
+import ContactForm from './pages/ContactForm';
 
 // Components
 import Layout from './components/Layout';
@@ -142,6 +144,36 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <DoctorProfile />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/contacts"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ContactList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/contacts/new"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ContactForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/contacts/:id/edit"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ContactForm />
             </Layout>
           </ProtectedRoute>
         }

@@ -77,9 +77,7 @@ const CalendarPage: React.FC = () => {
 
       return {
         id: apt.id,
-        title: patient
-          ? `${patient.firstName} ${patient.lastName}`
-          : apt.title,
+        title: patient ? `${patient.firstName} ${patient.lastName}` : apt.title,
         start: startDate,
         end: endDate,
         resource: apt,
@@ -187,7 +185,7 @@ const CalendarPage: React.FC = () => {
     <Box>
       {/* Header with Gradient */}
       <Box
-        bgGradient="linear(135deg, brand.500 0%, brand.600 100%)"
+        bgGradient="linear(135deg, blue.700 0%, blue.800 100%)"
         color="white"
         px={8}
         py={8}
@@ -344,25 +342,13 @@ const CalendarPage: React.FC = () => {
         {/* Legend */}
         <HStack spacing={8} mt={6} justify="center" flexWrap="wrap">
           <HStack spacing={3}>
-            <Box
-              w={6}
-              h={6}
-              bg="green.500"
-              borderRadius="md"
-              boxShadow="sm"
-            />
+            <Box w={6} h={6} bg="green.500" borderRadius="md" boxShadow="sm" />
             <Text fontSize="md" fontWeight="medium">
               Confirmada
             </Text>
           </HStack>
           <HStack spacing={3}>
-            <Box
-              w={6}
-              h={6}
-              bg="orange.500"
-              borderRadius="md"
-              boxShadow="sm"
-            />
+            <Box w={6} h={6} bg="orange.500" borderRadius="md" boxShadow="sm" />
             <Text fontSize="md" fontWeight="medium">
               Pendiente
             </Text>
@@ -382,12 +368,7 @@ const CalendarPage: React.FC = () => {
         <ModalContent borderRadius="2xl">
           <ModalHeader>
             <HStack spacing={3}>
-              <Box
-                bg="brand.500"
-                p={2}
-                borderRadius="lg"
-                color="white"
-              >
+              <Box bg="brand.500" p={2} borderRadius="lg" color="white">
                 <Icon as={FiCalendarIcon} boxSize={5} />
               </Box>
               <Text>Detalles de la Cita</Text>
@@ -434,7 +415,9 @@ const CalendarPage: React.FC = () => {
                       Estado:
                     </Text>
                     <Badge
-                      colorScheme={getStatusColor(selectedEvent.resource.status)}
+                      colorScheme={getStatusColor(
+                        selectedEvent.resource.status
+                      )}
                       fontSize="sm"
                       px={3}
                       py={1}
@@ -522,12 +505,7 @@ const CalendarPage: React.FC = () => {
         <ModalContent borderRadius="2xl">
           <ModalHeader>
             <HStack spacing={3}>
-              <Box
-                bg="brand.500"
-                p={2}
-                borderRadius="lg"
-                color="white"
-              >
+              <Box bg="brand.500" p={2} borderRadius="lg" color="white">
                 <Icon as={FiPlus} boxSize={5} />
               </Box>
               <Text>Nueva Cita</Text>

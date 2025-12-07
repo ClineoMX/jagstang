@@ -20,6 +20,7 @@ import {
   Icon,
   useColorModeValue,
   Flex,
+  useDisclosure,
 } from '@chakra-ui/react';
 import {
   FiPlus,
@@ -37,11 +38,13 @@ import {
 } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import PatientFormModal from '../components/PatientFormModal';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   // Get today's appointments
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -133,7 +136,7 @@ const Dashboard: React.FC = () => {
                 _hover={{ bg: 'whiteAlpha.400' }}
                 color="white"
                 size="lg"
-                onClick={() => navigate('/patients/new')}
+                onClick={onOpen}
               >
                 Nuevo Paciente
               </Button>
@@ -616,6 +619,14 @@ const Dashboard: React.FC = () => {
           </CardBody>
         </Card>
       </Container>
+
+      <PatientFormModal
+        isOpen={isOpen}
+        onClose={onClose}
+        onSuccess={() => {
+          // Refresh dashboard if needed
+        }}
+      />
     </Box>
   );
 };

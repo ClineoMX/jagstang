@@ -198,3 +198,21 @@ export interface PatientConsent {
   createdAt: string;
   updatedAt: string;
 }
+
+// Contact types
+export type ContactType = 'provider' | 'colleague' | 'supplier' | 'other';
+
+export interface Contact {
+  id: string;
+  firstName: string;
+  lastName: string;
+  alias?: string;
+  email?: string;
+  phone?: string;
+  type: ContactType;
+  company?: string;
+  position?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}

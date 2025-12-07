@@ -45,6 +45,7 @@ import {
   FiFile,
   FiDownload,
   FiArrowLeft,
+  FiUser,
 } from 'react-icons/fi';
 import { MdVerified } from 'react-icons/md';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -58,6 +59,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
 import type { MedicalNote, ConsentType, PatientConsent } from '../types';
 
 const PatientDetail: React.FC = () => {
@@ -138,7 +140,7 @@ const PatientDetail: React.FC = () => {
   const getNoteTypeLabel = (type: string) => {
     switch (type) {
       case 'initial_interrogation':
-        return 'Interrogatorio Inicial';
+        return 'Interrogatorio';
       case 'evolution_note':
         return 'Nota de Evolución';
       case 'physical_examination':
@@ -574,7 +576,7 @@ const PatientDetail: React.FC = () => {
                           })
                         }
                       >
-                        Crear Interrogatorio Inicial
+                        Crear Interrogatorio
                       </Button>
                       <Button
                         leftIcon={<FiCalendar />}
@@ -676,97 +678,57 @@ const PatientDetail: React.FC = () => {
                                   shadow="md"
                                   borderWidth="1px"
                                   borderColor={borderColor}
-                                  h="full"
-                                  minH="420px"
                                   maxW="280px"
                                   mx="auto"
                                   transition="all 0.2s"
                                   _hover={{
                                     transform: 'translateY(-4px)',
                                     shadow: 'lg',
+                                    borderColor: 'purple.300',
                                   }}
-                                  cursor="default"
+                                  cursor="pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewNote(note);
+                                  }}
                                 >
-                                  <CardBody py={5} px={5}>
-                                    <VStack spacing={4} align="stretch" h="full">
-                                      <VStack align="start" spacing={3}>
-                                        <HStack align="start" spacing={2} w="full">
-                                          <Heading size="xs" noOfLines={2} minH="40px" flex={1}>
+                                  <CardBody p={4}>
+                                    <VStack spacing={3} align="stretch">
+                                      <HStack align="start" spacing={2} justify="space-between">
+                                        <VStack align="start" spacing={1} flex={1}>
+                                          <Heading size="sm" noOfLines={2}>
                                             {note.title}
                                           </Heading>
-                                          {note.isSigned && (
-                                            <Tooltip
-                                              label={`Firmado por ${note.signedBy} el ${note.signedAt ? format(new Date(note.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
-                                              placement="top"
-                                              hasArrow
-                                            >
-                                              <Box>
-                                                <Icon
-                                                  as={MdVerified}
-                                                  color="green.500"
-                                                  boxSize={4}
-                                                  cursor="help"
-                                                />
-                                              </Box>
-                                            </Tooltip>
-                                          )}
-                                        </HStack>
-                                        <VStack align="start" spacing={1} w="full">
-                                          <Badge colorScheme="blue" fontSize="xs">
-                                            {getNoteTypeLabel(note.type)}
-                                          </Badge>
-                                          <Text fontSize="xs" color="gray.500">
-                                            {format(
-                                              new Date(note.createdAt),
-                                              'HH:mm',
-                                              { locale: es }
+                                          <HStack spacing={2} flexWrap="wrap">
+                                            <Badge colorScheme="blue" fontSize="xs">
+                                              {getNoteTypeLabel(note.type)}
+                                            </Badge>
+                                            {note.isSigned && (
+                                              <Tooltip
+                                                label={`Firmado por ${note.signedBy} el ${note.signedAt ? format(new Date(note.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
+                                                placement="top"
+                                                hasArrow
+                                              >
+                                                <Box>
+                                                  <Icon
+                                                    as={MdVerified}
+                                                    color="green.500"
+                                                    boxSize={4}
+                                                    cursor="help"
+                                                  />
+                                                </Box>
+                                              </Tooltip>
                                             )}
-                                          </Text>
+                                          </HStack>
                                         </VStack>
-                                      </VStack>
-
-                                      {/* Preview del contenido */}
-                                      <Box
-                                        flex={1}
-                                        overflow="hidden"
-                                        position="relative"
-                                        maxH="180px"
-                                      >
-                                        <Box
-                                          sx={{
-                                            fontFamily: 'Georgia, serif',
-                                            fontStyle: 'italic',
-                                            fontSize: 'sm',
-                                            color: 'gray.600',
-                                            lineHeight: '1.6',
-                                            '& p': { mb: 1, fontSize: 'sm' },
-                                            '& h1, & h2, & h3': { fontSize: 'sm', fontWeight: 'semibold', mb: 1 },
-                                            '& ul, & ol': { ml: 4, mb: 1, fontSize: 'sm' },
-                                            '& li': { mb: 0 },
-                                          }}
-                                          dangerouslySetInnerHTML={{ __html: note.content }}
-                                        />
-                                        <Box
-                                          position="absolute"
-                                          bottom={0}
-                                          left={0}
-                                          right={0}
-                                          h="40px"
-                                          bgGradient={`linear(to-t, ${cardBg}, transparent)`}
-                                          pointerEvents="none"
-                                        />
-                                      </Box>
-
-                                      <Button
-                                        size="sm"
-                                        w="full"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleViewNote(note);
-                                        }}
-                                      >
-                                        Ver Nota
-                                      </Button>
+                                      </HStack>
+                                      <Text fontSize="xs" color="gray.500">
+                                        {format(
+                                          new Date(note.createdAt),
+                                          "d 'de' MMM, yyyy 'a las' HH:mm",
+                                          { locale: es }
+                                        )}
+                                      </Text>
                                     </VStack>
                                   </CardBody>
                                 </Card>
@@ -823,12 +785,11 @@ const PatientDetail: React.FC = () => {
                                     borderColor={
                                       noteIndex > 0 ? 'brand.300' : borderColor
                                     }
-                                    minH="420px"
                                   >
-                                    <CardBody py={5} px={5}>
-                                      <VStack spacing={4} align="stretch" h="full">
-                                        <VStack align="start" spacing={3}>
-                                          <HStack align="start" spacing={2}>
+                                    <CardBody p={4}>
+                                      <VStack spacing={3} align="stretch">
+                                        <VStack align="start" spacing={1}>
+                                          <HStack align="start" spacing={2} justify="space-between" w="full">
                                             <Heading size="sm" noOfLines={2} flex={1}>
                                               {note.title}
                                             </Heading>
@@ -842,7 +803,7 @@ const PatientDetail: React.FC = () => {
                                                   <Icon
                                                     as={MdVerified}
                                                     color="green.500"
-                                                    boxSize={5}
+                                                    boxSize={4}
                                                     cursor="help"
                                                   />
                                                 </Box>
@@ -853,58 +814,15 @@ const PatientDetail: React.FC = () => {
                                             <Badge colorScheme="blue" fontSize="xs">
                                               {getNoteTypeLabel(note.type)}
                                             </Badge>
-                                            <Text fontSize="xs" color="gray.500">
-                                              {format(
-                                                new Date(note.createdAt),
-                                                'HH:mm',
-                                                { locale: es }
-                                              )}
-                                            </Text>
                                           </HStack>
+                                          <Text fontSize="xs" color="gray.500">
+                                            {format(
+                                              new Date(note.createdAt),
+                                              "d 'de' MMM, yyyy 'a las' HH:mm",
+                                              { locale: es }
+                                            )}
+                                          </Text>
                                         </VStack>
-
-                                        {/* Preview del contenido */}
-                                        <Box
-                                          flex={1}
-                                          overflow="hidden"
-                                          position="relative"
-                                          maxH="180px"
-                                        >
-                                          <Box
-                                            sx={{
-                                              fontFamily: 'Georgia, serif',
-                                              fontStyle: 'italic',
-                                              fontSize: 'sm',
-                                              color: 'gray.600',
-                                              lineHeight: '1.6',
-                                              '& p': { mb: 1, fontSize: 'sm' },
-                                              '& h1, & h2, & h3': { fontSize: 'sm', fontWeight: 'semibold', mb: 1 },
-                                              '& ul, & ol': { ml: 4, mb: 1, fontSize: 'sm' },
-                                              '& li': { mb: 0 },
-                                            }}
-                                            dangerouslySetInnerHTML={{ __html: note.content }}
-                                          />
-                                          <Box
-                                            position="absolute"
-                                            bottom={0}
-                                            left={0}
-                                            right={0}
-                                            h="40px"
-                                            bgGradient={`linear(to-t, ${cardBg}, transparent)`}
-                                            pointerEvents="none"
-                                          />
-                                        </Box>
-
-                                        <Button
-                                          size="sm"
-                                          mt="auto"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleViewNote(note);
-                                          }}
-                                        >
-                                          Ver Nota
-                                        </Button>
                                       </VStack>
                                     </CardBody>
                                   </Card>
@@ -1200,15 +1118,16 @@ const PatientDetail: React.FC = () => {
                 '& h1': { fontSize: '2xl', fontWeight: 'bold', mb: 4 },
                 '& h2': { fontSize: 'xl', fontWeight: 'bold', mb: 3, mt: 6 },
                 '& h3': { fontSize: 'lg', fontWeight: 'semibold', mb: 2, mt: 4 },
-                '& p': { mb: 2 },
+                '& p': { mb: 2, lineHeight: '1.6' },
                 '& ul, & ol': { ml: 6, mb: 4 },
                 '& li': { mb: 1 },
                 '& strong': { fontWeight: 'bold' },
                 '& em': { fontStyle: 'italic' },
                 '& a': { color: 'brand.500', textDecoration: 'underline' },
               }}
-              dangerouslySetInnerHTML={{ __html: selectedConsent?.fullText || '' }}
-            />
+            >
+              <ReactMarkdown>{selectedConsent?.fullText || ''}</ReactMarkdown>
+            </Box>
           </ModalBody>
           <ModalFooter>
             <Button variant="ghost" onClick={onConsentModalClose}>

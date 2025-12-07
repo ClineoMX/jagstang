@@ -7,6 +7,7 @@ import type {
   Attachment,
   ConsentType,
   PatientConsent,
+  Contact,
 } from '../types';
 
 // Mock Doctor
@@ -135,50 +136,59 @@ export const mockPatients: Patient[] = [
 export const mockNoteTemplates: NoteTemplate[] = [
   {
     id: 'tpl-1',
-    name: 'Interrogatorio Inicial',
+    name: 'Interrogatorio',
     type: 'initial_interrogation',
-    content: `# Interrogatorio Inicial
+    content: `<h1>Interrogatorio</h1>
 
-## Datos Generales
-- **Nombre del paciente:**
-- **Edad:**
-- **Sexo:**
-- **Ocupación:**
+<h2>Datos Generales</h2>
+<ul>
+<li><strong>Nombre del paciente:</strong></li>
+<li><strong>Edad:</strong></li>
+<li><strong>Sexo:</strong></li>
+<li><strong>Ocupación:</strong></li>
+</ul>
 
-## Motivo de Consulta
-[Describir el motivo principal de la consulta]
+<h2>Motivo de Consulta</h2>
+<p>[Describir el motivo principal de la consulta]</p>
 
-## Antecedentes Heredofamiliares
-- **Diabetes:**
-- **Hipertensión:**
-- **Cáncer:**
-- **Otros:**
+<h2>Antecedentes Heredofamiliares</h2>
+<ul>
+<li><strong>Diabetes:</strong></li>
+<li><strong>Hipertensión:</strong></li>
+<li><strong>Cáncer:</strong></li>
+<li><strong>Otros:</strong></li>
+</ul>
 
-## Antecedentes Personales No Patológicos
-- **Tabaquismo:**
-- **Alcoholismo:**
-- **Drogas:**
-- **Actividad física:**
-- **Alimentación:**
+<h2>Antecedentes Personales No Patológicos</h2>
+<ul>
+<li><strong>Tabaquismo:</strong></li>
+<li><strong>Alcoholismo:</strong></li>
+<li><strong>Drogas:</strong></li>
+<li><strong>Actividad física:</strong></li>
+<li><strong>Alimentación:</strong></li>
+</ul>
 
-## Antecedentes Personales Patológicos
-- **Enfermedades previas:**
-- **Cirugías:**
-- **Alergias:**
-- **Medicamentos actuales:**
+<h2>Antecedentes Personales Patológicos</h2>
+<ul>
+<li><strong>Enfermedades previas:</strong></li>
+<li><strong>Cirugías:</strong></li>
+<li><strong>Alergias:</strong></li>
+<li><strong>Medicamentos actuales:</strong></li>
+</ul>
 
-## Padecimiento Actual
-[Descripción detallada del padecimiento actual]
+<h2>Padecimiento Actual</h2>
+<p>[Descripción detallada del padecimiento actual]</p>
 
-## Interrogatorio por Aparatos y Sistemas
-- **Cardiovascular:**
-- **Respiratorio:**
-- **Digestivo:**
-- **Genitourinario:**
-- **Nervioso:**
-- **Musculoesquelético:**
-- **Endocrino:**
-`,
+<h2>Interrogatorio por Aparatos y Sistemas</h2>
+<ul>
+<li><strong>Cardiovascular:</strong></li>
+<li><strong>Respiratorio:</strong></li>
+<li><strong>Digestivo:</strong></li>
+<li><strong>Genitourinario:</strong></li>
+<li><strong>Nervioso:</strong></li>
+<li><strong>Musculoesquelético:</strong></li>
+<li><strong>Endocrino:</strong></li>
+</ul>`,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     isDefault: true,
@@ -187,38 +197,39 @@ export const mockNoteTemplates: NoteTemplate[] = [
     id: 'tpl-2',
     name: 'Nota de Evolución',
     type: 'evolution_note',
-    content: `# Nota de Evolución
+    content: `<h1>Nota de Evolución</h1>
 
-**Fecha:** [Fecha de la consulta]
-**Hora:** [Hora de la consulta]
+<p><strong>Fecha:</strong> [Fecha de la consulta]<br>
+<strong>Hora:</strong> [Hora de la consulta]</p>
 
-## Evolución
-[Describir la evolución del paciente desde la última consulta]
+<h2>Evolución</h2>
+<p>[Describir la evolución del paciente desde la última consulta]</p>
 
-## Síntomas Actuales
-[Describir síntomas actuales]
+<h2>Síntomas Actuales</h2>
+<p>[Describir síntomas actuales]</p>
 
-## Signos Vitales
-- **Presión Arterial:**
-- **Frecuencia Cardíaca:**
-- **Frecuencia Respiratoria:**
-- **Temperatura:**
-- **Saturación de O2:**
-- **Peso:**
-- **Talla:**
+<h2>Signos Vitales</h2>
+<ul>
+<li><strong>Presión Arterial:</strong></li>
+<li><strong>Frecuencia Cardíaca:</strong></li>
+<li><strong>Frecuencia Respiratoria:</strong></li>
+<li><strong>Temperatura:</strong></li>
+<li><strong>Saturación de O2:</strong></li>
+<li><strong>Peso:</strong></li>
+<li><strong>Talla:</strong></li>
+</ul>
 
-## Exploración Física
-[Hallazgos relevantes en la exploración física]
+<h2>Exploración Física</h2>
+<p>[Hallazgos relevantes en la exploración física]</p>
 
-## Impresión Diagnóstica
-[Diagnóstico o impresión clínica]
+<h2>Impresión Diagnóstica</h2>
+<p>[Diagnóstico o impresión clínica]</p>
 
-## Plan de Tratamiento
-[Medicamentos, estudios, indicaciones]
+<h2>Plan de Tratamiento</h2>
+<p>[Medicamentos, estudios, indicaciones]</p>
 
-## Próxima Cita
-[Fecha de próxima cita de seguimiento]
-`,
+<h2>Próxima Cita</h2>
+<p>[Fecha de próxima cita de seguimiento]</p>`,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     isDefault: true,
@@ -227,67 +238,80 @@ export const mockNoteTemplates: NoteTemplate[] = [
     id: 'tpl-3',
     name: 'Exploración Física',
     type: 'physical_examination',
-    content: `# Exploración Física
+    content: `<h1>Exploración Física</h1>
 
-**Fecha:** [Fecha del examen]
-**Paciente:** [Nombre del paciente]
+<p><strong>Fecha:</strong> [Fecha del examen]<br>
+<strong>Paciente:</strong> [Nombre del paciente]</p>
 
-## Signos Vitales
-- **Presión Arterial:** ___ / ___ mmHg
-- **Frecuencia Cardíaca:** ___ lpm
-- **Frecuencia Respiratoria:** ___ rpm
-- **Temperatura:** ___ °C
-- **Saturación de Oxígeno:** ___ %
-- **Peso:** ___ kg
-- **Talla:** ___ cm
-- **IMC:** ___ kg/m²
+<h2>Signos Vitales</h2>
+<ul>
+<li><strong>Presión Arterial:</strong> ___ / ___ mmHg</li>
+<li><strong>Frecuencia Cardíaca:</strong> ___ lpm</li>
+<li><strong>Frecuencia Respiratoria:</strong> ___ rpm</li>
+<li><strong>Temperatura:</strong> ___ °C</li>
+<li><strong>Saturación de Oxígeno:</strong> ___ %</li>
+<li><strong>Peso:</strong> ___ kg</li>
+<li><strong>Talla:</strong> ___ cm</li>
+<li><strong>IMC:</strong> ___ kg/m²</li>
+</ul>
 
-## Aspecto General
-[Describir aspecto general del paciente]
+<h2>Aspecto General</h2>
+<p>[Describir aspecto general del paciente]</p>
 
-## Cabeza y Cuello
-- **Cabeza:**
-- **Ojos:**
-- **Oídos:**
-- **Nariz:**
-- **Boca y garganta:**
-- **Cuello:**
-- **Tiroides:**
+<h2>Cabeza y Cuello</h2>
+<ul>
+<li><strong>Cabeza:</strong></li>
+<li><strong>Ojos:</strong></li>
+<li><strong>Oídos:</strong></li>
+<li><strong>Nariz:</strong></li>
+<li><strong>Boca y garganta:</strong></li>
+<li><strong>Cuello:</strong></li>
+<li><strong>Tiroides:</strong></li>
+</ul>
 
-## Tórax
-- **Inspección:**
-- **Palpación:**
-- **Percusión:**
-- **Auscultación:**
+<h2>Tórax</h2>
+<ul>
+<li><strong>Inspección:</strong></li>
+<li><strong>Palpación:</strong></li>
+<li><strong>Percusión:</strong></li>
+<li><strong>Auscultación:</strong></li>
+</ul>
 
-## Sistema Cardiovascular
-- **Inspección:**
-- **Palpación:**
-- **Auscultación:**
+<h2>Sistema Cardiovascular</h2>
+<ul>
+<li><strong>Inspección:</strong></li>
+<li><strong>Palpación:</strong></li>
+<li><strong>Auscultación:</strong></li>
+</ul>
 
-## Abdomen
-- **Inspección:**
-- **Palpación:**
-- **Percusión:**
-- **Auscultación:**
+<h2>Abdomen</h2>
+<ul>
+<li><strong>Inspección:</strong></li>
+<li><strong>Palpación:</strong></li>
+<li><strong>Percusión:</strong></li>
+<li><strong>Auscultación:</strong></li>
+</ul>
 
-## Extremidades
-- **Superiores:**
-- **Inferiores:**
-- **Pulsos:**
-- **Edema:**
+<h2>Extremidades</h2>
+<ul>
+<li><strong>Superiores:</strong></li>
+<li><strong>Inferiores:</strong></li>
+<li><strong>Pulsos:</strong></li>
+<li><strong>Edema:</strong></li>
+</ul>
 
-## Sistema Neurológico
-- **Estado mental:**
-- **Pares craneales:**
-- **Función motora:**
-- **Función sensorial:**
-- **Reflejos:**
-- **Coordinación:**
+<h2>Sistema Neurológico</h2>
+<ul>
+<li><strong>Estado mental:</strong></li>
+<li><strong>Pares craneales:</strong></li>
+<li><strong>Función motora:</strong></li>
+<li><strong>Función sensorial:</strong></li>
+<li><strong>Reflejos:</strong></li>
+<li><strong>Coordinación:</strong></li>
+</ul>
 
-## Conclusiones
-[Resumen de hallazgos relevantes]
-`,
+<h2>Conclusiones</h2>
+<p>[Resumen de hallazgos relevantes]</p>`,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     isDefault: true,
@@ -326,12 +350,59 @@ export const mockMedicalNotes: MedicalNote[] = [
     id: 'note-1',
     patientId: 'pat-1',
     doctorId: 'doc-1',
-    title: 'Interrogatorio Inicial - Juan Pérez',
+    title: 'Interrogatorio - Juan Pérez',
     type: 'initial_interrogation',
-    content: mockNoteTemplates[0].content.replace(
-      '[Describir el motivo principal de la consulta]',
-      'Dolor abdominal recurrente desde hace 2 semanas'
-    ),
+    content: `<h1>Interrogatorio</h1>
+
+<h2>Datos Generales</h2>
+<ul>
+<li><strong>Nombre del paciente:</strong> Juan Pérez Martínez</li>
+<li><strong>Edad:</strong> 39 años</li>
+<li><strong>Sexo:</strong> Masculino</li>
+<li><strong>Ocupación:</strong> Ingeniero</li>
+</ul>
+
+<h2>Motivo de Consulta</h2>
+<p>Dolor abdominal recurrente desde hace 2 semanas, localizado en epigastrio, de intensidad moderada a severa, que se exacerba después de las comidas.</p>
+
+<h2>Antecedentes Heredofamiliares</h2>
+<ul>
+<li><strong>Diabetes:</strong> Padre con diabetes tipo 2</li>
+<li><strong>Hipertensión:</strong> Madre hipertensa</li>
+<li><strong>Cáncer:</strong> No</li>
+<li><strong>Otros:</strong> Abuelo materno con enfermedad cardiovascular</li>
+</ul>
+
+<h2>Antecedentes Personales No Patológicos</h2>
+<ul>
+<li><strong>Tabaquismo:</strong> No</li>
+<li><strong>Alcoholismo:</strong> Consumo social ocasional</li>
+<li><strong>Drogas:</strong> No</li>
+<li><strong>Actividad física:</strong> Regular, 3 veces por semana</li>
+<li><strong>Alimentación:</strong> Regular, sin restricciones</li>
+</ul>
+
+<h2>Antecedentes Personales Patológicos</h2>
+<ul>
+<li><strong>Enfermedades previas:</strong> Gastritis diagnosticada hace 5 años</li>
+<li><strong>Cirugías:</strong> Apendicectomía a los 12 años</li>
+<li><strong>Alergias:</strong> Penicilina (rash cutáneo)</li>
+<li><strong>Medicamentos actuales:</strong> Omeprazol 20mg diario</li>
+</ul>
+
+<h2>Padecimiento Actual</h2>
+<p>Paciente refiere inicio de dolor abdominal hace aproximadamente 2 semanas, de inicio gradual, localizado en epigastrio. El dolor es de tipo ardoroso, de intensidad 6/10, que se exacerba después de las comidas y mejora parcialmente con antiácidos. Asocia náuseas ocasionales sin vómito. Niega fiebre, cambios en hábitos intestinales o pérdida de peso.</p>
+
+<h2>Interrogatorio por Aparatos y Sistemas</h2>
+<ul>
+<li><strong>Cardiovascular:</strong> Sin alteraciones</li>
+<li><strong>Respiratorio:</strong> Sin alteraciones</li>
+<li><strong>Digestivo:</strong> Dolor epigástrico, náuseas ocasionales</li>
+<li><strong>Genitourinario:</strong> Sin alteraciones</li>
+<li><strong>Nervioso:</strong> Sin alteraciones</li>
+<li><strong>Musculoesquelético:</strong> Sin alteraciones</li>
+<li><strong>Endocrino:</strong> Sin alteraciones</li>
+</ul>`,
     templateId: 'tpl-1',
     isSigned: true,
     signedAt: '2024-10-15T11:00:00Z',
@@ -346,10 +417,39 @@ export const mockMedicalNotes: MedicalNote[] = [
     doctorId: 'doc-1',
     title: 'Nota de Evolución - Ana Rodríguez',
     type: 'evolution_note',
-    content: mockNoteTemplates[1].content.replace(
-      '[Describir la evolución del paciente desde la última consulta]',
-      'Paciente refiere mejoría notable después del tratamiento prescrito. Disminución de síntomas en un 80%.'
-    ),
+    content: `<h1>Nota de Evolución</h1>
+
+<p><strong>Fecha:</strong> 18 de octubre de 2024<br>
+<strong>Hora:</strong> 15:00 hrs</p>
+
+<h2>Evolución</h2>
+<p>Paciente refiere mejoría notable después del tratamiento prescrito. Disminución de síntomas en un 80%. El dolor abdominal ha disminuido significativamente y las náuseas han desaparecido completamente. Refiere mejor tolerancia a los alimentos.</p>
+
+<h2>Síntomas Actuales</h2>
+<p>Dolor epigástrico leve ocasional (2/10), principalmente después de comidas copiosas. Sin náuseas ni vómito. Buen apetito.</p>
+
+<h2>Signos Vitales</h2>
+<ul>
+<li><strong>Presión Arterial:</strong> 120/80 mmHg</li>
+<li><strong>Frecuencia Cardíaca:</strong> 72 lpm</li>
+<li><strong>Frecuencia Respiratoria:</strong> 16 rpm</li>
+<li><strong>Temperatura:</strong> 36.5 °C</li>
+<li><strong>Saturación de O2:</strong> 98%</li>
+<li><strong>Peso:</strong> 65 kg</li>
+<li><strong>Talla:</strong> 165 cm</li>
+</ul>
+
+<h2>Exploración Física</h2>
+<p>Abdomen blando, depresible, sin dolor a la palpación superficial. No hay signos de irritación peritoneal. Ruidos hidroaéreos presentes y normales.</p>
+
+<h2>Impresión Diagnóstica</h2>
+<p>Gastritis en resolución. Mejoría clínica significativa con tratamiento.</p>
+
+<h2>Plan de Tratamiento</h2>
+<p>Continuar con Omeprazol 20mg antes del desayuno por 2 semanas más. Dieta blanda, evitar irritantes. Control en 2 semanas o antes si síntomas recurren.</p>
+
+<h2>Próxima Cita</h2>
+<p>1 de noviembre de 2024 a las 10:00 hrs</p>`,
     templateId: 'tpl-2',
     isSigned: true,
     signedAt: '2024-10-18T15:30:00Z',
@@ -364,7 +464,80 @@ export const mockMedicalNotes: MedicalNote[] = [
     doctorId: 'doc-1',
     title: 'Exploración Física - Roberto González',
     type: 'physical_examination',
-    content: mockNoteTemplates[2].content,
+    content: `<h1>Exploración Física</h1>
+
+<p><strong>Fecha:</strong> 20 de octubre de 2024<br>
+<strong>Paciente:</strong> Roberto González</p>
+
+<h2>Signos Vitales</h2>
+<ul>
+<li><strong>Presión Arterial:</strong> 130/85 mmHg</li>
+<li><strong>Frecuencia Cardíaca:</strong> 78 lpm</li>
+<li><strong>Frecuencia Respiratoria:</strong> 18 rpm</li>
+<li><strong>Temperatura:</strong> 36.8 °C</li>
+<li><strong>Saturación de Oxígeno:</strong> 97%</li>
+<li><strong>Peso:</strong> 78 kg</li>
+<li><strong>Talla:</strong> 175 cm</li>
+<li><strong>IMC:</strong> 25.5 kg/m²</li>
+</ul>
+
+<h2>Aspecto General</h2>
+<p>Paciente en buen estado general, consciente, orientado, colaborador. Buen coloración de piel y mucosas.</p>
+
+<h2>Cabeza y Cuello</h2>
+<ul>
+<li><strong>Cabeza:</strong> Normocéfalo, sin lesiones</li>
+<li><strong>Ojos:</strong> Pupilas isocóricas, reactivas a la luz</li>
+<li><strong>Oídos:</strong> Sin alteraciones</li>
+<li><strong>Nariz:</strong> Permeable</li>
+<li><strong>Boca y garganta:</strong> Mucosas húmedas, sin lesiones</li>
+<li><strong>Cuello:</strong> Sin adenopatías, sin masas</li>
+<li><strong>Tiroides:</strong> No aumentada de tamaño</li>
+</ul>
+
+<h2>Tórax</h2>
+<ul>
+<li><strong>Inspección:</strong> Simétrico, sin deformidades</li>
+<li><strong>Palpación:</strong> Sin dolor, buena expansión</li>
+<li><strong>Percusión:</strong> Sonido claro pulmonar</li>
+<li><strong>Auscultación:</strong> Murmullo vesicular presente, sin ruidos agregados</li>
+</ul>
+
+<h2>Sistema Cardiovascular</h2>
+<ul>
+<li><strong>Inspección:</strong> Sin alteraciones</li>
+<li><strong>Palpación:</strong> Choque de punta en 5to espacio intercostal</li>
+<li><strong>Auscultación:</strong> Ruidos cardíacos rítmicos, sin soplos</li>
+</ul>
+
+<h2>Abdomen</h2>
+<ul>
+<li><strong>Inspección:</strong> Plano, sin cicatrices</li>
+<li><strong>Palpación:</strong> Blando, depresible, sin dolor</li>
+<li><strong>Percusión:</strong> Timpánico</li>
+<li><strong>Auscultación:</strong> Ruidos hidroaéreos presentes</li>
+</ul>
+
+<h2>Extremidades</h2>
+<ul>
+<li><strong>Superiores:</strong> Sin alteraciones, movilidad completa</li>
+<li><strong>Inferiores:</strong> Sin edema, pulsos presentes</li>
+<li><strong>Pulsos:</strong> Presentes y simétricos</li>
+<li><strong>Edema:</strong> No</li>
+</ul>
+
+<h2>Sistema Neurológico</h2>
+<ul>
+<li><strong>Estado mental:</strong> Consciente, orientado</li>
+<li><strong>Pares craneales:</strong> Íntegros</li>
+<li><strong>Función motora:</strong> Normal</li>
+<li><strong>Función sensorial:</strong> Normal</li>
+<li><strong>Reflejos:</strong> Presentes y simétricos</li>
+<li><strong>Coordinación:</strong> Normal</li>
+</ul>
+
+<h2>Conclusiones</h2>
+<p>Exploración física completa sin hallazgos patológicos relevantes. Paciente en buen estado general.</p>`,
     templateId: 'tpl-3',
     isSigned: true,
     signedAt: '2024-10-20T09:30:00Z',
@@ -379,7 +552,39 @@ export const mockMedicalNotes: MedicalNote[] = [
     doctorId: 'doc-1',
     title: 'Nota de Evolución - Seguimiento Dolor Abdominal',
     type: 'evolution_note',
-    content: mockNoteTemplates[1].content,
+    content: `<h1>Nota de Evolución</h1>
+
+<p><strong>Fecha:</strong> 15 de octubre de 2024<br>
+<strong>Hora:</strong> 14:00 hrs</p>
+
+<h2>Evolución</h2>
+<p>Paciente refiere mejoría parcial del dolor abdominal después de iniciar tratamiento con Omeprazol. El dolor persiste pero con menor intensidad.</p>
+
+<h2>Síntomas Actuales</h2>
+<p>Dolor epigástrico moderado (4/10), que se exacerba después de las comidas. Náuseas ocasionales.</p>
+
+<h2>Signos Vitales</h2>
+<ul>
+<li><strong>Presión Arterial:</strong> 125/82 mmHg</li>
+<li><strong>Frecuencia Cardíaca:</strong> 75 lpm</li>
+<li><strong>Frecuencia Respiratoria:</strong> 16 rpm</li>
+<li><strong>Temperatura:</strong> 36.6 °C</li>
+<li><strong>Saturación de O2:</strong> 98%</li>
+<li><strong>Peso:</strong> 82 kg</li>
+<li><strong>Talla:</strong> 178 cm</li>
+</ul>
+
+<h2>Exploración Física</h2>
+<p>Abdomen con dolor leve a la palpación en epigastrio. Sin signos de irritación peritoneal.</p>
+
+<h2>Impresión Diagnóstica</h2>
+<p>Gastritis aguda en evolución. Mejoría parcial con tratamiento.</p>
+
+<h2>Plan de Tratamiento</h2>
+<p>Continuar con Omeprazol. Agregar dieta blanda. Solicitar endoscopia digestiva alta para evaluación.</p>
+
+<h2>Próxima Cita</h2>
+<p>22 de octubre de 2024</p>`,
     templateId: 'tpl-2',
     isSigned: true,
     signedAt: '2024-10-15T14:30:00Z',
@@ -393,7 +598,80 @@ export const mockMedicalNotes: MedicalNote[] = [
     doctorId: 'doc-1',
     title: 'Exploración Física - Juan Pérez',
     type: 'physical_examination',
-    content: mockNoteTemplates[2].content,
+    content: `<h1>Exploración Física</h1>
+
+<p><strong>Fecha:</strong> 15 de octubre de 2024<br>
+<strong>Paciente:</strong> Juan Pérez Martínez</p>
+
+<h2>Signos Vitales</h2>
+<ul>
+<li><strong>Presión Arterial:</strong> 125/82 mmHg</li>
+<li><strong>Frecuencia Cardíaca:</strong> 75 lpm</li>
+<li><strong>Frecuencia Respiratoria:</strong> 16 rpm</li>
+<li><strong>Temperatura:</strong> 36.6 °C</li>
+<li><strong>Saturación de Oxígeno:</strong> 98%</li>
+<li><strong>Peso:</strong> 82 kg</li>
+<li><strong>Talla:</strong> 178 cm</li>
+<li><strong>IMC:</strong> 25.9 kg/m²</li>
+</ul>
+
+<h2>Aspecto General</h2>
+<p>Paciente en buen estado general, consciente, orientado.</p>
+
+<h2>Cabeza y Cuello</h2>
+<ul>
+<li><strong>Cabeza:</strong> Sin alteraciones</li>
+<li><strong>Ojos:</strong> Pupilas normales</li>
+<li><strong>Oídos:</strong> Sin alteraciones</li>
+<li><strong>Nariz:</strong> Permeable</li>
+<li><strong>Boca y garganta:</strong> Sin alteraciones</li>
+<li><strong>Cuello:</strong> Sin masas</li>
+<li><strong>Tiroides:</strong> Normal</li>
+</ul>
+
+<h2>Tórax</h2>
+<ul>
+<li><strong>Inspección:</strong> Normal</li>
+<li><strong>Palpación:</strong> Normal</li>
+<li><strong>Percusión:</strong> Normal</li>
+<li><strong>Auscultación:</strong> Murmullo vesicular presente</li>
+</ul>
+
+<h2>Sistema Cardiovascular</h2>
+<ul>
+<li><strong>Inspección:</strong> Normal</li>
+<li><strong>Palpación:</strong> Normal</li>
+<li><strong>Auscultación:</strong> Ruidos cardíacos normales</li>
+</ul>
+
+<h2>Abdomen</h2>
+<ul>
+<li><strong>Inspección:</strong> Plano</li>
+<li><strong>Palpación:</strong> Dolor leve en epigastrio</li>
+<li><strong>Percusión:</strong> Timpánico</li>
+<li><strong>Auscultación:</strong> Ruidos presentes</li>
+</ul>
+
+<h2>Extremidades</h2>
+<ul>
+<li><strong>Superiores:</strong> Sin alteraciones</li>
+<li><strong>Inferiores:</strong> Sin edema</li>
+<li><strong>Pulsos:</strong> Presentes</li>
+<li><strong>Edema:</strong> No</li>
+</ul>
+
+<h2>Sistema Neurológico</h2>
+<ul>
+<li><strong>Estado mental:</strong> Normal</li>
+<li><strong>Pares craneales:</strong> Íntegros</li>
+<li><strong>Función motora:</strong> Normal</li>
+<li><strong>Función sensorial:</strong> Normal</li>
+<li><strong>Reflejos:</strong> Presentes</li>
+<li><strong>Coordinación:</strong> Normal</li>
+</ul>
+
+<h2>Conclusiones</h2>
+<p>Exploración física con dolor leve en epigastrio. Resto sin alteraciones.</p>`,
     templateId: 'tpl-3',
     isSigned: true,
     signedAt: '2024-10-15T16:00:00Z',
@@ -407,7 +685,39 @@ export const mockMedicalNotes: MedicalNote[] = [
     doctorId: 'doc-1',
     title: 'Nota de Seguimiento - Ana Rodríguez',
     type: 'evolution_note',
-    content: mockNoteTemplates[1].content,
+    content: `<h1>Nota de Evolución</h1>
+
+<p><strong>Fecha:</strong> 18 de octubre de 2024<br>
+<strong>Hora:</strong> 16:30 hrs</p>
+
+<h2>Evolución</h2>
+<p>Paciente continúa con mejoría. Asintomática desde la última consulta.</p>
+
+<h2>Síntomas Actuales</h2>
+<p>Sin síntomas. Refiere sentirse completamente bien.</p>
+
+<h2>Signos Vitales</h2>
+<ul>
+<li><strong>Presión Arterial:</strong> 118/75 mmHg</li>
+<li><strong>Frecuencia Cardíaca:</strong> 70 lpm</li>
+<li><strong>Frecuencia Respiratoria:</strong> 16 rpm</li>
+<li><strong>Temperatura:</strong> 36.5 °C</li>
+<li><strong>Saturación de O2:</strong> 98%</li>
+<li><strong>Peso:</strong> 65 kg</li>
+<li><strong>Talla:</strong> 165 cm</li>
+</ul>
+
+<h2>Exploración Física</h2>
+<p>Abdomen sin alteraciones. Sin dolor a la palpación.</p>
+
+<h2>Impresión Diagnóstica</h2>
+<p>Gastritis resuelta. Paciente asintomática.</p>
+
+<h2>Plan de Tratamiento</h2>
+<p>Continuar con medidas dietéticas. Suspender medicamento si permanece asintomática.</p>
+
+<h2>Próxima Cita</h2>
+<p>1 de noviembre de 2024</p>`,
     templateId: 'tpl-2',
     isSigned: true,
     signedAt: '2024-10-18T17:00:00Z',
@@ -421,7 +731,32 @@ export const mockMedicalNotes: MedicalNote[] = [
     doctorId: 'doc-1',
     title: 'Resultados de Laboratorio',
     type: 'evolution_note',
-    content: mockNoteTemplates[1].content,
+    content: `<h1>Nota de Evolución</h1>
+
+<p><strong>Fecha:</strong> 15 de octubre de 2024<br>
+<strong>Hora:</strong> 17:00 hrs</p>
+
+<h2>Evolución</h2>
+<p>Revisión de resultados de laboratorio solicitados.</p>
+
+<h2>Resultados de Laboratorio</h2>
+<ul>
+<li><strong>Hemoglobina:</strong> 15.2 g/dL (Normal)</li>
+<li><strong>Leucocitos:</strong> 7,200 /μL (Normal)</li>
+<li><strong>Plaquetas:</strong> 250,000 /μL (Normal)</li>
+<li><strong>Glucosa:</strong> 95 mg/dL (Normal)</li>
+<li><strong>Creatinina:</strong> 0.9 mg/dL (Normal)</li>
+<li><strong>Transaminasas:</strong> Dentro de límites normales</li>
+</ul>
+
+<h2>Impresión Diagnóstica</h2>
+<p>Resultados de laboratorio dentro de parámetros normales. No hay alteraciones que sugieran patología sistémica.</p>
+
+<h2>Plan de Tratamiento</h2>
+<p>Continuar con tratamiento para gastritis. Los resultados de laboratorio no muestran alteraciones.</p>
+
+<h2>Próxima Cita</h2>
+<p>22 de octubre de 2024</p>`,
     templateId: 'tpl-2',
     isSigned: true,
     signedAt: '2024-10-15T17:30:00Z',
@@ -480,7 +815,7 @@ export const mockAppointments: Appointment[] = [
     patientId: 'pat-4',
     doctorId: 'doc-1',
     title: 'Primera consulta - Laura Martínez',
-    description: 'Interrogatorio inicial y exploración física',
+    description: 'Interrogatorio y exploración física',
     date: '2024-10-25',
     startTime: '14:00',
     endTime: '14:30',
@@ -723,4 +1058,124 @@ export const getPatientConsentsByPatientId = (
   patientId: string
 ): PatientConsent[] => {
   return mockPatientConsents.filter((pc) => pc.patientId === patientId);
+};
+
+// Mock Contacts
+export const mockContacts: Contact[] = [
+  {
+    id: 'cont-1',
+    firstName: 'Dr. Carlos',
+    lastName: 'Méndez',
+    alias: 'Cardiólogo Carlos',
+    email: 'carlos.mendez@hospital.com',
+    phone: '+52 55 1111 2222',
+    type: 'colleague',
+    company: 'Hospital General',
+    position: 'Cardiólogo',
+    notes: 'Especialista en arritmias',
+    createdAt: '2024-01-10T10:00:00Z',
+    updatedAt: '2024-10-15T14:30:00Z',
+  },
+  {
+    id: 'cont-2',
+    firstName: 'Laboratorio',
+    lastName: 'Clínico ABC',
+    alias: 'Lab ABC',
+    email: 'contacto@lababc.com',
+    phone: '+52 55 2222 3333',
+    type: 'provider',
+    company: 'Laboratorio Clínico ABC',
+    position: 'Atención al Cliente',
+    notes: 'Resultados en 24 horas',
+    createdAt: '2024-02-15T09:00:00Z',
+    updatedAt: '2024-10-20T10:00:00Z',
+  },
+  {
+    id: 'cont-3',
+    firstName: 'María',
+    lastName: 'González',
+    alias: 'María - Farmacia',
+    email: 'maria.gonzalez@farmacia.com',
+    phone: '+52 55 3333 4444',
+    type: 'supplier',
+    company: 'Farmacia del Centro',
+    position: 'Gerente',
+    notes: 'Descuentos para médicos',
+    createdAt: '2024-03-01T11:00:00Z',
+    updatedAt: '2024-10-18T16:00:00Z',
+  },
+  {
+    id: 'cont-4',
+    firstName: 'Dr. Ana',
+    lastName: 'López',
+    alias: 'Ana - Pediatra',
+    email: 'ana.lopez@clinica.com',
+    phone: '+52 55 4444 5555',
+    type: 'colleague',
+    company: 'Clínica Infantil',
+    position: 'Pediatra',
+    notes: 'Referencias de pacientes pediátricos',
+    createdAt: '2024-03-20T10:30:00Z',
+    updatedAt: '2024-10-19T12:00:00Z',
+  },
+  {
+    id: 'cont-5',
+    firstName: 'Equipos',
+    lastName: 'Médicos SA',
+    alias: 'Equipos Médicos',
+    email: 'ventas@equiposmedicos.com',
+    phone: '+52 55 5555 6666',
+    type: 'supplier',
+    company: 'Equipos Médicos SA',
+    position: 'Ventas',
+    notes: 'Proveedor de equipos de diagnóstico',
+    createdAt: '2024-04-10T08:00:00Z',
+    updatedAt: '2024-10-17T09:30:00Z',
+  },
+  {
+    id: 'cont-6',
+    firstName: 'Dr. Roberto',
+    lastName: 'Sánchez',
+    alias: 'Roberto - Ortopedista',
+    email: 'roberto.sanchez@hospital.com',
+    phone: '+52 55 6666 7777',
+    type: 'colleague',
+    company: 'Hospital Regional',
+    position: 'Ortopedista',
+    notes: 'Especialista en columna',
+    createdAt: '2024-05-15T14:00:00Z',
+    updatedAt: '2024-10-16T15:00:00Z',
+  },
+  {
+    id: 'cont-7',
+    firstName: 'Imagenología',
+    lastName: 'Avanzada',
+    alias: 'Imagenología',
+    email: 'contacto@imagenologia.com',
+    phone: '+52 55 7777 8888',
+    type: 'provider',
+    company: 'Centro de Imagenología Avanzada',
+    position: 'Recepción',
+    notes: 'Resonancia y tomografía',
+    createdAt: '2024-06-01T10:00:00Z',
+    updatedAt: '2024-10-15T11:00:00Z',
+  },
+];
+
+// Helper function to get contact by ID
+export const getContactById = (id: string): Contact | undefined => {
+  return mockContacts.find((c) => c.id === id);
+};
+
+// Helper function to search contacts
+export const searchContacts = (query: string): Contact[] => {
+  const lowerQuery = query.toLowerCase();
+  return mockContacts.filter(
+    (c) =>
+      c.firstName.toLowerCase().includes(lowerQuery) ||
+      c.lastName.toLowerCase().includes(lowerQuery) ||
+      c.alias?.toLowerCase().includes(lowerQuery) ||
+      c.email?.toLowerCase().includes(lowerQuery) ||
+      c.phone?.includes(query)
+  );
 };
