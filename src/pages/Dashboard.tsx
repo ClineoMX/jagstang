@@ -32,13 +32,14 @@ import {
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import {
-  mockPatients,
   mockAppointments,
   mockMedicalNotes,
 } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PatientFormModal from '../components/PatientFormModal';
+import { usePatients } from '../hooks/usePatients';
+import { useMemo } from 'react';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -46,19 +47,25 @@ const Dashboard: React.FC = () => {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // Get today's appointments
+  // Usar hook de API para pacientes
+  const { patients, loading: patientsLoading } = usePatients();
+
+  // Get today's appointments (todavía usando mock hasta que haya endpoint)
   const today = format(new Date(), 'yyyy-MM-dd');
   const todayAppointments = mockAppointments.filter((apt) => apt.date === today);
 
-  // Get recent patients (last 5)
-  const recentPatients = [...mockPatients]
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    )
-    .slice(0, 5);
+  // Get recent patients (last 5) - usando datos de API
+  const recentPatients = useMemo(() => {
+    return [...patients]
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt || b.createdAt).getTime() -
+          new Date(a.updatedAt || a.createdAt).getTime()
+      )
+      .slice(0, 5);
+  }, [patients]);
 
-  // Get recent notes (last 3)
+  // Get recent notes (last 3) - todavía usando mock hasta que haya endpoint
   const recentNotes = [...mockMedicalNotes]
     .sort(
       (a, b) =>
@@ -66,7 +73,7 @@ const Dashboard: React.FC = () => {
     )
     .slice(0, 3);
 
-  // Get upcoming appointments (next 5)
+  // Get upcoming appointments (next 5) - todavía usando mock
   const upcomingAppointments = mockAppointments
     .filter((apt) => apt.date >= today && apt.status !== 'cancelled')
     .sort((a, b) => {
@@ -77,7 +84,7 @@ const Dashboard: React.FC = () => {
     .slice(0, 5);
 
   const getPatientById = (id: string) => {
-    return mockPatients.find((p) => p.id === id);
+    return patients.find((p) => p.id === id);
   };
 
   const getStatusColor = (status: string) => {
@@ -258,7 +265,7 @@ const Dashboard: React.FC = () => {
                 </HStack>
                 <Stat>
                   <StatNumber fontSize="4xl" fontWeight="bold" color="gray.800">
-                    {mockPatients.length}
+                    {patientsLoading ? '...' : patients.length}
                   </StatNumber>
                   <StatLabel fontSize="md" color="gray.600" mt={2}>
                     Pacientes Activos
@@ -602,13 +609,21 @@ const Dashboard: React.FC = () => {
                         <Text fontSize="sm" color="gray.600">
                           Paciente: {patient?.firstName} {patient?.lastName}
                         </Text>
-                        {note.isSigned && (
+                        {note.status === 'signed' ? (
                           <HStack spacing={2}>
-                            <Icon as={FiCheckCircle} color="success.500" boxSize={4} />
-                            <Text fontSize="xs" color="success.600" fontWeight="medium">
-                              Firmado por {note.signedBy}
-                            </Text>
+                            <Badge colorScheme="green" fontSize="xs">
+                              Firmada
+                            </Badge>
+                            {note.signedBy && (
+                              <Text fontSize="xs" color="gray.500">
+                                por {note.signedBy}
+                              </Text>
+                            )}
                           </HStack>
+                        ) : (
+                          <Badge colorScheme="orange" fontSize="xs">
+                            Borrador
+                          </Badge>
                         )}
                       </VStack>
                     </HStack>

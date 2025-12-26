@@ -404,6 +404,7 @@ export const mockMedicalNotes: MedicalNote[] = [
 <li><strong>Endocrino:</strong> Sin alteraciones</li>
 </ul>`,
     templateId: 'tpl-1',
+    status: 'signed',
     isSigned: true,
     signedAt: '2024-10-15T11:00:00Z',
     signedBy: 'Dra. María García López',
@@ -451,6 +452,7 @@ export const mockMedicalNotes: MedicalNote[] = [
 <h2>Próxima Cita</h2>
 <p>1 de noviembre de 2024 a las 10:00 hrs</p>`,
     templateId: 'tpl-2',
+    status: 'signed',
     isSigned: true,
     signedAt: '2024-10-18T15:30:00Z',
     signedBy: 'Dra. María García López',
@@ -539,6 +541,7 @@ export const mockMedicalNotes: MedicalNote[] = [
 <h2>Conclusiones</h2>
 <p>Exploración física completa sin hallazgos patológicos relevantes. Paciente en buen estado general.</p>`,
     templateId: 'tpl-3',
+    status: 'signed',
     isSigned: true,
     signedAt: '2024-10-20T09:30:00Z',
     signedBy: 'Dra. María García López',
@@ -586,6 +589,7 @@ export const mockMedicalNotes: MedicalNote[] = [
 <h2>Próxima Cita</h2>
 <p>22 de octubre de 2024</p>`,
     templateId: 'tpl-2',
+    status: 'signed',
     isSigned: true,
     signedAt: '2024-10-15T14:30:00Z',
     signedBy: 'Dra. María García López',
@@ -673,6 +677,7 @@ export const mockMedicalNotes: MedicalNote[] = [
 <h2>Conclusiones</h2>
 <p>Exploración física con dolor leve en epigastrio. Resto sin alteraciones.</p>`,
     templateId: 'tpl-3',
+    status: 'signed',
     isSigned: true,
     signedAt: '2024-10-15T16:00:00Z',
     signedBy: 'Dra. María García López',
@@ -719,6 +724,7 @@ export const mockMedicalNotes: MedicalNote[] = [
 <h2>Próxima Cita</h2>
 <p>1 de noviembre de 2024</p>`,
     templateId: 'tpl-2',
+    status: 'signed',
     isSigned: true,
     signedAt: '2024-10-18T17:00:00Z',
     signedBy: 'Dra. María García López',
@@ -758,11 +764,36 @@ export const mockMedicalNotes: MedicalNote[] = [
 <h2>Próxima Cita</h2>
 <p>22 de octubre de 2024</p>`,
     templateId: 'tpl-2',
+    status: 'signed',
     isSigned: true,
     signedAt: '2024-10-15T17:30:00Z',
     signedBy: 'Dra. María García López',
     createdAt: '2024-10-15T17:00:00Z',
     updatedAt: '2024-10-15T17:30:00Z',
+  },
+  // Draft notes for testing
+  {
+    id: 'note-draft-1',
+    patientId: 'pat-1',
+    doctorId: 'doc-1',
+    title: 'Nota de Evolución - Borrador',
+    type: 'evolution_note',
+    content: `<h1>Nota de Evolución</h1>
+
+<p><strong>Fecha:</strong> 22 de octubre de 2024<br>
+<strong>Hora:</strong> 10:00 hrs</p>
+
+<h2>Evolución</h2>
+<p>Paciente refiere mejoría del dolor abdominal. El tratamiento está funcionando.</p>
+
+<h2>Síntomas Actuales</h2>
+<p>Dolor leve ocasional.</p>`,
+    templateId: 'tpl-2',
+    status: 'draft',
+    isSigned: false,
+    hash: 'mock-hash-draft-1',
+    createdAt: '2024-10-22T10:00:00Z',
+    updatedAt: '2024-10-22T10:00:00Z',
   },
 ];
 

@@ -86,6 +86,8 @@ export interface NoteTemplate {
   doctorId?: string; // null for system templates
 }
 
+export type NoteStatus = 'draft' | 'signed';
+
 export interface MedicalNote {
   id: string;
   patientId: string;
@@ -97,13 +99,27 @@ export interface MedicalNote {
   content: string; // Markdown content
   templateId?: string;
   template?: NoteTemplate;
-  isSigned: boolean;
+  status: NoteStatus;
+  isSigned: boolean; // Deprecated: use status instead, but keep for backward compatibility
   signedAt?: string;
   signedBy?: string;
   signature?: string; // RSA signature
+  hash?: string; // Hash for comparing versions
   attachments?: Attachment[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface NoteCompletenessAnalysis {
+  completeness_score: number;
+  reasoning: {
+    has_diagnostic_impression?: string;
+    has_disease_evolution?: string;
+    has_physical_exam?: string;
+    has_treatment_plan?: string;
+    has_vital_signs?: string;
+    [key: string]: string | undefined;
+  };
 }
 
 // Attachment types
@@ -156,8 +172,25 @@ export interface LoginCredentials {
 }
 
 export interface AuthResponse {
-  token: string;
-  doctor: Doctor;
+  access: string; // JWT access token
+  refresh: string; // JWT refresh token
+  id: string; // User ID
+  doctor?: Doctor; // Doctor info (may need to be fetched separately)
+}
+
+export interface PasswordResetRequest {
+  username: string; // Email
+}
+
+export interface PasswordResetConfirm {
+  username: string; // Email
+  code: string; // Verification code
+  password: string; // New password
+}
+
+export interface AccountConfirm {
+  username: string; // Email
+  code: string; // Verification code
 }
 
 // Search types

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -19,14 +19,17 @@ import {
   Icon,
   useDisclosure,
   IconButton,
+  Spinner,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import { FiPlus, FiPhone, FiMail, FiSearch, FiEdit } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import { mockPatients, searchPatients } from '../data/mockData';
+import { searchPatients } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PatientFormModal from '../components/PatientFormModal';
-import type { Patient } from '../types';
+import { usePatients } from '../hooks/usePatients';
 
 const PatientList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,10 +39,24 @@ const PatientList: React.FC = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [editingPatientId, setEditingPatientId] = useState<string | undefined>();
 
-  const filteredPatients =
-    searchQuery.trim() === ''
-      ? mockPatients
-      : searchPatients(searchQuery.trim());
+  // Usar hook de API
+  const { patients, loading, error } = usePatients();
+
+  // Filtrar pacientes localmente (hasta que haya endpoint de búsqueda)
+  const filteredPatients = useMemo(() => {
+    if (searchQuery.trim() === '') {
+      return patients;
+    }
+    // Búsqueda local mientras no hay endpoint
+    const query = searchQuery.toLowerCase();
+    return patients.filter(
+      (p) =>
+        p.firstName?.toLowerCase().includes(query) ||
+        p.lastName?.toLowerCase().includes(query) ||
+        p.email?.toLowerCase().includes(query) ||
+        p.phone?.includes(query)
+    );
+  }, [patients, searchQuery]);
 
   const getBloodTypeColor = (bloodType?: string) => {
     if (!bloodType) return 'gray';
@@ -128,7 +145,24 @@ const PatientList: React.FC = () => {
       {/* Content */}
       <Container maxW="container.xl" py={8}>
         <VStack spacing={6} align="stretch">
-          {filteredPatients.length === 0 ? (
+          {loading ? (
+            <Card bg={cardBg} borderRadius="2xl">
+              <CardBody>
+                <VStack spacing={4} py={12}>
+                  <Spinner size="xl" color="brand.500" />
+                  <Text color="gray.500">Cargando pacientes...</Text>
+                </VStack>
+              </CardBody>
+            </Card>
+          ) : error ? (
+            <Alert status="error" borderRadius="lg">
+              <AlertIcon />
+              <VStack align="start" spacing={1}>
+                <Text fontWeight="semibold">Error al cargar pacientes</Text>
+                <Text fontSize="sm">{error}</Text>
+              </VStack>
+            </Alert>
+          ) : filteredPatients.length === 0 ? (
             <Card bg={cardBg} borderRadius="2xl">
               <CardBody>
                 <VStack spacing={4} py={12}>
@@ -296,7 +330,9 @@ const PatientList: React.FC = () => {
         }}
         patientId={editingPatientId}
         onSuccess={() => {
-          // Refresh list if needed
+          // El hook se recargará automáticamente si está usando API
+          // Para mock data, necesitaríamos recargar la página o usar un estado global
+          window.location.reload();
         }}
       />
     </Box>

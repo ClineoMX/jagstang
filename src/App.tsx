@@ -119,6 +119,16 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/patients/:patientId/notes/:noteId/edit"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NoteForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/calendar"
         element={
           <ProtectedRoute>

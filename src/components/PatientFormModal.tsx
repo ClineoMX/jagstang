@@ -20,9 +20,14 @@ import {
   useColorModeValue,
   HStack,
   Heading,
+  Spinner,
+  Text,
 } from '@chakra-ui/react';
 import { getPatientById } from '../data/mockData';
 import type { Gender, BloodType, Patient } from '../types';
+import { apiService } from '../services/api';
+import { USE_API } from '../config/api';
+import { usePatient } from '../hooks/usePatients';
 
 interface PatientFormModalProps {
   isOpen: boolean;
@@ -40,6 +45,13 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
   const toast = useToast();
   const cardBg = useColorModeValue('card.light', 'card.dark');
   const isEditing = !!patientId;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Usar hook para cargar paciente si está editando
+  const { patient: apiPatient, profile: apiProfile, loading: loadingPatient } = usePatient(
+    patientId,
+    { useApi: USE_API }
+  );
 
   // Personal Information
   const [firstName, setFirstName] = useState('');
@@ -66,24 +78,27 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
   // Load patient data if editing
   useEffect(() => {
     if (isEditing && patientId) {
-      const patient = getPatientById(patientId);
+      // Usar datos de API si están disponibles, sino usar mock
+      const patient = USE_API && apiPatient ? apiPatient : getPatientById(patientId);
+      const profile = USE_API ? apiProfile : null;
+
       if (patient) {
         setFirstName(patient.firstName);
         setLastName(patient.lastName);
-        setEmail(patient.email || '');
-        setPhone(patient.phone || '');
-        setDateOfBirth(patient.dateOfBirth || '');
-        setGender(patient.gender || '');
-        setBloodType(patient.bloodType || '');
-        setAddress(patient.address || '');
-        setCity(patient.city || '');
-        setState(patient.state || '');
-        setZipCode(patient.zipCode || '');
-        setCurp(patient.curp || '');
-        setRfc(patient.rfc || '');
-        setSocialSecurityNumber(patient.socialSecurityNumber || '');
-        setInsuranceProvider(patient.insuranceProvider || '');
-        setInsuranceNumber(patient.insuranceNumber || '');
+        setEmail(profile?.email || patient.email || '');
+        setPhone(profile?.phone || patient.phone || '');
+        setDateOfBirth(profile?.birthdate || patient.dateOfBirth || '');
+        setGender((profile?.gender?.toLowerCase() || patient.gender) as Gender || '');
+        setBloodType((profile?.blood_type || patient.bloodType) as BloodType || '');
+        setAddress(profile?.address || patient.address || '');
+        setCity(profile?.city || patient.city || '');
+        setState(profile?.state || patient.state || '');
+        setZipCode(profile?.zip_code || patient.zipCode || '');
+        setCurp(profile?.citizen_id || patient.curp || '');
+        setRfc(profile?.tax_id || patient.rfc || '');
+        setSocialSecurityNumber(profile?.ssn || patient.socialSecurityNumber || '');
+        setInsuranceProvider(profile?.insurance_provider || patient.insuranceProvider || '');
+        setInsuranceNumber(profile?.insurance_number || patient.insuranceNumber || '');
       }
     } else {
       // Reset form when opening for new patient
@@ -104,7 +119,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setInsuranceProvider('');
       setInsuranceNumber('');
     }
-  }, [isEditing, patientId, isOpen]);
+  }, [isEditing, patientId, isOpen, apiPatient, apiProfile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,22 +135,97 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
+    if (!phone.trim()) {
       toast({
-        title: isEditing ? 'Paciente actualizado' : 'Paciente creado',
-        description: isEditing
-          ? 'El paciente ha sido actualizado exitosamente'
-          : 'El paciente ha sido creado exitosamente',
-        status: 'success',
+        title: 'Error',
+        description: 'El teléfono es obligatorio',
+        status: 'error',
         duration: 3000,
         isClosable: true,
       });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      if (USE_API) {
+        if (isEditing && patientId) {
+          // Actualizar perfil del paciente
+          await apiService.updatePatientProfile(patientId, {
+            phone,
+            email: email || undefined,
+            birthdate: dateOfBirth || undefined,
+            gender: gender || undefined,
+            blood_type: bloodType || undefined,
+            address: address || undefined,
+            city: city || undefined,
+            state: state || undefined,
+            zip_code: zipCode || undefined,
+            citizen_id: curp || undefined,
+            tax_id: rfc || undefined,
+            ssn: socialSecurityNumber || undefined,
+            insurance_provider: insuranceProvider || undefined,
+            insurance_number: insuranceNumber || undefined,
+          });
+
+          toast({
+            title: 'Paciente actualizado',
+            description: 'El paciente ha sido actualizado exitosamente',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        } else {
+          // Crear nuevo paciente
+          await apiService.createPatient({
+            name: firstName,
+            lastname: lastName,
+            lastname_m: undefined, // No hay campo en el formulario
+            phone,
+          });
+
+          // Si hay datos adicionales, actualizar el perfil después
+          // (esto requeriría obtener el ID del paciente recién creado)
+          // Por ahora, solo creamos el paciente básico
+
+          toast({
+            title: 'Paciente creado',
+            description: 'El paciente ha sido creado exitosamente',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      } else {
+        // Mock: simular llamada API
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        toast({
+          title: isEditing ? 'Paciente actualizado' : 'Paciente creado',
+          description: isEditing
+            ? 'El paciente ha sido actualizado exitosamente'
+            : 'El paciente ha sido creado exitosamente',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+
       onClose();
       if (onSuccess) {
         onSuccess();
       }
-    }, 1000);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Ocurrió un error al guardar el paciente',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -146,8 +236,16 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
           {isEditing ? 'Editar Paciente' : 'Nuevo Paciente'}
         </ModalHeader>
         <ModalCloseButton />
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <ModalBody pb={6} flex={1} overflowY="auto">
+        {loadingPatient && isEditing ? (
+          <ModalBody pb={6}>
+            <VStack spacing={4} py={8}>
+              <Spinner size="xl" color="brand.500" />
+              <Text>Cargando datos del paciente...</Text>
+            </VStack>
+          </ModalBody>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+            <ModalBody pb={6} flex={1} overflowY="auto">
             <VStack spacing={6} align="stretch">
               {/* Personal Information */}
               <Card bg={cardBg}>
@@ -354,15 +452,22 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
           </ModalBody>
           <ModalFooter>
             <HStack spacing={3}>
-              <Button variant="ghost" onClick={onClose}>
+              <Button variant="ghost" onClick={onClose} isDisabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" colorScheme="brand" size="lg">
+              <Button
+                type="submit"
+                colorScheme="brand"
+                size="lg"
+                isLoading={isSubmitting}
+                loadingText={isEditing ? 'Guardando...' : 'Creando...'}
+              >
                 {isEditing ? 'Guardar Cambios' : 'Crear Paciente'}
               </Button>
             </HStack>
           </ModalFooter>
         </form>
+        )}
       </ModalContent>
     </Modal>
   );
