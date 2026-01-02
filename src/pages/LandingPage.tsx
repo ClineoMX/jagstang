@@ -27,6 +27,7 @@ import {
   FiLock,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import ClineoLogo from '../components/ClineoLogo';
 
 interface FeatureCardProps {
   icon: typeof FiUsers;
@@ -161,7 +162,7 @@ const LandingPage: React.FC = () => {
               backdropFilter="blur(10px)"
               boxShadow="xl"
             >
-              <Text fontSize="6xl">🏥</Text>
+              <ClineoLogo size={80} color="white" />
             </Box>
 
             {/* Headline */}
@@ -374,8 +375,8 @@ const LandingPage: React.FC = () => {
             align="center"
             gap={4}
           >
-            <HStack spacing={2}>
-              <Text fontSize="2xl">🏥</Text>
+            <HStack spacing={3} align="center">
+              <ClineoLogo size={32} />
               <Text fontWeight="bold" fontSize="lg">
                 Clineo
               </Text>
