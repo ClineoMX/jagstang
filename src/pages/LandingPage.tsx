@@ -132,11 +132,11 @@ const LandingPage: React.FC = () => {
     },
   ];
 
-  const stats = [
-    { label: 'Médicos activos', value: '500+', icon: FiUsers },
-    { label: 'Pacientes registrados', value: '10,000+', icon: FiActivity },
-    { label: 'Citas gestionadas', value: '50,000+', icon: FiCalendar },
-    { label: 'Uptime', value: '99.9%', icon: FiTrendingUp },
+  const modules = [
+    { label: 'Módulos Integrados', icon: FiActivity },
+    { label: 'Gestión Completa', icon: FiUsers },
+    { label: 'Seguridad Médica', icon: FiLock },
+    { label: 'Cumplimiento NOM', icon: FiShield },
   ];
 
   return (
@@ -230,22 +230,36 @@ const LandingPage: React.FC = () => {
         </Container>
       </Box>
 
-      {/* Stats Section */}
+      {/* Modules Section */}
       <Box py={16} bg={useColorModeValue('white', 'gray.900')}>
         <Container maxW="container.xl">
-          <SimpleGrid columns={{ base: 2, md: 4 }} spacing={8}>
-            {stats.map((stat, index) => (
-              <VStack key={index} spacing={3}>
-                <Icon as={stat.icon} boxSize={8} color="brand.500" />
-                <Heading size="2xl" color="brand.600" fontWeight="bold">
-                  {stat.value}
-                </Heading>
-                <Text color="gray.600" fontSize="sm" fontWeight="medium">
-                  {stat.label}
-                </Text>
-              </VStack>
-            ))}
-          </SimpleGrid>
+          <VStack spacing={8}>
+            <Heading size="lg" textAlign="center" color="gray.700">
+              Plataforma Integral de Gestión Médica
+            </Heading>
+            <SimpleGrid columns={{ base: 2, md: 4 }} spacing={8} w="full">
+              {modules.map((module, index) => (
+                <VStack key={index} spacing={3}>
+                  <Box
+                    bg="brand.50"
+                    p={4}
+                    borderRadius="xl"
+                    display="inline-flex"
+                  >
+                    <Icon as={module.icon} boxSize={8} color="brand.500" />
+                  </Box>
+                  <Text
+                    color="gray.700"
+                    fontSize="md"
+                    fontWeight="semibold"
+                    textAlign="center"
+                  >
+                    {module.label}
+                  </Text>
+                </VStack>
+              ))}
+            </SimpleGrid>
+          </VStack>
         </Container>
       </Box>
 
@@ -291,7 +305,7 @@ const LandingPage: React.FC = () => {
                 Beneficios
               </Badge>
               <Heading size="xl" fontWeight="bold">
-                ¿Por qué elegir MedApp?
+                ¿Por qué elegir Clineo?
               </Heading>
               <VStack spacing={4} align="start">
                 {[
@@ -322,8 +336,7 @@ const LandingPage: React.FC = () => {
                   <VStack spacing={2} align="start">
                     <Heading size="lg">Comienza hoy mismo</Heading>
                     <Text color="gray.600" fontSize="sm">
-                      Únete a cientos de profesionales de la salud que confían
-                      en nuestra plataforma.
+                      Descubre la solución completa para tu práctica médica.
                     </Text>
                   </VStack>
 
@@ -364,11 +377,11 @@ const LandingPage: React.FC = () => {
             <HStack spacing={2}>
               <Text fontSize="2xl">🏥</Text>
               <Text fontWeight="bold" fontSize="lg">
-                MedApp
+                Clineo
               </Text>
             </HStack>
             <Text fontSize="sm" color="gray.600">
-              © 2026 MedApp. Sistema de Gestión Médica Profesional.
+              © 2026 Clineo. Sistema de Gestión Médica Profesional.
             </Text>
           </Flex>
         </Container>
