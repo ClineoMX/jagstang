@@ -1,45 +1,57 @@
 import React from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Image } from '@chakra-ui/react';
+
+export type ClineoLogoVariant = 'icon' | 'vertical';
+export type ClineoLogoColor = 'official' | 'white' | 'black';
 
 interface ClineoLogoProps {
+  /** 'icon' = icon only (for sidebar/favicon), 'vertical' = full wordmark */
+  variant?: ClineoLogoVariant;
+  /** 'official' = cyan+gray, 'white' = for dark backgrounds, 'black' = for light backgrounds */
+  color?: ClineoLogoColor;
   size?: number | string;
-  color?: string;
+  /** Optional width (overrides size for horizontal logos) */
+  width?: number | string;
+  /** Optional height */
+  height?: number | string;
 }
 
+const ASSETS: Record<ClineoLogoVariant, Record<ClineoLogoColor, string>> = {
+  icon: {
+    official: '/assets/svg/clineo-logotipo-icono-oficial.svg',
+    white: '/assets/svg/clineo-icono-blanco.svg',
+    black: '/assets/svg/clineo-icono-negro.svg',
+  },
+  vertical: {
+    official: '/assets/svg/clineo-logotipo-vertical-oficial.svg',
+    white: '/assets/svg/clineo-logotipo-vertical-acromatico-blanco.svg',
+    black: '/assets/svg/clineo-logotipo-vertical-acromatico-negro.svg',
+  },
+};
+
 const ClineoLogo: React.FC<ClineoLogoProps> = ({
-  size = 64,
-  color = '#0062CC'
+  variant = 'icon',
+  color = 'official',
+  size = 48,
+  width,
+  height,
 }) => {
+  const src = ASSETS[variant][color];
+  const isVertical = variant === 'vertical';
+  const w = width ?? (isVertical ? 'auto' : size);
+  const h = height ?? size;
+
   return (
-    <Box
-      as="svg"
-      width={size}
-      height={size}
-      viewBox="0 0 200 200"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Main C shape */}
-      <path
-        d="M 140 45 Q 165 65, 165 100 Q 165 135, 140 155"
-        stroke={color}
-        strokeWidth="30"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d="M 140 50 A 60 60 0 0 0 65 110"
-        stroke={color}
-        strokeWidth="30"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d="M 65 110 A 50 50 0 0 0 140 150"
-        stroke={color}
-        strokeWidth="30"
-        strokeLinecap="round"
-        fill="none"
+    <Box as="span" display="inline-block" lineHeight={0}>
+      <Image
+        src={src}
+        alt="Clineo"
+        w={w}
+        h={h}
+        maxW={isVertical ? 200 : w}
+        maxH={typeof h === 'number' ? h : 120}
+        objectFit="contain"
+        ignoreFallback
       />
     </Box>
   );

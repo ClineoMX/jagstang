@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -7,6 +7,12 @@ import {
   VStack,
   Text,
   Button,
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -20,19 +26,27 @@ import {
   useToast,
   useColorModeValue,
   Icon,
+  IconButton,
+  Tooltip,
+  ButtonGroup,
 } from '@chakra-ui/react';
-import { FiPlus, FiCalendar as FiCalendarIcon } from 'react-icons/fi';
+import { FiPlus, FiCalendar as FiCalendarIcon, FiCheck, FiX } from 'react-icons/fi';
 import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { mockAppointments, getPatientById } from '../data/mockData';
 import { useNavigate, useLocation } from 'react-router-dom';
-import type { Appointment } from '../types';
+import { useAppointments } from '../hooks/useAppointments';
+import { usePatients } from '../hooks/usePatients';
+import AppointmentFormModal from '../components/AppointmentFormModal';
+import type { ApiAppointment } from '../types';
 
 const locales = {
   es: es,
 };
+
+const CALENDAR_MIN = new Date(2000, 0, 1, 8, 0, 0);
+const CALENDAR_MAX = new Date(2000, 0, 1, 22, 0, 0);
 
 const localizer = dateFnsLocalizer({
   format,
@@ -42,60 +56,145 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
+interface CalendarToolbarProps {
+  label: string;
+  onNavigate: (action: string) => void;
+  localizer: { messages: Record<string, string> };
+}
+
+function CalendarToolbar({ label, onNavigate, localizer: loc }: CalendarToolbarProps) {
+  const messages = loc?.messages ?? {};
+  return (
+    <div className="rbc-toolbar">
+      <span className="rbc-btn-group">
+        <button type="button" onClick={() => onNavigate('TODAY')}>
+          {messages.today ?? 'Hoy'}
+        </button>
+        <button type="button" onClick={() => onNavigate('PREV')}>
+          {messages.previous ?? 'Anterior'}
+        </button>
+        <button type="button" onClick={() => onNavigate('NEXT')}>
+          {messages.next ?? 'Siguiente'}
+        </button>
+      </span>
+      <span className="rbc-toolbar-label">{label}</span>
+    </div>
+  );
+}
+
+interface CalendarEventResource extends ApiAppointment {
+  duration: number;
+}
+
 interface CalendarEvent {
   id: string;
   title: string;
   start: Date;
   end: Date;
-  resource: Appointment;
+  resource: CalendarEventResource;
 }
 
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
+  const { appointments, createAppointment, updateAppointmentStatus, deleteAppointment } =
+    useAppointments();
+  const { patients } = usePatients();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
     isOpen: isNewOpen,
     onOpen: onNewOpen,
     onClose: onNewClose,
   } = useDisclosure();
+  const {
+    isOpen: isCancelOpen,
+    onOpen: onCancelOpen,
+    onClose: onCancelClose,
+  } = useDisclosure();
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null
   );
+  const [slotDate, setSlotDate] = useState<string>('');
+  const [slotTime, setSlotTime] = useState<string>('');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [initialPatientId, setInitialPatientId] = useState<string | undefined>(
+    undefined
+  );
+  const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
+  const [calendarDate, setCalendarDate] = useState(() => new Date());
 
-  const cardBg = useColorModeValue('card.light', 'card.dark');
+  const handleNavigate = (newDate: Date) => {
+    setCalendarDate(newDate);
+  };
+
+  const patientsMap = useMemo(
+    () => Object.fromEntries(patients.map((p) => [p.id, p])),
+    [patients]
+  );
+
+  const initialPatientIdFromRoute =
+    (location.state as { patientId?: string } | null)?.patientId;
+
+  useEffect(() => {
+    if (initialPatientIdFromRoute) {
+      setInitialPatientId(initialPatientIdFromRoute);
+      onNewOpen();
+      navigate('/calendar', { replace: true, state: {} });
+    }
+  }, [initialPatientIdFromRoute, onNewOpen, navigate]);
+
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const calendarBg = useColorModeValue('white', 'gray.800');
 
   // Convert appointments to calendar events
   const events: CalendarEvent[] = useMemo(() => {
-    return mockAppointments.map((apt) => {
-      const startDate = new Date(`${apt.date}T${apt.startTime}`);
-      const endDate = new Date(`${apt.date}T${apt.endTime}`);
-      const patient = getPatientById(apt.patientId);
+    return appointments.map((apt) => {
+      const startDate = new Date(apt.starts_at);
+      const endDate = new Date(apt.ends_at);
+      const patient = patientsMap[apt.patient_id];
+      const durationMs = endDate.getTime() - startDate.getTime();
+      const duration = Math.round(durationMs / 60000);
 
       return {
         id: apt.id,
-        title: patient ? `${patient.firstName} ${patient.lastName}` : apt.title,
+        title: patient
+          ? `${patient.firstName} ${patient.lastName}`
+          : `Paciente ${apt.patient_id.slice(0, 8)}`,
         start: startDate,
         end: endDate,
-        resource: apt,
+        resource: { ...apt, duration },
       };
     });
-  }, []);
+  }, [appointments, patientsMap]);
 
   const handleSelectEvent = (event: CalendarEvent) => {
     setSelectedEvent(event);
     onOpen();
   };
 
-  const handleSelectSlot = () => {
+  const handleNewAppointmentClick = () => {
+    setSlotDate('');
+    setSlotTime('');
+    setInitialPatientId(undefined);
     onNewOpen();
   };
 
-  const handleConfirmAppointment = () => {
-    if (selectedEvent) {
+  const handleSelectSlot = (slotInfo: { start: Date; end: Date }) => {
+    setSlotDate(format(slotInfo.start, 'yyyy-MM-dd'));
+    setSlotTime(format(slotInfo.start, 'HH:mm'));
+    setInitialPatientId(undefined);
+    onNewOpen();
+  };
+
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  const handleConfirmAppointment = async () => {
+    if (!selectedEvent) return;
+    setIsUpdatingStatus(true);
+    try {
+      await updateAppointmentStatus(selectedEvent.id, 'CONFIRMED');
       toast({
         title: 'Cita confirmada',
         description: 'La cita ha sido confirmada exitosamente',
@@ -104,11 +203,30 @@ const CalendarPage: React.FC = () => {
         isClosable: true,
       });
       onClose();
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message ?? 'No se pudo confirmar la cita',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
-  const handleCancelAppointment = () => {
-    if (selectedEvent) {
+  const handleRequestCancelAppointment = () => {
+    if (!selectedEvent) return;
+    onCancelOpen();
+  };
+
+  const handleConfirmCancelAppointment = async () => {
+    if (!selectedEvent) return;
+    setIsCancelling(true);
+    try {
+      // Backend marks as cancelled on delete
+      await deleteAppointment(selectedEvent.id);
       toast({
         title: 'Cita cancelada',
         description: 'La cita ha sido cancelada',
@@ -116,13 +234,25 @@ const CalendarPage: React.FC = () => {
         duration: 3000,
         isClosable: true,
       });
+      onCancelClose();
       onClose();
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message ?? 'No se pudo cancelar la cita',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsCancelling(false);
     }
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'confirmed':
+      case 'completed':
         return 'green';
       case 'pending':
         return 'yellow';
@@ -134,24 +264,27 @@ const CalendarPage: React.FC = () => {
   };
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'confirmed':
         return 'Confirmada';
+      case 'completed':
+        return 'Completada';
       case 'pending':
         return 'Pendiente';
       case 'cancelled':
         return 'Cancelada';
       default:
-        return status;
+        return status ?? '';
     }
   };
 
   const eventStyleGetter = (event: CalendarEvent) => {
-    const { status } = event.resource;
+    const status = event.resource.status?.toLowerCase();
     let backgroundColor = '#007AFF';
 
     switch (status) {
       case 'confirmed':
+      case 'completed':
         backgroundColor = '#34C759';
         break;
       case 'pending':
@@ -178,14 +311,14 @@ const CalendarPage: React.FC = () => {
   };
 
   const patient = selectedEvent
-    ? getPatientById(selectedEvent.resource.patientId)
+    ? patientsMap[selectedEvent.resource.patient_id]
     : null;
 
   return (
     <Box>
       {/* Header with Gradient */}
       <Box
-        bgGradient="linear(135deg, blue.700 0%, blue.800 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
         py={8}
@@ -193,7 +326,7 @@ const CalendarPage: React.FC = () => {
         <Container maxW="container.xl">
           <HStack justify="space-between" flexWrap="wrap" gap={4}>
             <VStack align="start" spacing={2}>
-              <Heading size="xl">Calendario 📅</Heading>
+              <Heading size="xl">Calendario</Heading>
               <Text fontSize="md" opacity={0.9}>
                 Gestiona tus citas y agenda
               </Text>
@@ -213,7 +346,7 @@ const CalendarPage: React.FC = () => {
                 bg: 'whiteAlpha.500',
                 transform: 'translateY(0)',
               }}
-              onClick={handleSelectSlot}
+              onClick={handleNewAppointmentClick}
               transition="all 0.2s"
             >
               Nueva Cita
@@ -258,6 +391,12 @@ const CalendarPage: React.FC = () => {
               padding: '6px 10px',
             },
             '& .rbc-month-view': {
+              border: '1px solid',
+              borderColor: borderColor,
+              borderRadius: 'xl',
+              overflow: 'hidden',
+            },
+            '& .rbc-time-view': {
               border: '1px solid',
               borderColor: borderColor,
               borderRadius: 'xl',
@@ -309,6 +448,28 @@ const CalendarPage: React.FC = () => {
             },
           }}
         >
+          <Box mb={2} display="flex" justifyContent="flex-end">
+            <ButtonGroup size="xs" isAttached variant="ghost" spacing={0}>
+              <Button
+                size="xs"
+                fontSize="xs"
+                onClick={() => setCalendarView('month')}
+                colorScheme={calendarView === 'month' ? 'brand' : 'gray'}
+                variant={calendarView === 'month' ? 'solid' : 'ghost'}
+              >
+                Mes
+              </Button>
+              <Button
+                size="xs"
+                fontSize="xs"
+                onClick={() => setCalendarView('week')}
+                colorScheme={calendarView === 'week' ? 'brand' : 'gray'}
+                variant={calendarView === 'week' ? 'solid' : 'ghost'}
+              >
+                Semana
+              </Button>
+            </ButtonGroup>
+          </Box>
           <BigCalendar
             localizer={localizer}
             events={events}
@@ -318,8 +479,14 @@ const CalendarPage: React.FC = () => {
             onSelectEvent={handleSelectEvent}
             onSelectSlot={handleSelectSlot}
             selectable
-            views={['month']}
+            views={['month', 'week']}
+            view={calendarView}
+            onView={setCalendarView}
+            date={calendarDate}
+            onNavigate={handleNavigate}
             defaultView="month"
+            min={CALENDAR_MIN}
+            max={CALENDAR_MAX}
             messages={{
               next: 'Siguiente',
               previous: 'Anterior',
@@ -336,6 +503,7 @@ const CalendarPage: React.FC = () => {
             }}
             eventPropGetter={eventStyleGetter}
             culture="es"
+            components={{ toolbar: CalendarToolbar }}
           />
         </Box>
 
@@ -376,7 +544,7 @@ const CalendarPage: React.FC = () => {
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            {selectedEvent && patient && (
+            {selectedEvent && (
               <VStack spacing={5} align="stretch">
                 {/* Patient Info */}
                 <HStack
@@ -384,26 +552,50 @@ const CalendarPage: React.FC = () => {
                   p={4}
                   bg={useColorModeValue('brand.50', 'gray.700')}
                   borderRadius="xl"
-                  cursor="pointer"
-                  onClick={() => {
-                    navigate(`/patients/${patient.id}`);
-                    onClose();
-                  }}
-                  _hover={{ bg: useColorModeValue('brand.100', 'gray.600') }}
+                  cursor={patient ? 'pointer' : 'default'}
+                  onClick={
+                    patient
+                      ? () => {
+                          navigate(`/patients/${patient.id}`);
+                          onClose();
+                        }
+                      : undefined
+                  }
+                  _hover={
+                    patient
+                      ? { bg: useColorModeValue('brand.100', 'gray.600') }
+                      : undefined
+                  }
                   transition="all 0.2s"
                 >
                   <Avatar
                     size="lg"
-                    name={`${patient.firstName} ${patient.lastName}`}
-                    src={patient.avatar}
+                    name={
+                      patient
+                        ? `${patient.firstName} ${patient.lastName}`
+                        : 'Paciente'
+                    }
+                    src={patient?.avatar}
                     bg="brand.500"
+                    color="white"
+                    sx={{
+                      '& span': {
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%',
+                        height: '100%',
+                      },
+                    }}
                   />
                   <VStack align="start" spacing={0} flex={1}>
                     <Text fontWeight="bold" fontSize="lg">
-                      {patient.firstName} {patient.lastName}
+                      {patient
+                        ? `${patient.firstName} ${patient.lastName}`
+                        : `Paciente (${selectedEvent.resource.patient_id.slice(0, 8)}...)`}
                     </Text>
                     <Text fontSize="sm" color="gray.500">
-                      Click para ver perfil
+                      {patient ? 'Click para ver perfil' : 'Paciente no encontrado'}
                     </Text>
                   </VStack>
                 </HStack>
@@ -456,42 +648,40 @@ const CalendarPage: React.FC = () => {
                     </Text>
                     <Text>{selectedEvent.resource.duration} minutos</Text>
                   </HStack>
-
-                  {selectedEvent.resource.description && (
-                    <VStack align="stretch" spacing={2}>
-                      <Text fontWeight="semibold" fontSize="md">
-                        Descripción:
-                      </Text>
-                      <Text fontSize="sm" color="gray.600">
-                        {selectedEvent.resource.description}
-                      </Text>
-                    </VStack>
-                  )}
                 </VStack>
               </VStack>
             )}
           </ModalBody>
           <ModalFooter>
-            <HStack spacing={3}>
-              {selectedEvent?.resource.status === 'pending' && (
-                <Button
-                  colorScheme="green"
-                  onClick={handleConfirmAppointment}
-                  borderRadius="lg"
-                >
-                  Confirmar
-                </Button>
+            <HStack spacing={2}>
+              {selectedEvent?.resource.status === 'PENDING' && (
+                <Tooltip label="Confirmar">
+                  <IconButton
+                    aria-label="Confirmar cita"
+                    icon={<Icon as={FiCheck} />}
+                    colorScheme="green"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleConfirmAppointment}
+                    isLoading={isUpdatingStatus}
+                    isDisabled={isUpdatingStatus}
+                  />
+                </Tooltip>
               )}
-              {selectedEvent?.resource.status !== 'cancelled' && (
-                <Button
-                  colorScheme="red"
-                  onClick={handleCancelAppointment}
-                  borderRadius="lg"
-                >
-                  Cancelar Cita
-                </Button>
+              {selectedEvent?.resource.status !== 'CANCELLED' && (
+                <Tooltip label="Cancelar cita">
+                  <IconButton
+                    aria-label="Cancelar cita"
+                    icon={<Icon as={FiX} />}
+                    colorScheme="red"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRequestCancelAppointment}
+                    isDisabled={isUpdatingStatus || isCancelling}
+                  />
+                </Tooltip>
               )}
-              <Button variant="ghost" onClick={onClose} borderRadius="lg">
+              <Button variant="ghost" size="sm" onClick={onClose}>
                 Cerrar
               </Button>
             </HStack>
@@ -499,41 +689,50 @@ const CalendarPage: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      {/* New Appointment Modal */}
-      <Modal isOpen={isNewOpen} onClose={onNewClose} size="lg">
-        <ModalOverlay backdropFilter="blur(4px)" />
-        <ModalContent borderRadius="2xl">
-          <ModalHeader>
-            <HStack spacing={3}>
-              <Box bg="brand.500" p={2} borderRadius="lg" color="white">
-                <Icon as={FiPlus} boxSize={5} />
-              </Box>
-              <Text>Nueva Cita</Text>
-            </HStack>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <VStack spacing={4} align="stretch">
-              <Text color="gray.500">
-                Funcionalidad en desarrollo. Usa el formulario de nueva cita.
-              </Text>
-              <Button
-                colorScheme="brand"
-                size="lg"
-                borderRadius="lg"
-                onClick={() => {
-                  navigate('/appointments/new', {
-                    state: location.state,
-                  });
-                  onNewClose();
-                }}
-              >
-                Ir al Formulario
+      {/* Cancel confirmation */}
+      <AlertDialog
+        isOpen={isCancelOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={isCancelling ? () => {} : onCancelClose}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent borderRadius="xl">
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Cancelar cita
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              ¿Seguro que quieres cancelar esta cita? Esta acción la marcará como cancelada.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onCancelClose} isDisabled={isCancelling}>
+                Volver
               </Button>
-            </VStack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+              <Button
+                colorScheme="red"
+                onClick={handleConfirmCancelAppointment}
+                ml={3}
+                isLoading={isCancelling}
+                loadingText="Cancelando..."
+              >
+                Cancelar cita
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+
+      {/* New Appointment Modal */}
+      <AppointmentFormModal
+        isOpen={isNewOpen}
+        onClose={onNewClose}
+        onSuccess={onNewClose}
+        initialDate={slotDate}
+        initialTime={slotTime}
+        initialPatientId={initialPatientId}
+        createAppointment={createAppointment}
+      />
     </Box>
   );
 };

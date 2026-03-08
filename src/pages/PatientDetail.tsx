@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -14,11 +14,12 @@ import {
   CardBody,
   useColorModeValue,
   SimpleGrid,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
+  Grid,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
   Divider,
   IconButton,
   useToast,
@@ -33,7 +34,14 @@ import {
   Icon,
   Checkbox,
   ModalFooter,
+  FormControl,
+  FormLabel,
   Input,
+  Select,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
 } from '@chakra-ui/react';
 import {
   FiCalendar,
@@ -46,22 +54,72 @@ import {
   FiDownload,
   FiArrowLeft,
   FiUser,
+  FiClipboard,
+  FiTrendingUp,
+  FiSearch,
+  FiPaperclip,
+  FiUpload,
+  FiPlus,
+  FiMoreVertical,
 } from 'react-icons/fi';
 import { MdVerified } from 'react-icons/md';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  mockAttachments,
-  getConsentTypes,
-  getPatientConsentsByPatientId,
-} from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { motion, AnimatePresence } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
-import type { MedicalNote, ConsentType, PatientConsent } from '../types';
-import { usePatient } from '../hooks/usePatients';
+import { motion } from 'framer-motion';
+import type { NoteType, TemplateItem } from '../types';
+import { usePatient, usePatientAssets } from '../hooks/usePatients';
 import { useNotes } from '../hooks/useNotes';
-import { Spinner, Alert, AlertIcon } from '@chakra-ui/react';
+import {
+  usePatientConsents,
+  getConsentTypeLabel,
+  getConsentTypeDescription,
+  type PatientConsentItem,
+} from '../hooks/usePatientConsents';
+import { apiService } from '../services/api';
+import {
+  usePatientIdentity,
+  IDENTITY_FIELD_LABELS,
+  GENDER_LABELS,
+  MARITAL_STATUS_LABELS,
+  type PatientIdentity,
+} from '../hooks/usePatientIdentity';
+import { Spinner, Alert, AlertIcon, AlertTitle, AlertDescription } from '@chakra-ui/react';
+
+// Mock: lista de formularios del doctor (futuro GET /forms/)
+const MOCK_DOCTOR_FORMS: { id: string; name: string; template: TemplateItem; pdfUrl: string | null }[] = [
+  {
+    id: 'form-1',
+    name: 'Consentimiento informado',
+    template: {
+      id: 't1',
+      name: 'Consentimiento informado',
+      pdfFileName: 'consentimiento.pdf',
+      fields: [
+        { id: 'f1', name: 'Nombre del paciente', type: 'text', required: true },
+        { id: 'f2', name: 'Fecha', type: 'date', required: true },
+        { id: 'f3', name: 'Acepta términos', type: 'checkbox', required: true },
+        { id: 'f4', name: 'Firma del paciente', type: 'signature', required: true },
+      ],
+    },
+    pdfUrl: null,
+  },
+  {
+    id: 'form-2',
+    name: 'Historia clínica breve',
+    template: {
+      id: 't2',
+      name: 'Historia clínica breve',
+      pdfFileName: null,
+      fields: [
+        { id: 'f1', name: 'Motivo de consulta', type: 'text', required: true },
+        { id: 'f2', name: 'Antecedentes relevantes', type: 'text', required: false },
+        { id: 'f3', name: 'Alergias', type: 'text', required: false },
+      ],
+    },
+    pdfUrl: null,
+  },
+];
 
 const PatientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -69,63 +127,144 @@ const PatientDetail: React.FC = () => {
   const toast = useToast();
   const cardBg = useColorModeValue('card.light', 'card.dark');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const greenHeaderBg = useColorModeValue('green.50', 'gray.700');
-  const orangeHeaderBg = useColorModeValue('orange.50', 'gray.700');
-  const purpleHeaderBg = useColorModeValue('purple.50', 'gray.700');
-  const blueHeaderBg = useColorModeValue('blue.50', 'gray.700');
-  const redHeaderBg = useColorModeValue('red.50', 'gray.700');
+  const consentGrantedBg = useColorModeValue('green.50', 'green.900');
+  const consentGrantedBorder = useColorModeValue('green.300', 'green.700');
+  const consentGrantedText = useColorModeValue('green.700', 'green.300');
+  const descriptionColor = useColorModeValue('gray.600', 'gray.400');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedNote, setSelectedNote] = useState<any>(null);
 
   // Usar hooks de API
   const { patient, profile, loading: patientLoading, error: patientError } = usePatient(id);
   const { notes, loading: notesLoading, error: notesError } = useNotes(id);
+  const { assets: patientAssets, loading: assetsLoading, refetch: refetchAssets } = usePatientAssets(id);
+  const { consents: patientConsents, loading: consentsLoading, error: consentsError } = usePatientConsents(id);
+  const {
+    identity,
+    exists: identityExists,
+    loading: identityLoading,
+    error: identityError,
+    saveIdentity,
+    refetch: refetchIdentity,
+  } = usePatientIdentity(id);
 
-  // Consent states (todavía usando mock data hasta que haya endpoint)
+  // Consent modal (detail)
   const {
     isOpen: isConsentModalOpen,
     onOpen: onConsentModalOpen,
     onClose: onConsentModalClose,
   } = useDisclosure();
-  const [selectedConsent, setSelectedConsent] = useState<ConsentType | null>(null);
-  const [consentTypes] = useState<ConsentType[]>(getConsentTypes());
-  const [patientConsents] = useState<PatientConsent[]>(
-    id ? getPatientConsentsByPatientId(id) : []
+  const [selectedConsent, setSelectedConsent] = useState<PatientConsentItem | null>(null);
+
+  // Consents list modal (view all consentimientos de clínica)
+  const {
+    isOpen: isConsentsListModalOpen,
+    onOpen: onConsentsListModalOpen,
+    onClose: onConsentsListModalClose,
+  } = useDisclosure();
+
+  // Identity form modal
+  const {
+    isOpen: isIdentityModalOpen,
+    onOpen: onIdentityModalOpen,
+    onClose: onIdentityModalClose,
+  } = useDisclosure();
+
+  // Nuevo formulario modal (seleccionar formulario para llenar)
+  const {
+    isOpen: isFormSelectModalOpen,
+    onOpen: onFormSelectModalOpen,
+    onClose: onFormSelectModalClose,
+  } = useDisclosure();
+  const [identityForm, setIdentityForm] = useState<Record<string, string>>({});
+  const [isSavingIdentity, setIsSavingIdentity] = useState(false);
+
+  const interrogatoryNote = useMemo(
+    () => notes.find((n) => n.type === 'interrogation'),
+    [notes]
   );
 
-  const patientAttachments = mockAttachments.filter(
-    (a) => a.patientId === id
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB
+
+  const handleFiles = useCallback(
+    async (files: File[]) => {
+      if (!id || files.length === 0) return;
+      const oversized = files.filter((f) => f.size > MAX_FILE_SIZE);
+      if (oversized.length > 0) {
+        toast({
+          title: 'Archivo muy grande',
+          description: `Máximo 30MB por archivo. ${oversized.map((f) => f.name).join(', ')} excede el límite.`,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+      const valid = files.filter((f) => f.size <= MAX_FILE_SIZE);
+      if (valid.length === 0) return;
+
+      setIsUploading(true);
+      try {
+        await apiService.uploadPatientAssets(id, valid);
+        await refetchAssets();
+        toast({
+          title: 'Archivos subidos',
+          description: `${valid.length} archivo(s) subido(s) correctamente`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } catch (err: unknown) {
+        toast({
+          title: 'Error al subir',
+          description: err instanceof Error ? err.message : 'No se pudieron subir los archivos',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [id, toast, refetchAssets]
   );
-  const latestNote = notes[0]; // Already sorted by date
 
-  // Group notes by date
-  const groupedNotes = useMemo(() => {
-    const groups: Record<string, MedicalNote[]> = {};
-    notes.forEach((note) => {
-      const dateKey = format(new Date(note.createdAt), 'yyyy-MM-dd');
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(note);
-    });
-    // Sort by date descending
-    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [notes]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const files = Array.from(e.dataTransfer.files);
+      handleFiles(files);
+    },
+    [handleFiles]
+  );
 
-  // State for expanded stacks
-  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
 
-  const toggleDateExpansion = (dateKey: string) => {
-    setExpandedDates((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(dateKey)) {
-        newSet.delete(dateKey);
-      } else {
-        newSet.add(dateKey);
-      }
-      return newSet;
-    });
-  };
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files ? Array.from(e.target.files) : [];
+      handleFiles(files);
+      e.target.value = '';
+    },
+    [handleFiles]
+  );
+
+  const allAttachments = patientAssets;
+  const timelineLineColor = useColorModeValue('gray.200', 'gray.600');
 
   if (patientLoading) {
     return (
@@ -164,38 +303,117 @@ const PatientDetail: React.FC = () => {
 
   const getNoteTypeLabel = (type: string) => {
     switch (type) {
-      case 'initial_interrogation':
-        return 'Interrogatorio';
-      case 'evolution_note':
+      case 'interrogation':
+        return 'Detalles';
+      case 'evolution':
         return 'Nota de Evolución';
-      case 'physical_examination':
+      case 'exploration':
         return 'Exploración Física';
       default:
         return 'Nota Personalizada';
     }
   };
 
+  const getNoteTypeIcon = (type: NoteType) => {
+    switch (type) {
+      case 'interrogation':
+        return { icon: FiClipboard, color: 'purple.500', bg: 'purple.50' };
+      case 'evolution':
+        return { icon: FiTrendingUp, color: 'blue.500', bg: 'blue.50' };
+      case 'exploration':
+        return { icon: FiSearch, color: 'green.500', bg: 'green.50' };
+      default:
+        return { icon: FiFileText, color: 'gray.500', bg: 'gray.50' };
+    }
+  };
+
+  const stripHtml = (html: string): string => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
+
   const getFileIcon = (fileType: string) => {
     return <FiFile />;
   };
 
-  // Consent functions
-  const handleConsentClick = (consent: ConsentType) => {
+  const handleConsentClick = (consent: PatientConsentItem) => {
     setSelectedConsent(consent);
     onConsentModalOpen();
   };
 
-  const isConsentGranted = (consentTypeId: string) => {
-    return patientConsents.some(
-      (pc) => pc.consentTypeId === consentTypeId && pc.status === 'granted'
-    );
+  const handleOpenIdentityForm = () => {
+    if (identity) {
+      const form: Record<string, string> = {};
+      for (const [key, value] of Object.entries(identity)) {
+        if (value != null) form[key] = String(value);
+      }
+      setIdentityForm(form);
+    } else {
+      setIdentityForm({});
+    }
+    onIdentityModalOpen();
+  };
+
+  const handleSaveIdentity = async () => {
+    setIsSavingIdentity(true);
+    try {
+      await saveIdentity(identityForm);
+      onIdentityModalClose();
+      toast({
+        title: identityExists ? 'Ficha actualizada' : 'Ficha creada',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message || 'No se pudo guardar la ficha',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSavingIdentity(false);
+    }
+  };
+
+  const identityFields: { key: string; label: string; type?: 'text' | 'date' | 'select'; options?: Record<string, string> }[] = [
+    { key: 'birthdate', label: 'Fecha de nacimiento', type: 'date' },
+    { key: 'gender', label: 'Sexo', type: 'select', options: GENDER_LABELS },
+    { key: 'nationality', label: 'Nacionalidad' },
+    { key: 'marital_status', label: 'Estado civil', type: 'select', options: MARITAL_STATUS_LABELS },
+    { key: 'occupation', label: 'Ocupación' },
+    { key: 'education_level', label: 'Nivel de estudios' },
+    { key: 'education', label: 'Educación' },
+    { key: 'religion', label: 'Religión' },
+    { key: 'birthplace_city', label: 'Ciudad de nacimiento' },
+    { key: 'birthplace_state', label: 'Estado de nacimiento' },
+    { key: 'birthplace_country', label: 'País de nacimiento' },
+    { key: 'residence_city', label: 'Ciudad de residencia' },
+    { key: 'residence_state', label: 'Estado de residencia' },
+    { key: 'residence_country', label: 'País de residencia' },
+    { key: 'emergency_contact_name', label: 'Contacto de emergencia' },
+    { key: 'emergency_contact_phone', label: 'Teléfono de emergencia' },
+    { key: 'emergency_contact_relationship', label: 'Parentesco' },
+  ];
+
+  const formatIdentityValue = (key: string, value: string | undefined): string => {
+    if (!value) return '—';
+    if (key === 'gender') return GENDER_LABELS[value] ?? value;
+    if (key === 'marital_status') return MARITAL_STATUS_LABELS[value] ?? value;
+    if (key === 'birthdate') {
+      try { return format(new Date(value), "d 'de' MMMM, yyyy", { locale: es }); } catch { return value; }
+    }
+    return value;
   };
 
   return (
     <Box>
       {/* Header with Gradient */}
       <Box
-        bgGradient="linear(135deg, purple.500 0%, purple.600 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
         py={8}
@@ -221,16 +439,43 @@ const PatientDetail: React.FC = () => {
                 <Avatar
                   size="2xl"
                   name={`${patient.firstName} ${patient.lastName}`}
-                  src={patient.avatar}
+                  src={
+                    profile?.avatar_url &&
+                    profile.avatar_url.trim() !== ''
+                      ? profile.avatar_url
+                      : undefined
+                  }
                   bg="whiteAlpha.300"
                   color="white"
                   borderWidth="4px"
                   borderColor="whiteAlpha.400"
+                  sx={{
+                    '& span': {
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '100%',
+                      height: '100%',
+                    },
+                  }}
                 />
                 <VStack align="start" spacing={2}>
                   <Heading size="xl">
                     {patient.firstName} {patient.lastName}
                   </Heading>
+                  {(patient.phone || profile?.phone) && (
+                    <Button
+                      as="a"
+                      href={`tel:${patient.phone || profile?.phone}`}
+                      size="sm"
+                      leftIcon={<FiPhone />}
+                      colorScheme="whiteAlpha"
+                      bg="whiteAlpha.300"
+                      _hover={{ bg: 'whiteAlpha.400' }}
+                    >
+                      Llamar
+                    </Button>
+                  )}
                   <HStack spacing={2}>
                     {patient.gender && (
                       <Badge
@@ -311,9 +556,8 @@ const PatientDetail: React.FC = () => {
                 >
                   Nueva Nota
                 </Button>
-                <IconButton
-                  aria-label="Editar paciente"
-                  icon={<FiEdit />}
+                <Button
+                  leftIcon={<Icon as={FiFile} />}
                   size="lg"
                   colorScheme="whiteAlpha"
                   bg="whiteAlpha.300"
@@ -327,745 +571,395 @@ const PatientDetail: React.FC = () => {
                     bg: 'whiteAlpha.500',
                     transform: 'translateY(0)',
                   }}
-                  onClick={() =>
-                    toast({
-                      title: 'Editar paciente',
-                      description: 'Función en desarrollo',
-                      status: 'info',
-                      duration: 2000,
-                    })
-                  }
+                  onClick={onFormSelectModalOpen}
                   transition="all 0.2s"
-                />
+                >
+                  Nuevo formulario
+                </Button>
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    aria-label="Opciones del paciente"
+                    icon={<FiMoreVertical />}
+                    size="lg"
+                    colorScheme="whiteAlpha"
+                    bg="whiteAlpha.300"
+                    backdropFilter="blur(10px)"
+                    _hover={{
+                      bg: 'whiteAlpha.400',
+                      transform: 'translateY(-2px)',
+                      boxShadow: 'xl',
+                    }}
+                    _active={{
+                      bg: 'whiteAlpha.500',
+                      transform: 'translateY(0)',
+                    }}
+                    transition="all 0.2s"
+                  />
+                  <MenuList color="gray.800" minW="220px">
+                    <MenuItem
+                      icon={<FiEdit />}
+                      onClick={() =>
+                        toast({
+                          title: 'Editar paciente',
+                          description: 'Función en desarrollo',
+                          status: 'info',
+                          duration: 2000,
+                        })
+                      }
+                    >
+                      Editar
+                    </MenuItem>
+                    <MenuItem
+                      icon={<FiClipboard />}
+                      onClick={onConsentsListModalOpen}
+                    >
+                      Ver consentimientos de clínica
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
               </HStack>
             </HStack>
           </VStack>
         </Container>
       </Box>
 
-      {/* Content */}
+      {/* Content: dos columnas — izquierda Ficha + Interrogatorio (colapsables), derecha timeline */}
       <Container maxW="container.xl" py={8}>
-        <Tabs colorScheme="brand">
-          <TabList>
-            <Tab>Información General</Tab>
-            <Tab>Expediente Médico ({notes.length})</Tab>
-            <Tab>Archivos ({patientAttachments.length})</Tab>
-            <Tab>Consentimientos</Tab>
-          </TabList>
-
-          <TabPanels>
-            {/* General Information Tab */}
-            <TabPanel px={0} pt={6}>
-              <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-                {/* Personal Information */}
-                <Card
-                  bg={cardBg}
-                  borderRadius="2xl"
-                  borderWidth="1px"
-                  borderColor={borderColor}
-                  transition="all 0.2s"
-                  _hover={{
-                    transform: 'translateY(-4px)',
-                    shadow: 'xl',
-                  }}
-                >
-                  <CardHeader bg={purpleHeaderBg} borderTopRadius="2xl">
-                    <HStack spacing={3}>
-                      <Box
-                        bg="purple.500"
-                        p={2}
-                        borderRadius="lg"
-                        color="white"
-                      >
-                        <Icon as={FiUser} boxSize={5} />
-                      </Box>
-                      <Heading size="md">Información Personal</Heading>
+        <Grid
+          templateColumns={{ base: '1fr', lg: 'minmax(320px, 380px) 1fr' }}
+          gap={8}
+          alignItems="start"
+        >
+          {/* Columna izquierda: Ficha de Identidad e Interrogatorio (colapsables) */}
+          <Box>
+            <Accordion allowMultiple defaultIndex={[0, 1]} borderWidth="0" reduceMotion>
+              <AccordionItem bg={cardBg} borderRadius="2xl" borderWidth="1px" borderColor={borderColor} mb={4} overflow="hidden">
+                <AccordionButton _expanded={{ borderBottom: '1px', borderColor }} px={5} py={4}>
+                  <HStack spacing={3} flex={1} textAlign="left">
+                    <Box bg="purple.50" p={2} borderRadius="lg" display="flex" alignItems="center" justifyContent="center">
+                      <Icon as={FiUser} boxSize={5} color="purple.500" />
+                    </Box>
+                    <Heading size="md">Ficha de Identidad</Heading>
+                  </HStack>
+                  {identityExists && (
+                    <Button
+                      size="sm"
+                      leftIcon={<FiEdit />}
+                      colorScheme="brand"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenIdentityForm();
+                      }}
+                      mr={2}
+                    >
+                      Editar
+                    </Button>
+                  )}
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel pb={5} pt={0} px={5}>
+                  {identityLoading ? (
+                    <HStack justify="center" py={6}>
+                      <Spinner size="md" />
+                      <Text>Cargando...</Text>
                     </HStack>
-                  </CardHeader>
-                  <CardBody>
-                    <VStack spacing={4} align="stretch">
-                      {patient.email && (
-                        <HStack spacing={3}>
-                          <FiMail />
-                          <VStack align="start" spacing={0} flex={1}>
-                            <Text fontSize="sm" color="gray.500">
-                              Email
-                            </Text>
-                            <Text>{patient.email}</Text>
-                          </VStack>
-                        </HStack>
-                      )}
-                      {patient.phone && (
-                        <HStack spacing={3}>
-                          <FiPhone />
-                          <VStack align="start" spacing={0} flex={1}>
-                            <Text fontSize="sm" color="gray.500">
-                              Teléfono
-                            </Text>
-                            <Text>{patient.phone}</Text>
-                          </VStack>
-                        </HStack>
-                      )}
-                      {(patient.address || patient.city || patient.state) && (
-                        <HStack spacing={3} align="start">
-                          <FiMapPin />
-                          <VStack align="start" spacing={0} flex={1}>
-                            <Text fontSize="sm" color="gray.500">
-                              Dirección
-                            </Text>
-                            <Text>
-                              {patient.address}
-                              {patient.city && `, ${patient.city}`}
-                              {patient.state && `, ${patient.state}`}
-                              {patient.zipCode && ` ${patient.zipCode}`}
-                            </Text>
-                          </VStack>
-                        </HStack>
-                      )}
-                    </VStack>
-                  </CardBody>
-                </Card>
-
-                {/* Legal/Fiscal Information */}
-                <Card
-                  bg={cardBg}
-                  borderRadius="2xl"
-                  borderWidth="1px"
-                  borderColor={borderColor}
-                  transition="all 0.2s"
-                  _hover={{
-                    transform: 'translateY(-4px)',
-                    shadow: 'xl',
-                  }}
-                >
-                  <CardHeader bg={blueHeaderBg} borderTopRadius="2xl">
-                    <HStack spacing={3}>
-                      <Box
-                        bg="blue.500"
-                        p={2}
-                        borderRadius="lg"
-                        color="white"
-                      >
-                        <Icon as={FiFile} boxSize={5} />
-                      </Box>
-                      <Heading size="md">Información Legal/Fiscal</Heading>
-                    </HStack>
-                  </CardHeader>
-                  <CardBody>
-                    <VStack spacing={4} align="stretch">
-                      {patient.curp && (
-                        <VStack align="start" spacing={1}>
-                          <Text fontSize="sm" color="gray.500">
-                            CURP
-                          </Text>
-                          <Text fontFamily="mono">{patient.curp}</Text>
-                        </VStack>
-                      )}
-                      {patient.rfc && (
-                        <VStack align="start" spacing={1}>
-                          <Text fontSize="sm" color="gray.500">
-                            RFC
-                          </Text>
-                          <Text fontFamily="mono">{patient.rfc}</Text>
-                        </VStack>
-                      )}
-                      {patient.socialSecurityNumber && (
-                        <VStack align="start" spacing={1}>
-                          <Text fontSize="sm" color="gray.500">
-                            Número de Seguro Social
-                          </Text>
-                          <Text fontFamily="mono">
-                            {patient.socialSecurityNumber}
-                          </Text>
-                        </VStack>
-                      )}
-                      {patient.insuranceProvider && (
-                        <VStack align="start" spacing={1}>
-                          <Text fontSize="sm" color="gray.500">
-                            Seguro Médico
-                          </Text>
-                          <Text>
-                            {patient.insuranceProvider}
-                            {patient.insuranceNumber &&
-                              ` - ${patient.insuranceNumber}`}
-                          </Text>
-                        </VStack>
-                      )}
-                    </VStack>
-                  </CardBody>
-                </Card>
-
-                {/* Latest Note Preview */}
-                {latestNote && (
-                  <Card
-                    bg={cardBg}
-                    borderRadius="2xl"
-                    borderWidth="1px"
-                    borderColor={borderColor}
-                    transition="all 0.2s"
-                    _hover={{
-                      transform: 'translateY(-4px)',
-                      shadow: 'xl',
-                    }}
-                  >
-                    <CardHeader bg={greenHeaderBg} borderTopRadius="2xl">
-                      <HStack justify="space-between">
-                        <HStack spacing={3}>
-                          <Box
-                            bg="success.500"
-                            p={2}
-                            borderRadius="lg"
-                            color="white"
-                          >
-                            <Icon as={FiFileText} boxSize={5} />
-                          </Box>
-                          <Heading size="md">Última Nota Médica</Heading>
-                        </HStack>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            if (latestNote.status === 'draft') {
-                              navigate(`/patients/${patient.id}/notes/${latestNote.id}/edit`);
-                            } else {
-                              handleViewNote(latestNote);
-                            }
-                          }}
-                        >
-                          {latestNote.status === 'draft' ? 'Editar' : 'Ver completa'}
-                        </Button>
-                      </HStack>
-                    </CardHeader>
-                    <CardBody>
-                      <VStack spacing={3} align="stretch">
-                        <VStack align="start" spacing={1}>
-                          <HStack align="center" spacing={2}>
-                            <Text fontWeight="bold">{latestNote.title}</Text>
-                            {latestNote.status === 'signed' ? (
-                              <Tooltip
-                                label={`Firmado por ${latestNote.signedBy} el ${latestNote.signedAt ? format(new Date(latestNote.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
-                                placement="top"
-                                hasArrow
-                              >
-                                <Badge colorScheme="green" fontSize="xs">
-                                  Firmada
-                                </Badge>
-                              </Tooltip>
-                            ) : (
-                              <Badge colorScheme="orange" fontSize="xs">
-                                Borrador
-                              </Badge>
-                            )}
-                          </HStack>
-                          <Badge colorScheme="blue">
-                            {getNoteTypeLabel(latestNote.type)}
-                          </Badge>
-                        </VStack>
-                        <Text fontSize="sm" color="gray.500" noOfLines={3}>
-                          {latestNote.content.substring(0, 150)}...
-                        </Text>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                )}
-
-                {/* Quick Links */}
-                <Card
-                  bg={cardBg}
-                  borderRadius="2xl"
-                  borderWidth="1px"
-                  borderColor={borderColor}
-                  transition="all 0.2s"
-                  _hover={{
-                    transform: 'translateY(-4px)',
-                    shadow: 'xl',
-                  }}
-                >
-                  <CardHeader bg={orangeHeaderBg} borderTopRadius="2xl">
-                    <HStack spacing={3}>
-                      <Box
-                        bg="orange.500"
-                        p={2}
-                        borderRadius="lg"
-                        color="white"
-                      >
-                        <Icon as={FiCalendar} boxSize={5} />
-                      </Box>
-                      <Heading size="md">Accesos Rápidos</Heading>
-                    </HStack>
-                  </CardHeader>
-                  <CardBody>
-                    <VStack spacing={3} align="stretch">
+                  ) : identityError ? (
+                    <Alert status="error" borderRadius="lg">
+                      <AlertIcon />
+                      {identityError}
+                    </Alert>
+                  ) : !identityExists ? (
+                    <VStack spacing={4} py={4}>
+                      <Icon as={FiUser} boxSize={10} color="gray.400" />
+                      <Text color="gray.500" textAlign="center" fontSize="sm">
+                        No se ha registrado la ficha de identidad del paciente.
+                      </Text>
                       <Button
-                        leftIcon={<FiFileText />}
+                        size="sm"
+                        leftIcon={<FiPlus />}
+                        colorScheme="brand"
                         variant="outline"
-                        justifyContent="start"
+                        onClick={handleOpenIdentityForm}
+                      >
+                        Crear ficha
+                      </Button>
+                    </VStack>
+                  ) : (
+                    <SimpleGrid columns={2} spacing={3}>
+                        {identityFields.map(({ key, label }) => {
+                          const value = identity?.[key as keyof PatientIdentity];
+                          if (!value) return null;
+                          return (
+                            <VStack key={key} align="start" spacing={0}>
+                              <Text fontSize="xs" color="gray.500">{label}</Text>
+                              <Text fontSize="sm" fontWeight="medium">
+                                {formatIdentityValue(key, value)}
+                              </Text>
+                            </VStack>
+                          );
+                        })}
+                      </SimpleGrid>
+                  )}
+                </AccordionPanel>
+              </AccordionItem>
+
+              <AccordionItem bg={cardBg} borderRadius="2xl" borderWidth="1px" borderColor={borderColor} overflow="hidden">
+                <AccordionButton _expanded={{ borderBottom: '1px', borderColor }} px={5} py={4}>
+                  <HStack spacing={3} flex={1} textAlign="left">
+                    <Box bg="blue.50" p={2} borderRadius="lg" display="flex" alignItems="center" justifyContent="center">
+                      <Icon as={FiClipboard} boxSize={5} color="blue.500" />
+                    </Box>
+                    <Heading size="md">Interrogatorio Inicial</Heading>
+                  </HStack>
+                  <AccordionIcon />
+                </AccordionButton>
+                <AccordionPanel pb={5} pt={0} px={5}>
+                  {notesLoading ? (
+                    <HStack justify="center" py={6}>
+                      <Spinner size="md" />
+                      <Text>Cargando...</Text>
+                    </HStack>
+                  ) : !interrogatoryNote ? (
+                    <VStack spacing={4} py={4}>
+                      <Icon as={FiClipboard} boxSize={10} color="gray.400" />
+                      <Text color="gray.500" textAlign="center" fontSize="sm">
+                        No se ha registrado un interrogatorio inicial para este paciente.
+                      </Text>
+                      <Button
+                        size="sm"
+                        leftIcon={<FiPlus />}
+                        colorScheme="brand"
+                        variant="outline"
                         onClick={() =>
                           navigate(`/patients/${patient.id}/notes/new`, {
-                            state: { type: 'initial_interrogation' },
+                            state: { type: 'interrogation' },
                           })
                         }
                       >
-                        Crear Interrogatorio
-                      </Button>
-                      <Button
-                        leftIcon={<FiCalendar />}
-                        variant="outline"
-                        justifyContent="start"
-                        onClick={() =>
-                          navigate('/calendar', {
-                            state: { patientId: patient.id },
-                          })
-                        }
-                      >
-                        Agendar Cita
-                      </Button>
-                      <Button
-                        leftIcon={<FiEdit />}
-                        variant="outline"
-                        justifyContent="start"
-                        onClick={() =>
-                          toast({
-                            title: 'Editar paciente',
-                            description: 'Función en desarrollo',
-                            status: 'info',
-                            duration: 2000,
-                          })
-                        }
-                      >
-                        Editar Información
+                        Crear interrogatorio
                       </Button>
                     </VStack>
-                  </CardBody>
-                </Card>
-              </SimpleGrid>
-            </TabPanel>
-
-            {/* Medical Notes Tab */}
-            <TabPanel px={0} pt={6}>
-              <VStack spacing={6} align="stretch">
-                {notes.length === 0 ? (
-                  <Card bg={cardBg}>
-                    <CardBody>
-                      <VStack spacing={4} py={8}>
-                        <Text fontSize="lg" color="gray.500">
-                          No hay notas médicas registradas
-                        </Text>
+                  ) : (
+                    <VStack align="stretch" spacing={3}>
+                      {!interrogatoryNote.isSigned && (
                         <Button
-                          leftIcon={<FiFileText />}
+                          size="sm"
+                          leftIcon={<FiEdit />}
                           colorScheme="brand"
+                          variant="outline"
+                          alignSelf="flex-start"
                           onClick={() =>
-                            navigate(`/patients/${patient.id}/notes/new`)
+                            navigate(`/patients/${patient.id}/notes/${interrogatoryNote.id}`)
                           }
                         >
-                          Crear Primera Nota
+                          Editar
                         </Button>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                ) : (
-                  groupedNotes.map(([dateKey, dateNotes], index) => {
-                    const isExpanded = expandedDates.has(dateKey);
-                    const noteCount = dateNotes.length;
-
-                    return (
-                      <Box key={dateKey}>
-                        {/* Date Divider */}
-                        <HStack spacing={4} mb={4}>
-                          <Divider />
-                          <Text
-                            fontSize="sm"
-                            fontWeight="semibold"
-                            color="gray.500"
-                            whiteSpace="nowrap"
-                          >
-                            {format(new Date(dateKey), "d 'de' MMMM, yyyy", {
-                              locale: es,
-                            })}
-                          </Text>
-                          <Divider />
-                        </HStack>
-
-                        {/* Notes Stack */}
-                        {isExpanded ? (
-                          // Expanded view - show all notes in grid
-                          <SimpleGrid
-                            columns={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
-                            spacing={4}
-                          >
-                            {dateNotes.map((note, noteIndex) => (
-                              <motion.div
-                                key={note.id}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{
-                                  duration: 0.3,
-                                  delay: noteIndex * 0.05,
-                                }}
-                              >
-                                <Card
-                                  bg={cardBg}
-                                  shadow="md"
-                                  borderWidth="1px"
-                                  borderColor={borderColor}
-                                  maxW="280px"
-                                  mx="auto"
-                                  transition="all 0.2s"
-                                  _hover={{
-                                    transform: 'translateY(-4px)',
-                                    shadow: 'lg',
-                                    borderColor: 'purple.300',
-                                  }}
-                                  cursor="pointer"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (note.status === 'draft') {
-                                      navigate(`/patients/${patient.id}/notes/${note.id}/edit`);
-                                    } else {
-                                      handleViewNote(note);
-                                    }
-                                  }}
-                                >
-                                  <CardBody p={4}>
-                                    <VStack spacing={3} align="stretch">
-                          <HStack align="start" spacing={2} justify="space-between">
-                            <VStack align="start" spacing={1} flex={1}>
-                              <Heading size="sm" noOfLines={2}>
-                                {note.title}
-                              </Heading>
-                              <HStack spacing={2} flexWrap="wrap">
-                                <Badge colorScheme="blue" fontSize="xs">
-                                  {getNoteTypeLabel(note.type)}
-                                </Badge>
-                                {note.status === 'signed' ? (
-                                  <Tooltip
-                                    label={`Firmado por ${note.signedBy} el ${note.signedAt ? format(new Date(note.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
-                                    placement="top"
-                                    hasArrow
-                                  >
-                                    <Badge colorScheme="green" fontSize="xs">
-                                      Firmada
-                                    </Badge>
-                                  </Tooltip>
-                                ) : (
-                                  <Badge colorScheme="orange" fontSize="xs">
-                                    Borrador
-                                  </Badge>
-                                )}
-                              </HStack>
-                            </VStack>
-                          </HStack>
-                                      <Text fontSize="xs" color="gray.500">
-                                        {format(
-                                          new Date(note.createdAt),
-                                          "d 'de' MMM, yyyy 'a las' HH:mm",
-                                          { locale: es }
-                                        )}
-                                      </Text>
-                                    </VStack>
-                                  </CardBody>
-                                </Card>
-                              </motion.div>
-                            ))}
-                          </SimpleGrid>
-                        ) : (
-                          // Collapsed view - show stacked cards
-                          <Box
-                            position="relative"
-                            cursor="pointer"
-                            role="group"
-                            maxW="280px"
-                            mx="auto"
-                          >
-                            {dateNotes.map((note, noteIndex) => {
-                              const isVisible = noteIndex < 3;
-                              const offsetIndex = Math.min(noteIndex, 2);
-
-                              return (
-                                <motion.div
-                                  key={note.id}
-                                  initial={false}
-                                  animate={{
-                                    y: offsetIndex * 8,
-                                    scale: 1 - offsetIndex * 0.02,
-                                    opacity: isVisible ? 1 : 0,
-                                  }}
-                                  whileHover={
-                                    noteIndex < 3
-                                      ? {
-                                          y: offsetIndex * 14,
-                                          transition: { duration: 0.2 },
-                                        }
-                                      : {}
-                                  }
-                                  transition={{
-                                    duration: 0.3,
-                                    ease: 'easeOut',
-                                  }}
-                                  style={{
-                                    position: noteIndex === 0 ? 'relative' : 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    zIndex: dateNotes.length - noteIndex,
-                                  }}
-                                  onClick={() => {
-                                    if (note.status === 'draft') {
-                                      navigate(`/patients/${patient.id}/notes/${note.id}/edit`);
-                                    } else {
-                                      toggleDateExpansion(dateKey);
-                                    }
-                                  }}
-                                >
-                                  <Card
-                                    bg={cardBg}
-                                    shadow={noteIndex === 0 ? 'lg' : 'md'}
-                                    borderWidth={noteIndex > 0 ? '2px' : '1px'}
-                                    borderColor={
-                                      noteIndex > 0 ? 'brand.300' : borderColor
-                                    }
-                                  >
-                                    <CardBody p={4}>
-                                      <VStack spacing={3} align="stretch">
-                                        <VStack align="start" spacing={1}>
-                          <HStack align="start" spacing={2} justify="space-between" w="full">
-                            <Heading size="sm" noOfLines={2} flex={1}>
-                              {note.title}
-                            </Heading>
-                            {note.status === 'signed' ? (
-                              <Tooltip
-                                label={`Firmado por ${note.signedBy} el ${note.signedAt ? format(new Date(note.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
-                                placement="top"
-                                hasArrow
-                              >
-                                <Badge colorScheme="green" fontSize="xs">
-                                  Firmada
-                                </Badge>
-                              </Tooltip>
-                            ) : (
-                              <Badge colorScheme="orange" fontSize="xs">
-                                Borrador
-                              </Badge>
-                            )}
-                          </HStack>
-                          <HStack spacing={2} flexWrap="wrap">
-                            <Badge colorScheme="blue" fontSize="xs">
-                              {getNoteTypeLabel(note.type)}
-                            </Badge>
-                          </HStack>
-                                          <Text fontSize="xs" color="gray.500">
-                                            {format(
-                                              new Date(note.createdAt),
-                                              "d 'de' MMM, yyyy 'a las' HH:mm",
-                                              { locale: es }
-                                            )}
-                                          </Text>
-                                        </VStack>
-                                      </VStack>
-                                    </CardBody>
-                                  </Card>
-                                </motion.div>
-                              );
-                            })}
-
-                            {/* Show count indicator when collapsed */}
-                            {noteCount > 1 && (
-                              <Box
-                                position="absolute"
-                                bottom="-16px"
-                                left="50%"
-                                transform="translateX(-50%)"
-                                zIndex={dateNotes.length + 1}
-                                pointerEvents="none"
-                              >
-                                <Badge
-                                  colorScheme="brand"
-                                  fontSize="sm"
-                                  px={4}
-                                  py={2}
-                                  borderRadius="full"
-                                  boxShadow="lg"
-                                >
-                                  {noteCount} {noteCount === 1 ? 'nota' : 'notas'}
-                                </Badge>
-                              </Box>
-                            )}
-                          </Box>
-                        )}
-
-                        {/* Toggle button */}
-                        <Box textAlign="center" mt={isExpanded ? 4 : 8}>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => toggleDateExpansion(dateKey)}
-                          >
-                            {isExpanded ? 'Colapsar' : 'Ver todas'}
-                          </Button>
-                        </Box>
-                      </Box>
-                    );
-                  })
-                )}
-              </VStack>
-            </TabPanel>
-
-            {/* Attachments Tab */}
-            <TabPanel px={0} pt={6}>
-              <VStack spacing={4} align="stretch">
-                {patientAttachments.length === 0 ? (
-                  <Card bg={cardBg}>
-                    <CardBody>
-                      <VStack spacing={4} py={8}>
-                        <Text fontSize="lg" color="gray.500">
-                          No hay archivos adjuntos
+                      )}
+                      <HStack spacing={2}>
+                        <Text fontWeight="semibold" fontSize="sm">
+                          {interrogatoryNote.title}
                         </Text>
-                      </VStack>
-                    </CardBody>
-                  </Card>
-                ) : (
-                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                    {patientAttachments.map((attachment) => (
-                      <Card key={attachment.id} bg={cardBg}>
-                        <CardBody>
-                          <HStack spacing={3}>
-                            <Box fontSize="2xl">
-                              {getFileIcon(attachment.fileType)}
+                        {interrogatoryNote.isSigned ? (
+                          <Tooltip label="Firmada" placement="top" hasArrow>
+                            <Box as="span" display="inline-flex" color="green.500" alignItems="center">
+                              <Icon as={MdVerified} boxSize={4} />
                             </Box>
-                            <VStack align="start" spacing={0} flex={1}>
-                              <Text fontWeight="medium" noOfLines={1}>
-                                {attachment.fileName}
-                              </Text>
-                              <Text fontSize="sm" color="gray.500">
-                                {(attachment.fileSize / 1024 / 1024).toFixed(2)}{' '}
-                                MB
-                              </Text>
-                              <Text fontSize="xs" color="gray.400">
-                                {format(
-                                  new Date(attachment.uploadedAt),
-                                  "d 'de' MMM, yyyy",
-                                  { locale: es }
-                                )}
-                              </Text>
-                            </VStack>
-                            <IconButton
-                              aria-label="Descargar"
-                              icon={<FiDownload />}
-                              variant="ghost"
-                              size="sm"
-                            />
-                          </HStack>
-                        </CardBody>
-                      </Card>
-                    ))}
-                  </SimpleGrid>
-                )}
-              </VStack>
-            </TabPanel>
-
-            {/* Consents Tab */}
-            <TabPanel px={0} pt={6}>
-              <VStack spacing={6} align="stretch">
-                <Card bg={cardBg}>
-                  <CardHeader>
-                    <Heading size="md">Consentimientos del Paciente</Heading>
-                    <Text fontSize="sm" color="gray.500" mt={2}>
-                      Vista de solo lectura de los consentimientos otorgados por el paciente.
-                      Solo el paciente puede modificar sus consentimientos.
-                    </Text>
-                  </CardHeader>
-                  <CardBody>
-                    <VStack spacing={4} align="stretch">
-                      {consentTypes.map((consent) => {
-                        const isGranted = isConsentGranted(consent.id);
-
-                        return (
-                          <Card
-                            key={consent.id}
-                            variant="outline"
-                            borderWidth="2px"
-                            borderColor={isGranted ? 'green.300' : borderColor}
-                            bg={isGranted ? 'green.50' : 'transparent'}
+                          </Tooltip>
+                        ) : (
+                          <Tooltip
+                            label={interrogatoryNote.createdAt ? `Borrador creado el ${format(new Date(interrogatoryNote.createdAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}` : 'Borrador'}
+                            placement="top"
+                            hasArrow
                           >
-                            <CardBody>
-                              <HStack spacing={4} align="start">
-                                <Checkbox
-                                  size="lg"
-                                  colorScheme="green"
-                                  isChecked={isGranted}
-                                  isDisabled={true}
-                                  pointerEvents="none"
-                                />
-                                <VStack
-                                  align="start"
-                                  spacing={1}
-                                  flex={1}
-                                  cursor="pointer"
-                                  onClick={() => handleConsentClick(consent)}
-                                >
-                                  <HStack>
-                                    <Text fontWeight="bold">{consent.name}</Text>
-                                    {consent.isRequired && (
-                                      <Badge colorScheme="red" fontSize="xs">
-                                        Requerido
-                                      </Badge>
-                                    )}
-                                    {isGranted && (
-                                      <Badge colorScheme="green" fontSize="xs">
-                                        Otorgado
-                                      </Badge>
-                                    )}
-                                  </HStack>
-                                  <Text fontSize="sm" color="gray.600">
-                                    {consent.description}
-                                  </Text>
-                                  <Text fontSize="xs" color="gray.500">
-                                    Categoría: {consent.category} • Versión:{' '}
-                                    {consent.version}
-                                  </Text>
-                                  {isGranted && (
-                                    <Text fontSize="xs" color="green.600" fontWeight="medium">
-                                      Otorgado el{' '}
-                                      {patientConsents
-                                        .find(
-                                          (pc) =>
-                                            pc.consentTypeId === consent.id &&
-                                            pc.status === 'granted'
-                                        )
-                                        ?.grantedAt &&
-                                        format(
-                                          new Date(
-                                            patientConsents.find(
-                                              (pc) =>
-                                                pc.consentTypeId === consent.id &&
-                                                pc.status === 'granted'
-                                            )!.grantedAt!
-                                          ),
-                                          "d 'de' MMMM, yyyy 'a las' HH:mm",
-                                          { locale: es }
-                                        )}
-                                    </Text>
+                            <Box as="span" display="inline-flex" color="orange.500" alignItems="center">
+                              <Icon as={FiEdit} boxSize={4} />
+                            </Box>
+                          </Tooltip>
+                        )}
+                      </HStack>
+                      {interrogatoryNote.createdAt && (
+                        <Text fontSize="xs" color="gray.500">
+                          Creado el{' '}
+                          {format(new Date(interrogatoryNote.createdAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}
+                        </Text>
+                      )}
+                      <Divider />
+                      <Box
+                        maxH="400px"
+                        overflowY="auto"
+                        fontSize="sm"
+                        sx={{
+                          '& h1': { fontSize: 'xl', fontWeight: 'bold', mb: 3 },
+                          '& h2': { fontSize: 'lg', fontWeight: 'bold', mb: 2, mt: 4 },
+                          '& h3': { fontSize: 'md', fontWeight: 'semibold', mb: 1, mt: 3 },
+                          '& p': { mb: 2 },
+                          '& ul, & ol': { ml: 5, mb: 3 },
+                          '& li': { mb: 1 },
+                          '& strong': { fontWeight: 'bold' },
+                        }}
+                        dangerouslySetInnerHTML={{ __html: interrogatoryNote.content }}
+                      />
+                    </VStack>
+                  )}
+                </AccordionPanel>
+              </AccordionItem>
+            </Accordion>
+          </Box>
+
+          {/* Columna derecha: Timeline del expediente */}
+          <Box>
+            {notes.length === 0 ? (
+              <Card bg={cardBg}>
+                <CardBody>
+                  <VStack spacing={4} py={8}>
+                    <Text fontSize="lg" color="gray.500">
+                      No hay notas médicas registradas
+                    </Text>
+                    <Button
+                      leftIcon={<FiFileText />}
+                      colorScheme="brand"
+                      onClick={() =>
+                        navigate(`/patients/${patient.id}/notes/new`)
+                      }
+                    >
+                      Crear Primera Nota
+                    </Button>
+                  </VStack>
+                </CardBody>
+              </Card>
+            ) : (
+              <Box position="relative" pl={{ base: 8, md: 10 }}>
+                <Box
+                  position="absolute"
+                  left={{ base: '15px', md: '19px' }}
+                  top={0}
+                  bottom={0}
+                  width="2px"
+                  bg={timelineLineColor}
+                />
+                <VStack spacing={6} align="stretch">
+                  {notes.map((note, noteIndex) => {
+                    const noteIcon = getNoteTypeIcon(note.type as NoteType);
+                    const plainContent = stripHtml(note.content);
+                    return (
+                      <motion.div
+                        key={note.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: noteIndex * 0.05 }}
+                      >
+                        <Box position="relative">
+                          <Tooltip label={getNoteTypeLabel(note.type)} placement="top" hasArrow>
+                            <Box
+                              position="absolute"
+                              left={{ base: '-33px', md: '-37px' }}
+                              top="20px"
+                              w="32px"
+                              h="32px"
+                              borderRadius="full"
+                              bg={noteIcon.bg}
+                              border="2px solid"
+                              borderColor={noteIcon.color}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                              zIndex={1}
+                            >
+                              <Icon as={noteIcon.icon} color={noteIcon.color} boxSize={4} />
+                            </Box>
+                          </Tooltip>
+                          <Card
+                            bg={cardBg}
+                            borderWidth="1px"
+                            borderColor={borderColor}
+                            borderRadius="xl"
+                            shadow="sm"
+                            minH="120px"
+                            transition="all 0.2s"
+                            _hover={{
+                              shadow: 'md',
+                              borderColor: noteIcon.color,
+                              transform: 'translateX(4px)',
+                            }}
+                            cursor="pointer"
+                            onClick={() => {
+                              if (note.status === 'draft') {
+                                navigate(`/patients/${patient.id}/notes/${note.id}/edit`);
+                              } else {
+                                handleViewNote(note);
+                              }
+                            }}
+                          >
+                            <CardBody p={5}>
+                              <VStack spacing={3} align="stretch">
+                                <HStack justify="space-between" align="center" spacing={3}>
+                                  <Heading size="sm" noOfLines={1} flex={1}>
+                                    {note.title}
+                                  </Heading>
+                                  {note.status === 'signed' ? (
+                                    <Tooltip
+                                      label={note.signedAt ? `Firmada el ${format(new Date(note.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}` : 'Firmada'}
+                                      placement="top"
+                                      hasArrow
+                                    >
+                                      <Box as="span" display="inline-flex" color="green.500" alignItems="center" flexShrink={0}>
+                                        <Icon as={MdVerified} boxSize={4} />
+                                      </Box>
+                                    </Tooltip>
+                                  ) : (
+                                    <Tooltip
+                                      label={note.createdAt ? `Borrador creado el ${format(new Date(note.createdAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}` : 'Borrador'}
+                                      placement="top"
+                                      hasArrow
+                                    >
+                                      <Box as="span" display="inline-flex" color="orange.500" alignItems="center" flexShrink={0}>
+                                        <Icon as={FiEdit} boxSize={4} />
+                                      </Box>
+                                    </Tooltip>
                                   )}
-                                </VStack>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleConsentClick(consent)}
-                                >
-                                  Ver detalles
-                                </Button>
-                              </HStack>
+                                </HStack>
+                                {plainContent && (
+                                  <Text
+                                    fontSize="sm"
+                                    color="gray.600"
+                                    noOfLines={3}
+                                    lineHeight="tall"
+                                  >
+                                    {plainContent}
+                                  </Text>
+                                )}
+                                <HStack justify="space-between" align="center" pt={1}>
+                                  <Text fontSize="xs" color="gray.500">
+                                    {format(
+                                      new Date(note.createdAt),
+                                      "d 'de' MMM, yyyy 'a las' HH:mm",
+                                      { locale: es }
+                                    )}
+                                  </Text>
+                                  {note.attachments && note.attachments.length > 0 && (
+                                    <HStack spacing={1} color="gray.500">
+                                      <Icon as={FiPaperclip} boxSize={3.5} />
+                                      <Text fontSize="xs">
+                                        {note.attachments.length}{' '}
+                                        {note.attachments.length === 1 ? 'archivo' : 'archivos'}
+                                      </Text>
+                                    </HStack>
+                                  )}
+                                </HStack>
+                              </VStack>
                             </CardBody>
                           </Card>
-                        );
-                      })}
-                    </VStack>
-                  </CardBody>
-                </Card>
-              </VStack>
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
+                        </Box>
+                      </motion.div>
+                    );
+                  })}
+                </VStack>
+              </Box>
+            )}
+          </Box>
+        </Grid>
       </Container>
 
       {/* Note View Modal */}
@@ -1078,24 +972,25 @@ const PatientDetail: React.FC = () => {
                 <Text>{selectedNote?.title}</Text>
                 {selectedNote?.status === 'signed' ? (
                   <Tooltip
-                    label={`Firmado por ${selectedNote.signedBy} el ${selectedNote.signedAt ? format(new Date(selectedNote.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es }) : ''}`}
+                    label={selectedNote?.signedAt ? `Firmada el ${format(new Date(selectedNote.signedAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}` : 'Firmada'}
                     placement="top"
                     hasArrow
                   >
-                    <Badge colorScheme="green" fontSize="sm">
-                      Firmada
-                    </Badge>
+                    <Box as="span" display="inline-flex" color="green.500" alignItems="center">
+                      <Icon as={MdVerified} boxSize={5} />
+                    </Box>
                   </Tooltip>
                 ) : (
-                  <Badge colorScheme="orange" fontSize="sm">
-                    Borrador
-                  </Badge>
+                  <Tooltip
+                    label={selectedNote?.createdAt ? `Borrador creado el ${format(new Date(selectedNote.createdAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}` : 'Borrador'}
+                    placement="top"
+                    hasArrow
+                  >
+                    <Box as="span" display="inline-flex" color="orange.500" alignItems="center">
+                      <Icon as={FiEdit} boxSize={5} />
+                    </Box>
+                  </Tooltip>
                 )}
-              </HStack>
-              <HStack spacing={2}>
-                <Badge colorScheme="blue">
-                  {selectedNote && getNoteTypeLabel(selectedNote.type)}
-                </Badge>
               </HStack>
             </VStack>
           </ModalHeader>
@@ -1116,6 +1011,139 @@ const PatientDetail: React.FC = () => {
               dangerouslySetInnerHTML={{ __html: selectedNote?.content || '' }}
             />
           </ModalBody>
+          {selectedNote?.status === 'signed' && (
+            <ModalFooter borderTopWidth="1px" borderColor={borderColor}>
+              <Button
+                colorScheme="brand"
+                leftIcon={<FiPlus />}
+                onClick={() => {
+                  onClose();
+                  navigate(`/patients/${patient.id}/notes/new`, {
+                    state: { followUpFromNoteId: selectedNote.id },
+                  });
+                }}
+              >
+                Seguimiento
+              </Button>
+            </ModalFooter>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* Consents list modal (Ver consentimientos de clínica) */}
+      <Modal
+        isOpen={isConsentsListModalOpen}
+        onClose={onConsentsListModalClose}
+        size="2xl"
+        scrollBehavior="inside"
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            <Heading size="md">Consentimientos de clínica</Heading>
+            <Text fontSize="sm" color="gray.500" fontWeight="normal" mt={2}>
+              Vista de solo lectura. Solo el paciente puede modificar sus consentimientos.
+            </Text>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            {consentsLoading ? (
+              <HStack justify="center" py={8}>
+                <Spinner size="lg" colorScheme="brand" />
+                <Text>Cargando consentimientos...</Text>
+              </HStack>
+            ) : consentsError ? (
+              <Alert status="error" borderRadius="lg">
+                <AlertIcon />
+                <VStack align="start" spacing={0}>
+                  <AlertTitle>Error al cargar consentimientos</AlertTitle>
+                  <AlertDescription>{consentsError}</AlertDescription>
+                </VStack>
+              </Alert>
+            ) : patientConsents.length === 0 ? (
+              <Text color="gray.500" py={4}>
+                No hay consentimientos registrados para este paciente.
+              </Text>
+            ) : (
+              <VStack spacing={4} align="stretch">
+                {patientConsents.map((consent) => {
+                  const isGranted = consent.isGranted && !consent.isRevoked;
+                  return (
+                    <Card
+                      key={consent.id}
+                      variant="outline"
+                      borderWidth="2px"
+                      borderColor={isGranted ? consentGrantedBorder : borderColor}
+                      bg={isGranted ? consentGrantedBg : 'transparent'}
+                    >
+                      <CardBody>
+                        <HStack spacing={4} align="start">
+                          <Checkbox
+                            size="lg"
+                            colorScheme="green"
+                            isChecked={isGranted}
+                            isDisabled
+                            pointerEvents="none"
+                          />
+                          <VStack
+                            align="start"
+                            spacing={1}
+                            flex={1}
+                            cursor="pointer"
+                            onClick={() => handleConsentClick(consent)}
+                          >
+                            <HStack>
+                              <Text fontWeight="bold">
+                                {getConsentTypeLabel(consent.consentType)}
+                              </Text>
+                              {isGranted ? (
+                                <Badge colorScheme="green" fontSize="xs">
+                                  Otorgado
+                                </Badge>
+                              ) : consent.isRevoked ? (
+                                <Badge colorScheme="red" fontSize="xs">
+                                  Revocado
+                                </Badge>
+                              ) : (
+                                <Badge colorScheme="gray" fontSize="xs">
+                                  No otorgado
+                                </Badge>
+                              )}
+                            </HStack>
+                            {getConsentTypeDescription(consent.consentType) && (
+                              <Text fontSize="sm" color={descriptionColor}>
+                                {getConsentTypeDescription(consent.consentType)}
+                              </Text>
+                            )}
+                            {consent.grantedAt && (
+                              <Text fontSize="xs" color={consentGrantedText} fontWeight="medium">
+                                Otorgado el{' '}
+                                {format(new Date(consent.grantedAt), "d 'de' MMMM, yyyy 'a las' HH:mm", {
+                                  locale: es,
+                                })}
+                              </Text>
+                            )}
+                            {consent.expiresAt && (
+                              <Text fontSize="xs" color="gray.500">
+                                Expira: {format(new Date(consent.expiresAt), "d 'de' MMM yyyy", { locale: es })}
+                              </Text>
+                            )}
+                          </VStack>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleConsentClick(consent)}
+                          >
+                            Ver detalles
+                          </Button>
+                        </HStack>
+                      </CardBody>
+                    </Card>
+                  );
+                })}
+              </VStack>
+            )}
+          </ModalBody>
         </ModalContent>
       </Modal>
 
@@ -1123,7 +1151,7 @@ const PatientDetail: React.FC = () => {
       <Modal
         isOpen={isConsentModalOpen}
         onClose={onConsentModalClose}
-        size="4xl"
+        size="lg"
         scrollBehavior="inside"
       >
         <ModalOverlay />
@@ -1131,46 +1159,172 @@ const PatientDetail: React.FC = () => {
           <ModalHeader>
             <VStack align="start" spacing={2}>
               <HStack>
-                <Text>{selectedConsent?.name}</Text>
-                {selectedConsent?.isRequired && (
-                  <Badge colorScheme="red" fontSize="sm">
-                    Requerido
-                  </Badge>
+                <Text>
+                  {selectedConsent ? getConsentTypeLabel(selectedConsent.consentType) : 'Detalle de consentimiento'}
+                </Text>
+                {selectedConsent && (
+                  selectedConsent.isGranted && !selectedConsent.isRevoked ? (
+                    <Badge colorScheme="green" fontSize="sm">Otorgado</Badge>
+                  ) : selectedConsent.isRevoked ? (
+                    <Badge colorScheme="red" fontSize="sm">Revocado</Badge>
+                  ) : (
+                    <Badge colorScheme="gray" fontSize="sm">No otorgado</Badge>
+                  )
                 )}
-              </HStack>
-              <Text fontSize="sm" fontWeight="normal" color="gray.500">
-                {selectedConsent?.description}
-              </Text>
-              <HStack fontSize="xs" color="gray.500">
-                <Text>Categoría: {selectedConsent?.category}</Text>
-                <Text>•</Text>
-                <Text>Versión: {selectedConsent?.version}</Text>
               </HStack>
             </VStack>
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            <Box
-              sx={{
-                '& h1': { fontSize: '2xl', fontWeight: 'bold', mb: 4 },
-                '& h2': { fontSize: 'xl', fontWeight: 'bold', mb: 3, mt: 6 },
-                '& h3': { fontSize: 'lg', fontWeight: 'semibold', mb: 2, mt: 4 },
-                '& p': { mb: 2, lineHeight: '1.6' },
-                '& ul, & ol': { ml: 6, mb: 4 },
-                '& li': { mb: 1 },
-                '& strong': { fontWeight: 'bold' },
-                '& em': { fontStyle: 'italic' },
-                '& a': { color: 'brand.500', textDecoration: 'underline' },
-              }}
-            >
-              <ReactMarkdown>{selectedConsent?.fullText || ''}</ReactMarkdown>
-            </Box>
+            {selectedConsent && (
+              <VStack align="stretch" spacing={4}>
+                {getConsentTypeDescription(selectedConsent.consentType) && (
+                  <Text fontSize="sm" color={descriptionColor}>
+                    {getConsentTypeDescription(selectedConsent.consentType)}
+                  </Text>
+                )}
+                <HStack justify="space-between" wrap="wrap" gap={2}>
+                  <VStack align="start" spacing={0}>
+                    <Text fontSize="xs" color="gray.500">Otorgado el</Text>
+                    <Text fontWeight="medium">
+                      {selectedConsent.grantedAt
+                        ? format(new Date(selectedConsent.grantedAt), "d 'de' MMMM, yyyy 'a las' HH:mm", { locale: es })
+                        : '—'}
+                    </Text>
+                  </VStack>
+                  {selectedConsent.expiresAt && (
+                    <VStack align="start" spacing={0}>
+                      <Text fontSize="xs" color="gray.500">Expira</Text>
+                      <Text fontWeight="medium">
+                        {format(new Date(selectedConsent.expiresAt), "d 'de' MMM yyyy", { locale: es })}
+                      </Text>
+                    </VStack>
+                  )}
+                  {selectedConsent.revokedAt && (
+                    <VStack align="start" spacing={0}>
+                      <Text fontSize="xs" color="gray.500">Revocado el</Text>
+                      <Text fontWeight="medium" color="red.600">
+                        {format(new Date(selectedConsent.revokedAt), "d 'de' MMM yyyy", { locale: es })}
+                      </Text>
+                    </VStack>
+                  )}
+                </HStack>
+                <Divider />
+                <Text fontSize="xs" color="gray.500">
+                  ID: {selectedConsent.id}
+                </Text>
+              </VStack>
+            )}
           </ModalBody>
           <ModalFooter>
             <Button variant="ghost" onClick={onConsentModalClose}>
               Cerrar
             </Button>
           </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Identity Form Modal */}
+      <Modal isOpen={isIdentityModalOpen} onClose={onIdentityModalClose} size="xl" scrollBehavior="inside">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>
+            {identityExists ? 'Editar Ficha de Identidad' : 'Crear Ficha de Identidad'}
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={4}>
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+              {identityFields.map((field) => (
+                <FormControl key={field.key}>
+                  <FormLabel fontSize="sm">{field.label}</FormLabel>
+                  {field.type === 'select' && field.options ? (
+                    <Select
+                      size="sm"
+                      placeholder="Seleccionar..."
+                      value={identityForm[field.key] || ''}
+                      onChange={(e) =>
+                        setIdentityForm((prev) => ({ ...prev, [field.key]: e.target.value }))
+                      }
+                    >
+                      {Object.entries(field.options).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </Select>
+                  ) : (
+                    <Input
+                      size="sm"
+                      type={field.type === 'date' ? 'date' : 'text'}
+                      value={identityForm[field.key] || ''}
+                      onChange={(e) =>
+                        setIdentityForm((prev) => ({ ...prev, [field.key]: e.target.value }))
+                      }
+                    />
+                  )}
+                </FormControl>
+              ))}
+            </SimpleGrid>
+          </ModalBody>
+          <ModalFooter>
+            <HStack spacing={3}>
+              <Button variant="ghost" onClick={onIdentityModalClose} isDisabled={isSavingIdentity}>
+                Cancelar
+              </Button>
+              <Button
+                colorScheme="brand"
+                onClick={handleSaveIdentity}
+                isLoading={isSavingIdentity}
+                loadingText="Guardando..."
+              >
+                Guardar
+              </Button>
+            </HStack>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Nuevo formulario - seleccionar formulario para llenar */}
+      <Modal isOpen={isFormSelectModalOpen} onClose={onFormSelectModalClose} size="md">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Nuevo formulario</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <Text fontSize="sm" color="gray.600" mb={4}>
+              Selecciona un formulario para completar en el expediente del paciente.
+            </Text>
+            <VStack spacing={2} align="stretch">
+              {MOCK_DOCTOR_FORMS.map((form) => (
+                <HStack
+                  key={form.id}
+                  p={4}
+                  borderRadius="lg"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  justify="space-between"
+                  _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                >
+                  <Text fontWeight="medium">{form.name}</Text>
+                  <Button
+                    size="sm"
+                    colorScheme="brand"
+                    onClick={() => {
+                      onFormSelectModalClose();
+                      navigate('/templates/fill', {
+                        state: {
+                          template: form.template,
+                          pdfUrl: form.pdfUrl,
+                          patientId: patient.id,
+                          patientName: `${patient.firstName} ${patient.lastName}`,
+                        },
+                      });
+                    }}
+                  >
+                    Llenar
+                  </Button>
+                </HStack>
+              ))}
+            </VStack>
+          </ModalBody>
         </ModalContent>
       </Modal>
     </Box>

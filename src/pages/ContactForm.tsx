@@ -21,8 +21,8 @@ import {
 } from '@chakra-ui/react';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getContactById, mockContacts } from '../data/mockData';
-import type { Contact, ContactType } from '../types';
+import type { ContactType } from '../types';
+import { apiService } from '../services/api';
 
 const ContactForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,26 +46,28 @@ const ContactForm: React.FC = () => {
   // Load contact data if editing
   useEffect(() => {
     if (isEditing && id) {
-      const contact = getContactById(id);
-      if (contact) {
-        setFirstName(contact.firstName);
-        setLastName(contact.lastName);
-        setAlias(contact.alias || '');
-        setEmail(contact.email || '');
-        setPhone(contact.phone || '');
-        setType(contact.type);
-        setCompany(contact.company || '');
-        setPosition(contact.position || '');
-        setNotes(contact.notes || '');
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Contacto no encontrado',
-          status: 'error',
-          duration: 3000,
+      apiService
+        .getContact(id)
+        .then((contact) => {
+          setFirstName(contact.name);
+          setLastName(contact.lastname);
+          setAlias(contact.alias || '');
+          setEmail(contact.email || '');
+          setPhone(contact.phone || '');
+          setType((contact.type as ContactType) || 'other');
+          setCompany(contact.organization || '');
+          setPosition(contact.role || '');
+          setNotes('');
+        })
+        .catch(() => {
+          toast({
+            title: 'Error',
+            description: 'Contacto no encontrado',
+            status: 'error',
+            duration: 3000,
+          });
+          navigate('/contacts');
         });
-        navigate('/contacts');
-      }
     }
   }, [id, isEditing, navigate, toast]);
 
@@ -94,8 +96,24 @@ const ContactForm: React.FC = () => {
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const payload = {
+        name: firstName.trim(),
+        lastname: lastName.trim(),
+        alias: alias.trim() || undefined,
+        type: type as string,
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+        organization: company.trim() || undefined,
+        role: position.trim() || undefined,
+      };
+
+      if (isEditing && id) {
+        await apiService.updateContact(id, payload);
+      } else {
+        await apiService.createContact(payload);
+      }
+
       toast({
         title: isEditing ? 'Contacto actualizado' : 'Contacto creado',
         description: isEditing
@@ -106,14 +124,22 @@ const ContactForm: React.FC = () => {
         isClosable: true,
       });
       navigate('/contacts');
-    }, 1000);
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'No se pudo guardar el contacto',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    }
   };
 
   return (
     <Box>
       {/* Header with Gradient */}
       <Box
-        bgGradient="linear(135deg, teal.500 0%, teal.600 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
         py={8}

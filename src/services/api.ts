@@ -3,10 +3,7 @@
  * Handles all HTTP requests to the backend API
  */
 
-import { AUTH_API_BASE_URL } from '../config/api';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-const API_KEY = import.meta.env.VITE_API_KEY || '';
+import { API_BASE_URL, AUTH_API_BASE_URL, API_KEY } from '../config/api';
 
 export interface ApiError {
   message: string;
@@ -20,15 +17,32 @@ class ApiService {
       'Content-Type': 'application/json',
     };
 
-    // Add Bearer token if available (access token from auth API)
-    const token = localStorage.getItem('token'); // This is the access token from login
+    // API requiere (api.md): X-Clineo-Api-Key, X-Clineo-Id (login.id), Authorization: Bearer login.access
+    if (API_KEY) {
+      headers['X-Clineo-Api-Key'] = API_KEY;
+    }
+
+    const token = localStorage.getItem('token');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Add API Key if available
+    const idFromLogin = localStorage.getItem('id_token');
+    if (idFromLogin) {
+      headers['X-Clineo-Id'] = idFromLogin;
+      headers['X-Clineo-Identity'] = idFromLogin;
+    }
+
+    return headers;
+  }
+
+  private getPublicHeaders(): HeadersInit {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
     if (API_KEY) {
-      headers['X-API-Key'] = API_KEY;
+      headers['X-Clineo-Api-Key'] = API_KEY;
     }
 
     return headers;
@@ -58,6 +72,13 @@ class ApiService {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('id_token');
+          localStorage.removeItem('doctor');
+          window.location.href = '/login';
+        }
         const errorData = await response.json().catch(() => ({
           message: response.statusText,
         }));
@@ -108,7 +129,7 @@ class ApiService {
         is_recurrent: boolean;
         grant_type: string;
       }>;
-    }>(`/?${query}`);
+    }>(`/patients/${query ? `?${query}` : ''}`);
   }
 
   /**
@@ -122,7 +143,7 @@ class ApiService {
       lastname_m: string | null;
       is_recurrent: boolean;
       grant_type: string;
-    }>(`/${patientId}/`);
+    }>(`/patients/${patientId}/`);
   }
 
   /**
@@ -140,63 +161,336 @@ class ApiService {
       lastname: string;
       lastname_m?: string;
       phone: string;
-    }>('/', {
+    }>('/patients/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   /**
-   * Get patient profile (full details with decrypted data)
+   * Get patient profile (api.md: GET /patients/<patient_id>/profile/)
+   * Incluye phone, is_recurrent y avatar_url (si null/vacío se muestran iniciales).
    */
   async getPatientProfile(patientId: string) {
     return this.request<{
-      gender?: string;
-      birthdate?: string;
-      ssn?: string;
-      citizen_id?: string;
-      tax_id?: string;
-      email?: string;
-      phone: string;
-      address?: string;
-      city?: string;
-      state?: string;
-      zip_code?: string;
-      blood_type?: string;
-      insurance_provider?: string;
-      insurance_number?: string;
-    }>(`/${patientId}/profile/`);
+      phone?: string;
+      phone_number?: string;
+      is_recurrent?: boolean;
+      avatar_url?: string | null;
+    }>(`/patients/${patientId}/profile/`);
   }
 
   /**
-   * Update patient profile
+   * Update patient profile (PATCH /patients/<patient_id>/profile/)
    */
-  async updatePatientProfile(
-    patientId: string,
-    data: Partial<{
-      gender: string;
-      birthdate: string;
-      ssn: string;
-      citizen_id: string;
-      tax_id: string;
-      email: string;
-      phone: string;
-      address: string;
-      city: string;
-      state: string;
-      zip_code: string;
-      blood_type: string;
-      insurance_provider: string;
-      insurance_number: string;
-    }>
-  ) {
-    return this.request(`/${patientId}/profile/`, {
+  async updatePatientProfile(patientId: string, data: { phone?: string }) {
+    return this.request(`/patients/${patientId}/profile/`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
 
+  // ============ PATIENT IDENTITY ============
+
+  async getPatientIdentity(patientId: string) {
+    return this.request<{
+      birthdate?: string;
+      gender?: string;
+      birthplace_state?: string;
+      birthplace_country?: string;
+      birthplace_city?: string;
+      residence_state?: string;
+      residence_country?: string;
+      residence_city?: string;
+      occupation?: string;
+      education?: string;
+      marital_status?: string;
+      religion?: string;
+      nationality?: string;
+      education_level?: string;
+      emergency_contact_name?: string;
+      emergency_contact_phone?: string;
+      emergency_contact_relationship?: string;
+    }>(`/patients/${patientId}/identity-sheet/`);
+  }
+
+  async createPatientIdentity(
+    patientId: string,
+    data: Record<string, string>
+  ) {
+    return this.request<void>(`/patients/${patientId}/identity-sheet/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePatientIdentity(
+    patientId: string,
+    data: Record<string, string>
+  ) {
+    return this.request<void>(`/patients/${patientId}/identity-sheet/`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ============ CONTACTS ============
+
+  /**
+   * List contacts for the current doctor
+   * GET /doctor/contacts/
+   */
+  async listContacts(params?: { page?: number; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    const query = queryParams.toString();
+    return this.request<{
+      results: Array<{
+        id: string;
+        name: string;
+        lastname: string;
+        alias: string | null;
+        type: string;
+        email: string | null;
+        phone: string | null;
+        organization: string | null;
+        role: string | null;
+      }>;
+      count: number;
+      page: number;
+      size: number;
+    }>(`/doctor/contacts/${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * Create a new contact
+   * POST /doctor/contacts/
+   */
+  async createContact(data: {
+    name: string;
+    lastname: string;
+    alias?: string;
+    type: string;
+    email?: string;
+    phone?: string;
+    organization?: string;
+    role?: string;
+  }) {
+    return this.request<void>('/doctor/contacts/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Update an existing contact
+   * api.md muestra PUT /doctor/contacts/ sin ID,
+   * pero seguimos el patrón REST usando /doctor/contacts/<id>/.
+   */
+  async updateContact(
+    contactId: string,
+    data: {
+      name: string;
+      lastname: string;
+      alias?: string;
+      type: string;
+      email?: string;
+      phone?: string;
+      organization?: string;
+      role?: string;
+    }
+  ) {
+    return this.request<void>(`/doctor/contacts/${contactId}/`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Archive (soft delete) a contact
+   * DELETE /doctor/contacts/<contact_id>
+   */
+  async archiveContact(contactId: string) {
+    return this.request<void>(`/doctor/contacts/${contactId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Restore an archived contact
+   * POST /doctor/contacts/<contact_id>/restore/
+   */
+  async restoreContact(contactId: string) {
+    return this.request<void>(`/doctor/contacts/${contactId}/restore/`, {
+      method: 'POST',
+      body: JSON.stringify(null),
+    });
+  }
+
+  /**
+   * Get a single contact by ID
+   * GET /doctor/contacts/<contact_id>/
+   */
+  async getContact(contactId: string) {
+    return this.request<{
+      id: string;
+      name: string;
+      lastname: string;
+      alias: string | null;
+      type: string;
+      email: string | null;
+      phone: string | null;
+      organization: string | null;
+      role: string | null;
+    }>(`/doctor/contacts/${contactId}/`);
+  }
+
+  // ============ APPOINTMENTS ============
+
+  /**
+   * List appointments for the current doctor
+   * GET /doctor/appointments/
+   */
+  async listAppointments(params?: { page?: number; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    const query = queryParams.toString();
+    return this.request<{
+      results: Array<{
+        id: string;
+        patient_id: string;
+        starts_at: string;
+        ends_at: string;
+        status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+      }>;
+      count: number;
+      page: number;
+      size: number;
+    }>(`/doctor/appointments/${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * Create a new appointment
+   * POST /doctor/appointments/
+   */
+  async createAppointment(data: {
+    patient: string;
+    starts_at: string;
+    duration: string;
+  }) {
+    return this.request<void>('/doctor/appointments/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Get a single appointment by ID
+   * GET /doctor/appointments/<id>/
+   */
+  async getAppointment(id: string) {
+    return this.request<{
+      id: string;
+      patient_id: string;
+      starts_at: string;
+      ends_at: string;
+      status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+    }>(`/doctor/appointments/${id}/`);
+  }
+
+  /**
+   * Update appointment status
+   * PATCH /doctor/appointments/<id>/status/
+   */
+  async updateAppointmentStatus(
+    id: string,
+    status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
+  ) {
+    return this.request<void>(`/doctor/appointments/${id}/status/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  /**
+   * Delete an appointment
+   * DELETE /doctor/appointments/<id>/
+   */
+  async deleteAppointment(id: string) {
+    return this.request<void>(`/doctor/appointments/${id}/`, {
+      method: 'DELETE',
+    });
+  }
+
   // ============ MEDICAL NOTES ============
+
+  /**
+   * Get count of notes for the current month
+   * GET /doctor/notes/count/
+   */
+  async getDoctorNotesCount() {
+    return this.request<{ count: number }>('/doctor/notes/count/');
+  }
+
+  /**
+   * Get doctor notes (recent, this month)
+   * GET /doctor/notes/recent/
+   */
+  async getDoctorNotesRecent(params?: { page?: number; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    const query = queryParams.toString();
+    return this.request<{
+      results: Array<{
+        id: string;
+        title: string;
+        status: string;
+        patient_id: string;
+        patient_name: string;
+        patient_lastname: string;
+        created_at?: string;
+        updated_at?: string;
+        accessed_at?: string;
+      }>;
+      count: number;
+      page: number;
+      size: number;
+    }>(`/doctor/notes/recent/${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * GET /doctor/compliance/
+   */
+  async getDoctorCompliance() {
+    return this.request<{
+      doctor_id: string;
+      overall_score: number;
+      patient_count: number;
+      alert_breakdown: { critical: number; ok: number; warning: number };
+      worst_metric: string;
+      patients: Array<{
+        patient_id: string;
+        overall_score: number;
+        alert_level: 'ok' | 'warning' | 'critical';
+        metrics: Record<
+          string,
+          {
+            name: string;
+            score: number;
+            detail: string;
+            items: number;
+            passing: number;
+          }
+        >;
+        computed_at: string;
+      }>;
+    }>('/doctor/compliance/');
+  }
 
   /**
    * List all notes for a patient
@@ -213,16 +507,18 @@ class ApiService {
       count: number;
       results: Array<{
         id: string;
-        title: string;
-        content: string;
-        type: string;
-        is_signed: boolean;
+        title?: string;
+        content?: string;
+        type?: string;
+        note_type?: string;
+        status?: string;
+        is_signed?: boolean;
         signed_at?: string;
         signed_by?: string;
         created_at: string;
-        updated_at: string;
+        updated_at?: string;
       }>;
-    }>(`/${patientId}/notes/${query ? `?${query}` : ''}`);
+    }>(`/patients/${patientId}/notes/${query ? `?${query}` : ''}`);
   }
 
   /**
@@ -239,36 +535,39 @@ class ApiService {
       signed_by?: string;
       created_at: string;
       updated_at: string;
-    }>(`/${patientId}/notes/${noteId}/`);
+    }>(`/patients/${patientId}/notes/${noteId}/`);
   }
 
   /**
-   * Create a new medical note
+   * Create a new medical note (draft)
    */
   async createNote(
     patientId: string,
-    data: {
-      title: string;
-      content: string;
-      type: string;
-    }
+    data: { content: string; note_type: string; title?: string; files?: File[] }
   ) {
+    const formData = new FormData();
+    formData.append('content', data.content);
+    formData.append('note_type', data.note_type);
+    if (data.title) {
+      formData.append('title', data.title);
+    }
+    if (data.files?.length) {
+      data.files.forEach((file) => formData.append('files', file));
+    }
     return this.request<{
       id: string;
-      title: string;
-      content: string;
-      type: string;
-      is_signed: boolean;
       created_at: string;
-      updated_at: string;
-    }>(`/${patientId}/notes/`, {
+      note_type: string;
+      status: string;
+      title?: string;
+    }>(`/patients/${patientId}/notes/`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: formData,
     });
   }
 
   /**
-   * Update a medical note
+   * Update a medical note (multipart/form-data)
    */
   async updateNote(
     patientId: string,
@@ -277,8 +576,16 @@ class ApiService {
       title?: string;
       content?: string;
       type?: string;
+      files?: File[];
     }
   ) {
+    const formData = new FormData();
+    if (data.title !== undefined) formData.append('title', data.title);
+    if (data.content !== undefined) formData.append('content', data.content);
+    if (data.type !== undefined) formData.append('note_type', data.type);
+    if (data.files?.length) {
+      data.files.forEach((file) => formData.append('files', file));
+    }
     return this.request<{
       id: string;
       title: string;
@@ -287,36 +594,32 @@ class ApiService {
       is_signed: boolean;
       created_at: string;
       updated_at: string;
-    }>(`/${patientId}/notes/${noteId}/`, {
+    }>(`/patients/${patientId}/notes/${noteId}/`, {
       method: 'PATCH',
-      body: JSON.stringify(data),
+      body: formData,
     });
   }
 
   /**
    * Sign a medical note
    */
-  async signNote(patientId: string, noteId: string) {
-    return this.request(`/${patientId}/notes/${noteId}/sign/`, {
+  async signNote(patientId: string, noteId: string, save_anyway = false) {
+    const path = `/patients/${patientId}/notes/${noteId}/sign/`;
+    const url = save_anyway ? `${path}?save_anyway=true` : path;
+    return this.request(url, {
       method: 'PATCH',
     });
   }
 
   /**
-   * Get note completeness analysis
+   * Get note analysis
    */
-  async getNoteCompleteness(patientId: string, noteId: string) {
+  async getNoteAnalysis(patientId: string, noteId: string) {
     return this.request<{
       completeness_score: number;
-      reasoning: {
-        has_diagnostic_impression?: string;
-        has_disease_evolution?: string;
-        has_physical_exam?: string;
-        has_treatment_plan?: string;
-        has_vital_signs?: string;
-        [key: string]: string | undefined;
-      };
-    }>(`/${patientId}/notes/${noteId}/completeness/`);
+      missing_fields: string[];
+      reasoning: Record<string, string>;
+    }>(`/patients/${patientId}/notes/${noteId}/analysis/`);
   }
 
   /**
@@ -332,7 +635,7 @@ class ApiService {
       formData.append('files', file);
     });
 
-    return this.request(`/${patientId}/notes/${noteId}/attach/`, {
+    return this.request(`/patients/${patientId}/notes/${noteId}/attach/`, {
       method: 'PATCH',
       body: formData,
     });
@@ -341,94 +644,92 @@ class ApiService {
   // ============ ASSETS/FILES ============
 
   /**
-   * Upload files/assets for a patient
+   * List assets for a patient
    */
-  async uploadAsset(patientId: string, file: File) {
-    const formData = new FormData();
-    formData.append('file', file);
+  async listPatientAssets(
+    patientId: string,
+    params?: { page?: number; limit?: number }
+  ) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    const query = queryParams.toString();
 
     return this.request<{
-      id: string;
-      file_name: string;
-      file_size: number;
-      file_type: string;
-      mime_type: string;
-      url: string;
-      uploaded_at: string;
-    }>(`/${patientId}/assets/`, {
+      results: Array<{
+        id: string;
+        mime_type: string;
+        key: string;
+        file_size: number;
+        original_filename: string;
+        hash: string;
+      }>;
+      count: number;
+      page: number;
+      size: number;
+    }>(`/patients/${patientId}/assets/${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * Upload files/assets for a patient
+   * Max 30MB per file
+   */
+  async uploadPatientAssets(patientId: string, files: File[]) {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+
+    return this.request<unknown>(`/patients/${patientId}/assets/`, {
       method: 'POST',
       body: formData,
     });
   }
 
-  // ============ AUTHENTICATION ============
+  // ============ PATIENT CONSENTS ============
 
   /**
-   * Login - Authenticate user and get tokens
-   * Uses AUTH_API_BASE_URL (port 8000) instead of regular API
+   * List consents for a patient (GET /patients/<patient_id>/consents/)
    */
-  async login(credentials: { username: string; password: string }) {
-    const url = `${AUTH_API_BASE_URL}/auth/login`;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-
-    // Add API Key if available
-    if (API_KEY) {
-      headers['X-API-Key'] = API_KEY;
-    }
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(credentials),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          error: response.statusText,
-        }));
-        throw {
-          message: errorData.error || errorData.message || 'Login failed',
-          status: response.status,
-        } as ApiError;
-      }
-
-      return await response.json() as {
-        access: string;
+  async listPatientConsents(
+    patientId: string,
+    params?: { page?: number; limit?: number }
+  ) {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null) queryParams.append('page', params.page.toString());
+    if (params?.limit != null) queryParams.append('limit', params.limit.toString());
+    const query = queryParams.toString();
+    return this.request<{
+      results: Array<{
         id: string;
-        refresh: string;
-      };
-    } catch (error) {
-      if (error && typeof error === 'object' && 'status' in error) {
-        throw error;
-      }
-      throw {
-        message: 'Network error or server unavailable',
-        status: 0,
-      } as ApiError;
-    }
+        patient_id: string;
+        user_id: string;
+        consent_type: string;
+        is_granted: boolean;
+        is_revoked: boolean;
+        expires_at: string | null;
+        granted_at: string | null;
+        revoked_at: string | null;
+      }>;
+      count: number;
+      page: number;
+      size: number;
+    }>(`/patients/${patientId}/consents/${query ? `?${query}` : ''}`);
   }
 
-  /**
-   * Request password reset
-   */
-  async requestPasswordReset(username: string) {
-    const url = `${AUTH_API_BASE_URL}/auth/reset-password`;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
+  // ============ AUTHENTICATION ============
 
-    if (API_KEY) {
-      headers['X-API-Key'] = API_KEY;
-    }
+  private async authRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${AUTH_API_BASE_URL}${endpoint}`;
 
     try {
       const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ username }),
+        ...options,
+        headers: {
+          ...this.getPublicHeaders(),
+          ...options.headers,
+        },
       });
 
       if (!response.ok) {
@@ -441,7 +742,11 @@ class ApiService {
         } as ApiError;
       }
 
-      return await response.json() as { message: string };
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      }
+      return {} as T;
     } catch (error) {
       if (error && typeof error === 'object' && 'status' in error) {
         throw error;
@@ -453,92 +758,28 @@ class ApiService {
     }
   }
 
-  /**
-   * Confirm password reset with verification code
-   */
-  async confirmPasswordReset(data: {
-    username: string;
-    code: string;
-    password: string;
-  }) {
-    const url = `${AUTH_API_BASE_URL}/auth/confirm-password`;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-
-    if (API_KEY) {
-      headers['X-API-Key'] = API_KEY;
-    }
-
-    try {
-      const response = await fetch(url, {
+  async login(credentials: { username: string; password: string; method: string }) {
+    return this.authRequest<{ access: string; refresh: string; id: string }>(
+      '/auth/login/',
+      {
         method: 'POST',
-        headers,
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          error: response.statusText,
-        }));
-        throw {
-          message: errorData.error || errorData.message || 'Password reset failed',
-          status: response.status,
-        } as ApiError;
+        body: JSON.stringify(credentials),
       }
-
-      return await response.json() as { message: string };
-    } catch (error) {
-      if (error && typeof error === 'object' && 'status' in error) {
-        throw error;
-      }
-      throw {
-        message: 'Network error or server unavailable',
-        status: 0,
-      } as ApiError;
-    }
+    );
   }
 
-  /**
-   * Confirm account registration with verification code
-   */
-  async confirmAccount(data: { username: string; code: string }) {
-    const url = `${AUTH_API_BASE_URL}/auth/confirm-account`;
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
+  async requestOtp(username: string) {
+    return this.authRequest<void>('/auth/otp/', {
+      method: 'POST',
+      body: JSON.stringify({ username, method: 'email' }),
+    });
+  }
 
-    if (API_KEY) {
-      headers['X-API-Key'] = API_KEY;
-    }
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({
-          error: response.statusText,
-        }));
-        throw {
-          message: errorData.error || errorData.message || 'Account confirmation failed',
-          status: response.status,
-        } as ApiError;
-      }
-
-      return await response.json() as { message: string };
-    } catch (error) {
-      if (error && typeof error === 'object' && 'status' in error) {
-        throw error;
-      }
-      throw {
-        message: 'Network error or server unavailable',
-        status: 0,
-      } as ApiError;
-    }
+  async changePassword(data: { code: string; username: string; password: string }) {
+    return this.authRequest<void>('/auth/password/', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
   }
 }
 

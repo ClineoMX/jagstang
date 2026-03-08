@@ -1,35 +1,29 @@
 /**
  * API Configuration
- * Controla si la aplicación usa la API real o datos mock
  */
 
-// Por defecto, usar mock data hasta que la API esté completamente implementada
-// Cambiar a true cuando los endpoints estén listos
-export const USE_API = import.meta.env.VITE_USE_API === 'true' || false;
-
 // URL base de la API
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost';
 
 // URL base de la API de autenticación (puede ser diferente)
-export const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost:8000';
+export const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost';
 
-// API Key (si es requerida)
-export const API_KEY = import.meta.env.VITE_API_KEY || '';
+// API Key (si es requerida) - trim para evitar espacios/nuevas líneas del .env
+export const API_KEY = (import.meta.env.VITE_API_KEY || '').trim();
 
 // Endpoints disponibles
 export const API_ENDPOINTS = {
   // Autenticación (disponibles en puerto 8000)
-  AUTH_LOGIN: '/auth/login',
-  AUTH_RESET_PASSWORD: '/auth/reset-password',
-  AUTH_CONFIRM_PASSWORD: '/auth/confirm-password',
-  AUTH_CONFIRM_ACCOUNT: '/auth/confirm-account',
+  AUTH_LOGIN: '/auth/login/',
+  AUTH_OTP: '/auth/otp/',
+  AUTH_PASSWORD: '/auth/password/',
   
   // Pacientes (disponibles)
-  PATIENTS_LIST: '/',
-  PATIENTS_CREATE: '/',
-  PATIENTS_GET: (id: string) => `/${id}/`,
-  PATIENTS_PROFILE: (id: string) => `/${id}/profile/`,
-  PATIENTS_UPDATE_PROFILE: (id: string) => `/${id}/profile/`,
+  PATIENTS_LIST: '/patients/',
+  PATIENTS_CREATE: '/patients/',
+  PATIENTS_GET: (id: string) => `/patients/${id}/`,
+  PATIENTS_PROFILE: (id: string) => `/patients/${id}/profile/`,
+  PATIENTS_UPDATE_PROFILE: (id: string) => `/patients/${id}/profile/`,
   
   // Notas (disponibles)
   NOTES_LIST: (patientId: string) => `/${patientId}/notes/`,

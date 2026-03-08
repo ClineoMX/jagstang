@@ -144,7 +144,7 @@ const LandingPage: React.FC = () => {
     <Box bg={bgColor} minH="100vh">
       {/* Hero Section with Gradient */}
       <Box
-        bgGradient="linear(135deg, brand.500 0%, brand.600 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
         py={20}
@@ -153,7 +153,7 @@ const LandingPage: React.FC = () => {
           <VStack spacing={8} align="center" textAlign="center">
             {/* Logo/Icon */}
             <Box
-              bg="whiteAlpha.300"
+              bg="whiteAlpha.200"
               p={6}
               borderRadius="2xl"
               display="flex"
@@ -162,7 +162,7 @@ const LandingPage: React.FC = () => {
               backdropFilter="blur(10px)"
               boxShadow="xl"
             >
-              <ClineoLogo size={80} color="white" />
+              <ClineoLogo variant="vertical" color="white" height={88} />
             </Box>
 
             {/* Headline */}

@@ -22,8 +22,8 @@ import {
   Heading,
   Textarea,
 } from '@chakra-ui/react';
-import { getContactById } from '../data/mockData';
 import type { ContactType } from '../types';
+import { apiService } from '../services/api';
 
 interface ContactFormModalProps {
   isOpen: boolean;
@@ -52,35 +52,49 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
   const [company, setCompany] = useState('');
   const [position, setPosition] = useState('');
   const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load contact data if editing
   useEffect(() => {
-    if (isEditing && contactId) {
-      const contact = getContactById(contactId);
-      if (contact) {
-        setFirstName(contact.firstName);
-        setLastName(contact.lastName);
-        setAlias(contact.alias || '');
-        setEmail(contact.email || '');
-        setPhone(contact.phone || '');
-        setType(contact.type);
-        setCompany(contact.company || '');
-        setPosition(contact.position || '');
-        setNotes(contact.notes || '');
+    const load = async () => {
+      if (isEditing && contactId) {
+        try {
+          const contact = await apiService.getContact(contactId);
+          setFirstName(contact.name);
+          setLastName(contact.lastname);
+          setAlias(contact.alias || '');
+          setEmail(contact.email || '');
+          setPhone(contact.phone || '');
+          setType((contact.type as ContactType) || 'other');
+          setCompany(contact.organization || '');
+          setPosition(contact.role || '');
+          setNotes('');
+        } catch (err) {
+          toast({
+            title: 'Error',
+            description: 'No se pudo cargar el contacto',
+            status: 'error',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      } else {
+        // Reset form when opening for new contact
+        setFirstName('');
+        setLastName('');
+        setAlias('');
+        setEmail('');
+        setPhone('');
+        setType('');
+        setCompany('');
+        setPosition('');
+        setNotes('');
       }
-    } else {
-      // Reset form when opening for new contact
-      setFirstName('');
-      setLastName('');
-      setAlias('');
-      setEmail('');
-      setPhone('');
-      setType('');
-      setCompany('');
-      setPosition('');
-      setNotes('');
+    };
+    if (isOpen) {
+      void load();
     }
-  }, [isEditing, contactId, isOpen]);
+  }, [isEditing, contactId, isOpen, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,8 +121,25 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        name: firstName.trim(),
+        lastname: lastName.trim(),
+        alias: alias.trim() || undefined,
+        type: type as string,
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+        organization: company.trim() || undefined,
+        role: position.trim() || undefined,
+      };
+
+      if (isEditing && contactId) {
+        await apiService.updateContact(contactId, payload);
+      } else {
+        await apiService.createContact(payload);
+      }
+
       toast({
         title: isEditing ? 'Contacto actualizado' : 'Contacto creado',
         description: isEditing
@@ -122,7 +153,17 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
       if (onSuccess) {
         onSuccess();
       }
-    }, 1000);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo guardar el contacto',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -270,10 +311,16 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
           </ModalBody>
           <ModalFooter>
             <HStack spacing={3}>
-              <Button variant="ghost" onClick={onClose}>
+              <Button variant="ghost" onClick={onClose} isDisabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" colorScheme="teal" size="lg">
+              <Button
+                type="submit"
+                colorScheme="teal"
+                size="lg"
+                isLoading={isSubmitting}
+                loadingText="Guardando..."
+              >
                 {isEditing ? 'Guardar Cambios' : 'Crear Contacto'}
               </Button>
             </HStack>

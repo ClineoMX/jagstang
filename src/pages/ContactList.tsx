@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Container,
@@ -18,10 +18,13 @@ import {
   Icon,
   IconButton,
   useDisclosure,
+  Spinner,
+  Alert,
+  AlertIcon,
 } from '@chakra-ui/react';
 import { FiPlus, FiPhone, FiMail, FiSearch, FiEdit } from 'react-icons/fi';
-import { mockContacts, searchContacts } from '../data/mockData';
 import ContactFormModal from '../components/ContactFormModal';
+import { useContacts } from '../hooks/useContacts';
 
 const ContactList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,10 +33,21 @@ const ContactList: React.FC = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [editingContactId, setEditingContactId] = useState<string | undefined>();
 
-  const filteredContacts =
-    searchQuery.trim() === ''
-      ? mockContacts
-      : searchContacts(searchQuery.trim());
+  const { contacts, loading, error, refetch } = useContacts();
+
+  const filteredContacts = useMemo(() => {
+    if (searchQuery.trim() === '') return contacts;
+    const q = searchQuery.toLowerCase();
+    return contacts.filter((c) => {
+      return (
+        c.firstName.toLowerCase().includes(q) ||
+        c.lastName.toLowerCase().includes(q) ||
+        (c.alias?.toLowerCase().includes(q) ?? false) ||
+        (c.email?.toLowerCase().includes(q) ?? false) ||
+        (c.phone?.includes(searchQuery) ?? false)
+      );
+    });
+  }, [contacts, searchQuery]);
 
   const getContactTypeColor = (type: string) => {
     switch (type) {
@@ -65,7 +79,7 @@ const ContactList: React.FC = () => {
     <Box>
       {/* Header with Gradient */}
       <Box
-        bgGradient="linear(135deg, teal.500 0%, teal.600 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
         py={8}
@@ -74,7 +88,7 @@ const ContactList: React.FC = () => {
           <VStack spacing={6} align="stretch">
             <HStack justify="space-between" flexWrap="wrap" gap={4}>
               <VStack align="start" spacing={2}>
-                <Heading size="xl">Contactos 📇</Heading>
+                <Heading size="xl">Contactos</Heading>
                 <Text fontSize="md" opacity={0.9}>
                   Gestiona tus contactos profesionales
                 </Text>
@@ -143,7 +157,24 @@ const ContactList: React.FC = () => {
       {/* Content */}
       <Container maxW="container.xl" py={8}>
         <VStack spacing={6} align="stretch">
-          {filteredContacts.length === 0 ? (
+          {loading ? (
+            <Card bg={cardBg} borderRadius="2xl">
+              <CardBody>
+                <VStack spacing={4} py={12}>
+                  <Spinner size="xl" color="teal.500" />
+                  <Text color="gray.500">Cargando contactos...</Text>
+                </VStack>
+              </CardBody>
+            </Card>
+          ) : error ? (
+            <Alert status="error" borderRadius="lg">
+              <AlertIcon />
+              <VStack align="start" spacing={1}>
+                <Text fontWeight="semibold">Error al cargar contactos</Text>
+                <Text fontSize="sm">{error}</Text>
+              </VStack>
+            </Alert>
+          ) : filteredContacts.length === 0 ? (
             <Card bg={cardBg} borderRadius="2xl">
               <CardBody>
                 <VStack spacing={4} py={12}>
@@ -184,7 +215,7 @@ const ContactList: React.FC = () => {
                     right="-40px"
                     w="120px"
                     h="120px"
-                    bgGradient="linear(135deg, teal.400 0%, teal.500 100%)"
+                    bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
                     borderRadius="full"
                     opacity={0.1}
                     pointerEvents="none"
@@ -310,7 +341,7 @@ const ContactList: React.FC = () => {
         }}
         contactId={editingContactId}
         onSuccess={() => {
-          // Refresh list if needed
+          refetch();
         }}
       />
     </Box>

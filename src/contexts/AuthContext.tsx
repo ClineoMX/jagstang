@@ -1,8 +1,44 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Doctor, LoginCredentials } from '../types';
-import { mockDoctor } from '../data/mockData';
-import { USE_API } from '../config/api';
 import { apiService } from '../services/api';
+
+/** Decode X-Clineo-Identity token (JWT payload or JSON) to get name, family_name, gender, avatar_url */
+function decodeIdentityToken(idToken: string | null): { name?: string; family_name?: string; gender?: 'male' | 'female'; avatar_url?: string } | null {
+  if (!idToken || typeof idToken !== 'string') return null;
+  try {
+    // Try as plain JSON first
+    const parsed = JSON.parse(idToken) as Record<string, unknown>;
+    if (parsed && typeof parsed === 'object') {
+      return {
+        name: typeof parsed.name === 'string' ? parsed.name : undefined,
+        family_name: typeof parsed.family_name === 'string' ? parsed.family_name : undefined,
+        gender: parsed.gender === 'male' || parsed.gender === 'female' ? parsed.gender : undefined,
+        avatar_url: typeof parsed.avatar_url === 'string' ? parsed.avatar_url : undefined,
+      };
+    }
+  } catch {
+    // Not JSON, try JWT payload (middle part)
+  }
+  try {
+    const parts = idToken.split('.');
+    if (parts.length >= 2) {
+      const payload = parts[1];
+      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '==='.slice(0, (4 - (base64.length % 4)) % 4);
+      const decoded = atob(padded);
+      const parsed = JSON.parse(decoded) as Record<string, unknown>;
+      return {
+        name: typeof parsed.name === 'string' ? parsed.name : undefined,
+        family_name: typeof parsed.family_name === 'string' ? parsed.family_name : undefined,
+        gender: parsed.gender === 'male' || parsed.gender === 'female' ? parsed.gender : undefined,
+        avatar_url: typeof parsed.avatar_url === 'string' ? parsed.avatar_url : undefined,
+      };
+    }
+  } catch {
+    // Ignore
+  }
+  return null;
+}
 
 interface AuthContextType {
   doctor: Doctor | null;
@@ -31,12 +67,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored auth token on mount
     const storedDoctor = localStorage.getItem('doctor');
     const storedToken = localStorage.getItem('token');
-    
+    const idToken = localStorage.getItem('id_token');
+
     if (storedDoctor && storedToken) {
-      setDoctor(JSON.parse(storedDoctor));
+      const doctorData = JSON.parse(storedDoctor) as Doctor;
+      const identity = decodeIdentityToken(idToken);
+      if (identity?.name !== undefined || identity?.family_name !== undefined || identity?.gender !== undefined || identity?.avatar_url !== undefined) {
+        setDoctor({
+          ...doctorData,
+          firstName: identity.name ?? doctorData.firstName,
+          lastName: identity.family_name ?? doctorData.lastName,
+          gender: identity.gender ?? doctorData.gender,
+          avatar: identity.avatar_url ?? doctorData.avatar,
+        });
+      } else {
+        setDoctor(doctorData);
+      }
     }
     setIsLoading(false);
   }, []);
@@ -44,43 +92,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
-      if (USE_API) {
-        // Usar el endpoint de autenticación real
-        const response = await apiService.login({
-          username: credentials.email,
-          password: credentials.password,
-        });
+      const response = await apiService.login({
+        username: credentials.email,
+        password: credentials.password,
+        method: 'email',
+      });
 
-        // Guardar tokens
-        localStorage.setItem('token', response.access);
-        localStorage.setItem('refresh_token', response.refresh);
-        localStorage.setItem('user_id', response.id);
+      localStorage.setItem('token', response.access);
+      localStorage.setItem('refresh_token', response.refresh);
+      const idTokenValue = typeof response.id === 'string' ? response.id : JSON.stringify(response.id);
+      localStorage.setItem('id_token', idTokenValue);
 
-        // TODO: Obtener información del doctor usando el ID
-        // Por ahora, usar mock doctor hasta que haya endpoint para obtener perfil
-        // En producción, deberías hacer una llamada adicional para obtener el perfil del doctor
-        setDoctor({
-          ...mockDoctor,
-          id: response.id,
-        });
-        localStorage.setItem('doctor', JSON.stringify({
-          ...mockDoctor,
-          id: response.id,
-        }));
-      } else {
-        // Mock authentication
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        if (credentials.email && credentials.password) {
-          setDoctor(mockDoctor);
-          localStorage.setItem('doctor', JSON.stringify(mockDoctor));
-          localStorage.setItem('token', 'mock-jwt-token');
-        } else {
-          throw new Error('Invalid credentials');
-        }
-      }
+      const identity = decodeIdentityToken(idTokenValue);
+      const doctorId = typeof response.id === 'string' ? response.id : credentials.email;
+      const doctorData: Doctor = {
+        id: doctorId,
+        firstName: identity?.name ?? '',
+        lastName: identity?.family_name ?? '',
+        email: credentials.email,
+        gender: identity?.gender,
+        avatar: identity?.avatar_url,
+        speciality: '',
+        licenseNumber: '',
+        phone: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setDoctor(doctorData);
+      localStorage.setItem('doctor', JSON.stringify(doctorData));
     } catch (error: any) {
-      // Re-throw con mensaje más claro
       if (error.message) {
         throw error;
       }
@@ -91,17 +131,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
-    // Limpiar tokens y datos del usuario
     setDoctor(null);
     localStorage.removeItem('doctor');
     localStorage.removeItem('token');
     localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user_id');
-    
-    // TODO: Si hay endpoint de logout, llamarlo aquí
-    // if (USE_API) {
-    //   await apiService.logout();
-    // }
+    localStorage.removeItem('id_token');
   };
 
   return (
