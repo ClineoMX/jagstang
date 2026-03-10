@@ -26,6 +26,7 @@ import {
   FiUser,
   FiActivity,
   FiBook,
+  FiFileText,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -108,9 +109,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { icon: FiHome, label: 'Home', path: '/' },
     { icon: FiUsers, label: 'Pacientes', path: '/patients' },
     { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
+    { icon: FiFileText, label: 'Formularios', path: '/formularios' },
     { icon: FiBook, label: 'Contactos', path: '/contacts' },
     { icon: FiActivity, label: 'NOM', path: '/compliance' },
-
   ];
 
   const handleLogout = () => {
@@ -155,7 +156,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               path={item.path}
               isActive={
                 location.pathname === item.path ||
-                (item.path === '/contacts' && location.pathname.startsWith('/contacts'))
+                (item.path === '/contacts' && location.pathname.startsWith('/contacts')) ||
+                (item.path === '/formularios' && location.pathname.startsWith('/formularios'))
               }
               onClick={() => navigate(item.path)}
             />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -46,6 +46,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { mockNoteTemplates } from '../data/mockData';
 import RichTextEditor from '../components/RichTextEditor';
+import FormNoteFiller from '../components/FormNoteFiller';
+import type { FormFieldValue } from '../components/FormNoteFiller';
 import type { NoteType, NoteCompletenessAnalysis } from '../types';
 import { usePatient } from '../hooks/usePatients';
 import { useNotes } from '../hooks/useNotes';
@@ -75,6 +77,13 @@ const NoteForm: React.FC = () => {
   const [isLoadingNote, setIsLoadingNote] = useState(false);
   const [completenessAnalysis, setCompletenessAnalysis] = useState<NoteCompletenessAnalysis | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+
+  // Form-based note mode
+  const [useFormMode, setUseFormMode] = useState(false);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [doctorForms, setDoctorForms] = useState<Array<{ id: string; name: string }>>([]);
+  const [formsLoading, setFormsLoading] = useState(false);
+  const [formFieldValues, setFormFieldValues] = useState<FormFieldValue[]>([]);
   
   // Estados para detectar cambios
   const [savedTitle, setSavedTitle] = useState('');
@@ -97,10 +106,12 @@ const NoteForm: React.FC = () => {
 
   // Detectar si hay cambios
   const hasChanges = () => {
+    if (useFormMode) {
+      return title !== savedTitle || content !== savedContent;
+    }
     return (
       title !== savedTitle ||
       content !== savedContent ||
-      receta !== savedReceta ||
       noteType !== savedType
     );
   };
@@ -122,22 +133,47 @@ const NoteForm: React.FC = () => {
     
     if (note) {
       const rawContent = note.content || '';
-      const recetaIdx = rawContent.indexOf(RECETA_DELIMITER);
-      const mainContent = recetaIdx >= 0 ? rawContent.slice(0, recetaIdx).trim() : rawContent;
-      const recetaContent = recetaIdx >= 0 ? rawContent.slice(recetaIdx + RECETA_DELIMITER.length).trim() : '';
+
+      // Detectar si es una nota basada en formulario (content es JSON con formId + fields)
+      let isFormNote = false;
+      let parsedFormValues: FormFieldValue[] = [];
+      let restoredFormId: string | null = null;
+      try {
+        const parsed = JSON.parse(rawContent);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.formId && Array.isArray(parsed.fields)) {
+          isFormNote = true;
+          parsedFormValues = parsed.fields;
+          restoredFormId = parsed.formId;
+        } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name && parsed[0].type) {
+          isFormNote = true;
+          parsedFormValues = parsed;
+        }
+      } catch { /* not JSON */ }
+
+      if (isFormNote) {
+        setUseFormMode(true);
+        setContent(rawContent);
+        setFormFieldValues(parsedFormValues);
+        if (restoredFormId) setSelectedFormId(restoredFormId);
+      } else {
+        const recetaIdx = rawContent.indexOf(RECETA_DELIMITER);
+        const mainContent = recetaIdx >= 0 ? rawContent.slice(0, recetaIdx).trim() : rawContent;
+        const recetaContent = recetaIdx >= 0 ? rawContent.slice(recetaIdx + RECETA_DELIMITER.length).trim() : '';
+        setContent(mainContent);
+        setReceta(recetaContent);
+      }
+
       setTitle(note.title);
-      setContent(mainContent);
-      setReceta(recetaContent);
-      setNoteType(note.type);
+      setNoteType(isFormNote ? 'document' : note.type);
       setSavedTitle(note.title);
-      setSavedContent(mainContent);
-      setSavedReceta(recetaContent);
-      setSavedType(note.type);
+      setSavedContent(isFormNote ? rawContent : (rawContent.indexOf(RECETA_DELIMITER) >= 0 ? rawContent.slice(0, rawContent.indexOf(RECETA_DELIMITER)).trim() : rawContent));
+      setSavedReceta(isFormNote ? '' : (rawContent.indexOf(RECETA_DELIMITER) >= 0 ? rawContent.slice(rawContent.indexOf(RECETA_DELIMITER) + RECETA_DELIMITER.length).trim() : ''));
+      setSavedType(isFormNote ? 'document' : note.type);
       setCurrentNoteId(note.id);
       setNoteStatus(note.status);
       
-      // Si es draft, cargar análisis (omitir si estamos recargando tras guardar)
-      if (note.status === 'draft' && note.id && !isLoadingAnalysisAfterSaveRef.current) {
+      // Si es draft, cargar análisis (omitir si estamos recargando tras guardar o si es nota de formulario)
+      if (note.status === 'draft' && note.id && !isLoadingAnalysisAfterSaveRef.current && !isFormNote) {
         loadCompletenessAnalysis(note.id).catch((error) => {
           console.error('Error loading completeness analysis:', error);
         });
@@ -161,16 +197,40 @@ const NoteForm: React.FC = () => {
         const note = await apiService.getNote(patientId, followUpNoteId);
         if (cancelled) return;
         const rawContent = note.content || '';
-        const recetaIdx = rawContent.indexOf(RECETA_DELIMITER);
-        const mainContent = recetaIdx >= 0 ? rawContent.slice(0, recetaIdx).trim() : rawContent;
-        const recetaContent = recetaIdx >= 0 ? rawContent.slice(recetaIdx + RECETA_DELIMITER.length).trim() : '';
-        const noteTypeVal = (note.type || 'evolution') as NoteType;
+
+        // Detectar si es nota basada en formulario
+        let isFormNote = false;
+        let parsedFormValues: FormFieldValue[] = [];
+        let restoredFormId: string | null = null;
+        try {
+          const parsed = JSON.parse(rawContent);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.formId && Array.isArray(parsed.fields)) {
+            isFormNote = true;
+            parsedFormValues = parsed.fields;
+            restoredFormId = parsed.formId;
+          }
+        } catch { /* not JSON */ }
+
         followUpLoadedRef.current = true;
         setTitle(`Seguimiento - ${note.title || 'Nota anterior'}`);
-        setContent(mainContent);
-        setReceta(recetaContent);
-        setNoteType(noteTypeVal);
         setNoteStatus('new');
+
+        if (isFormNote) {
+          setUseFormMode(true);
+          setNoteType('document');
+          setContent(rawContent);
+          setFormFieldValues(parsedFormValues);
+          if (restoredFormId) setSelectedFormId(restoredFormId);
+        } else {
+          const recetaIdx = rawContent.indexOf(RECETA_DELIMITER);
+          const mainContent = recetaIdx >= 0 ? rawContent.slice(0, recetaIdx).trim() : rawContent;
+          const recetaContent = recetaIdx >= 0 ? rawContent.slice(recetaIdx + RECETA_DELIMITER.length).trim() : '';
+          const noteTypeVal = (note.type || 'evolution') as NoteType;
+          setContent(mainContent);
+          setReceta(recetaContent);
+          setNoteType(noteTypeVal);
+        }
+
         // Limpiar state para no re-aplicar al cambiar de tipo
         navigate(`/patients/${patientId}/notes/new`, { replace: true, state: {} });
       } catch {
@@ -234,15 +294,15 @@ const NoteForm: React.FC = () => {
   const loadCompletenessAnalysisWithContent = (id: string, retryOn404 = false) =>
     loadCompletenessAnalysis(id, { retryOn404 });
 
-  // Load template when note type changes (solo si es nota nueva y no se cargó desde Seguimiento)
+  // Load template when note type changes (solo si es nota nueva, no Seguimiento, y no modo formulario)
   useEffect(() => {
-    if (noteStatus !== 'new' || followUpLoadedRef.current) return;
+    if (noteStatus !== 'new' || followUpLoadedRef.current || useFormMode) return;
     const template = mockNoteTemplates.find((t) => t.type === noteType);
     if (!template) return;
     const today = format(new Date(), "d 'de' MMM yyyy", { locale: es });
     setTitle(`${template.name} - ${today}`);
     setContent(template.content);
-  }, [noteType, noteStatus]);
+  }, [noteType, noteStatus, useFormMode]);
 
   // Set initial note type from location state
   useEffect(() => {
@@ -250,6 +310,55 @@ const NoteForm: React.FC = () => {
       setNoteType(location.state.type);
     }
   }, [location.state, noteStatus]);
+
+  // Load doctor forms when form mode is activated
+  useEffect(() => {
+    if (!useFormMode) return;
+    let cancelled = false;
+    setFormsLoading(true);
+    apiService
+      .listDoctorForms({ size: 100 })
+      .then((res) => {
+        if (!cancelled) setDoctorForms(res.results);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast({ title: 'No se pudieron cargar los formularios', status: 'warning', duration: 3000 });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFormsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [useFormMode, toast]);
+
+  const handleNoteTypeSelectChange = (value: string) => {
+    if (value === 'form') {
+      setUseFormMode(true);
+      setNoteType('document');
+      setContent('');
+      setReceta('');
+      setSelectedFormId(null);
+      setFormFieldValues([]);
+    } else {
+      setUseFormMode(false);
+      setSelectedFormId(null);
+      setFormFieldValues([]);
+      setNoteType(value as NoteType);
+    }
+  };
+
+  const handleFormSelect = (formId: string) => {
+    setSelectedFormId(formId);
+    const form = doctorForms.find((f) => f.id === formId);
+    if (form) setTitle(form.name);
+    setFormFieldValues([]);
+  };
+
+  const handleFormValuesChange = useCallback((vals: FormFieldValue[]) => {
+    setFormFieldValues(vals);
+    setContent(JSON.stringify({ formId: selectedFormId, fields: vals }));
+  }, [selectedFormId]);
 
   // No actualizar análisis automáticamente mientras se edita
   // Solo se actualiza cuando se guarda como borrador
@@ -292,7 +401,17 @@ const NoteForm: React.FC = () => {
   const handleSaveDraft = async () => {
     if (!patientId) return;
 
-    if (!content.trim()) {
+    if (useFormMode) {
+      if (!selectedFormId) {
+        toast({ title: 'Selecciona un formulario', status: 'warning', duration: 3000, isClosable: true });
+        return;
+      }
+      const anyFilled = formFieldValues.some((f) => f.value.trim() !== '');
+      if (!anyFilled) {
+        toast({ title: 'Completa al menos un campo del formulario', status: 'warning', duration: 3000, isClosable: true });
+        return;
+      }
+    } else if (!content.trim()) {
       toast({
         title: 'Error',
         description: 'El contenido de la nota es requerido',
@@ -304,10 +423,12 @@ const NoteForm: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    isLoadingAnalysisAfterSaveRef.current = true;
-    setIsLoadingAnalysis(true);
-    setCompletenessAnalysis(null);
-    const contentToSave = receta ? content + '\n' + RECETA_DELIMITER + '\n' + receta : content;
+    if (!useFormMode) {
+      isLoadingAnalysisAfterSaveRef.current = true;
+      setIsLoadingAnalysis(true);
+      setCompletenessAnalysis(null);
+    }
+    const contentToSave = useFormMode ? content : content;
     try {
       if (currentNoteId) {
         // Actualizar nota existente
@@ -324,8 +445,8 @@ const NoteForm: React.FC = () => {
         setSavedType(noteType);
         setNoteStatus('draft');
         
-        // Recargar análisis (puede tardar; reintentar si 404 hasta que esté listo)
-        if (currentNoteId) {
+        // Recargar análisis solo para notas normales
+        if (currentNoteId && !useFormMode) {
           await loadCompletenessAnalysisWithContent(currentNoteId, true);
         }
         
@@ -353,8 +474,8 @@ const NoteForm: React.FC = () => {
         setSavedType(noteType);
         setNoteStatus('draft');
         
-        // Cargar análisis (puede tardar; reintentar si 404 hasta que esté listo)
-        if (newNote.id) {
+        // Cargar análisis solo para notas normales
+        if (newNote.id && !useFormMode) {
           await loadCompletenessAnalysisWithContent(newNote.id, true);
         }
 
@@ -405,8 +526,9 @@ const NoteForm: React.FC = () => {
     onConfirmSignClose();
     onIncompleteWarningClose();
     setIsSubmitting(true);
+    const skipAnalysis = save_anyway || useFormMode;
     try {
-      await signNote(currentNoteId, save_anyway);
+      await signNote(currentNoteId, skipAnalysis);
       
       toast({
         title: 'Nota firmada',
@@ -471,8 +593,8 @@ const NoteForm: React.FC = () => {
   const isDraft = noteStatus === 'draft';
   const hasUnsavedChanges = hasChanges();
   const showSignButton = isDraft && !hasUnsavedChanges;
-  // Mostrar panel de análisis solo si es draft Y ya tiene ID (fue guardado)
-  const showAnalysisPanel = isDraft && currentNoteId !== null;
+  // Mostrar panel de análisis solo si es draft, ya tiene ID, y NO es modo formulario
+  const showAnalysisPanel = isDraft && currentNoteId !== null && !useFormMode;
 
   return (
     <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')}>
@@ -623,104 +745,114 @@ const NoteForm: React.FC = () => {
                       <FormControl isRequired>
                         <FormLabel>Tipo de Nota</FormLabel>
                         <Select
-                          value={noteType}
-                          onChange={(e) => setNoteType(e.target.value as NoteType)}
+                          value={useFormMode ? 'form' : noteType}
+                          onChange={(e) => handleNoteTypeSelectChange(e.target.value)}
                           size="lg"
                         >
-                          <option value="interrogation">
-                            Interrogatorio
-                          </option>
+                          <option value="interrogation">Interrogatorio</option>
                           <option value="evolution">Nota de Evolución</option>
-                          <option value="exploration">
-                            Exploración Física
-                          </option>
+                          <option value="exploration">Exploración Física</option>
+                          <option value="form">Usar formulario</option>
                         </Select>
                       </FormControl>
-                      <FormControl isRequired>
-                        <FormLabel>Título de la Nota</FormLabel>
-                        <Input
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          placeholder="Ej: Consulta de seguimiento - Enero 2024"
-                          size="lg"
-                        />
-                      </FormControl>
+                      {useFormMode ? (
+                        <FormControl isRequired>
+                          <FormLabel>Formulario</FormLabel>
+                          <Select
+                            value={selectedFormId ?? ''}
+                            onChange={(e) => handleFormSelect(e.target.value)}
+                            placeholder={formsLoading ? 'Cargando formularios…' : 'Selecciona un formulario'}
+                            size="lg"
+                            isDisabled={formsLoading}
+                          >
+                            {doctorForms.map((f) => (
+                              <option key={f.id} value={f.id}>{f.name}</option>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      ) : (
+                        <FormControl isRequired>
+                          <FormLabel>Título de la Nota</FormLabel>
+                          <Input
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Ej: Consulta de seguimiento - Enero 2024"
+                            size="lg"
+                          />
+                        </FormControl>
+                      )}
                     </SimpleGrid>
 
-                    <FormControl isRequired>
-                      <FormLabel>Contenido de la Nota</FormLabel>
-                      <RichTextEditor
-                        value={content}
-                        onChange={setContent}
-                        placeholder="Escribe el contenido de la nota médica..."
-                        minHeight="400px"
-                      />
-                    </FormControl>
-
-                    <FormControl>
-                      <FormLabel>Receta</FormLabel>
-                      <RichTextEditor
-                        value={receta}
-                        onChange={setReceta}
-                        placeholder="Indicaciones y receta médica..."
-                        minHeight="200px"
-                      />
-                    </FormControl>
-
-                    <FormControl flexShrink={0}>
-                      <FormLabel>Archivos Adjuntos</FormLabel>
-                      <VStack spacing={3} align="stretch">
-                        <Button
-                          as="label"
-                          leftIcon={<FiUpload />}
-                          variant="outline"
-                          cursor="pointer"
-                          htmlFor="file-upload"
-                        >
-                          Seleccionar archivos
-                          <input
-                            id="file-upload"
-                            type="file"
-                            multiple
-                            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.dcm,.hl7,.xml"
-                            onChange={handleFileChange}
-                            style={{ display: 'none' }}
+                    {useFormMode && selectedFormId ? (
+                      <FormNoteFiller formId={selectedFormId} initialValues={formFieldValues} onValuesChange={handleFormValuesChange} />
+                    ) : !useFormMode ? (
+                      <>
+                        <FormControl isRequired>
+                          <FormLabel>Contenido de la Nota</FormLabel>
+                          <RichTextEditor
+                            value={content}
+                            onChange={setContent}
+                            placeholder="Escribe el contenido de la nota médica..."
+                            minHeight="400px"
                           />
-                        </Button>
+                        </FormControl>
 
-                        {attachments.length > 0 && (
-                          <VStack spacing={2} align="stretch">
-                            {attachments.map((file, index) => (
-                              <HStack
-                                key={index}
-                                p={3}
-                                borderWidth="1px"
-                                borderColor={borderColor}
-                                borderRadius="lg"
-                                justify="space-between"
-                              >
-                                <VStack align="start" spacing={0}>
-                                  <Text fontSize="sm" fontWeight="medium">
-                                    {file.name}
-                                  </Text>
-                                  <Text fontSize="xs" color="gray.500">
-                                    {(file.size / 1024 / 1024).toFixed(2)} MB
-                                  </Text>
-                                </VStack>
-                                <IconButton
-                                  aria-label="Eliminar archivo"
-                                  icon={<FiX />}
-                                  size="sm"
-                                  variant="ghost"
-                                  colorScheme="red"
-                                  onClick={() => handleRemoveFile(index)}
-                                />
-                              </HStack>
-                            ))}
+                        <FormControl flexShrink={0}>
+                          <FormLabel>Archivos Adjuntos</FormLabel>
+                          <VStack spacing={3} align="stretch">
+                            <Button
+                              as="label"
+                              leftIcon={<FiUpload />}
+                              variant="outline"
+                              cursor="pointer"
+                              htmlFor="file-upload-draft"
+                            >
+                              Seleccionar archivos
+                              <input
+                                id="file-upload-draft"
+                                type="file"
+                                multiple
+                                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.dcm,.hl7,.xml"
+                                onChange={handleFileChange}
+                                style={{ display: 'none' }}
+                              />
+                            </Button>
+
+                            {attachments.length > 0 && (
+                              <VStack spacing={2} align="stretch">
+                                {attachments.map((file, index) => (
+                                  <HStack
+                                    key={index}
+                                    p={3}
+                                    borderWidth="1px"
+                                    borderColor={borderColor}
+                                    borderRadius="lg"
+                                    justify="space-between"
+                                  >
+                                    <VStack align="start" spacing={0}>
+                                      <Text fontSize="sm" fontWeight="medium">
+                                        {file.name}
+                                      </Text>
+                                      <Text fontSize="xs" color="gray.500">
+                                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                                      </Text>
+                                    </VStack>
+                                    <IconButton
+                                      aria-label="Eliminar archivo"
+                                      icon={<FiX />}
+                                      size="sm"
+                                      variant="ghost"
+                                      colorScheme="red"
+                                      onClick={() => handleRemoveFile(index)}
+                                    />
+                                  </HStack>
+                                ))}
+                              </VStack>
+                            )}
                           </VStack>
-                        )}
-                      </VStack>
-                    </FormControl>
+                        </FormControl>
+                      </>
+                    ) : null}
                   </VStack>
                 </CardBody>
               </Card>
@@ -735,112 +867,124 @@ const NoteForm: React.FC = () => {
                     <FormControl isRequired>
                       <FormLabel>Tipo de Nota</FormLabel>
                       <Select
-                        value={noteType}
-                        onChange={(e) => setNoteType(e.target.value as NoteType)}
+                        value={useFormMode ? 'form' : noteType}
+                        onChange={(e) => handleNoteTypeSelectChange(e.target.value)}
                         size="lg"
                       >
-                        <option value="interrogation">
-                          Interrogatorio
-                        </option>
+                        <option value="interrogation">Interrogatorio</option>
                         <option value="evolution">Nota de Evolución</option>
-                        <option value="exploration">
-                          Exploración Física
-                        </option>
+                        <option value="exploration">Exploración Física</option>
+                        <option value="form">Usar formulario</option>
                       </Select>
-                      <Text fontSize="sm" color="gray.500" mt={2}>
-                        El template se cargará según el tipo de nota
-                      </Text>
+                      {!useFormMode && (
+                        <Text fontSize="sm" color="gray.500" mt={2}>
+                          El template se cargará según el tipo de nota
+                        </Text>
+                      )}
                     </FormControl>
-                    <FormControl isRequired>
-                      <FormLabel>Título de la Nota</FormLabel>
-                      <Input
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Ej: Consulta de seguimiento - Enero 2024"
-                        size="lg"
-                      />
-                    </FormControl>
+                    {useFormMode ? (
+                      <FormControl isRequired>
+                        <FormLabel>Formulario</FormLabel>
+                        <Select
+                          value={selectedFormId ?? ''}
+                          onChange={(e) => handleFormSelect(e.target.value)}
+                          placeholder={formsLoading ? 'Cargando formularios…' : 'Selecciona un formulario'}
+                          size="lg"
+                          isDisabled={formsLoading}
+                        >
+                          {doctorForms.map((f) => (
+                            <option key={f.id} value={f.id}>{f.name}</option>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    ) : (
+                      <FormControl isRequired>
+                        <FormLabel>Título de la Nota</FormLabel>
+                        <Input
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          placeholder="Ej: Consulta de seguimiento - Enero 2024"
+                          size="lg"
+                        />
+                      </FormControl>
+                    )}
                   </SimpleGrid>
 
-                  <FormControl isRequired>
-                    <FormLabel>Contenido de la Nota</FormLabel>
-                    <RichTextEditor
-                      value={content}
-                      onChange={setContent}
-                      placeholder="Escribe el contenido de la nota médica..."
-                      minHeight="400px"
-                    />
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel>Receta</FormLabel>
-                    <RichTextEditor
-                      value={receta}
-                      onChange={setReceta}
-                      placeholder="Indicaciones y receta médica..."
-                      minHeight="200px"
-                    />
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel>Archivos Adjuntos</FormLabel>
-                    <VStack spacing={3} align="stretch">
-                      <Button
-                        as="label"
-                        leftIcon={<FiUpload />}
-                        variant="outline"
-                        cursor="pointer"
-                        htmlFor="file-upload"
-                      >
-                        Seleccionar archivos
-                        <input
-                          id="file-upload"
-                          type="file"
-                          multiple
-                          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.dcm,.hl7,.xml"
-                          onChange={handleFileChange}
-                          style={{ display: 'none' }}
+                  {useFormMode && selectedFormId ? (
+                    <FormNoteFiller formId={selectedFormId} initialValues={formFieldValues} onValuesChange={handleFormValuesChange} />
+                  ) : !useFormMode ? (
+                    <>
+                      <FormControl isRequired>
+                        <FormLabel>Contenido de la Nota</FormLabel>
+                        <RichTextEditor
+                          value={content}
+                          onChange={setContent}
+                          placeholder="Escribe el contenido de la nota médica..."
+                          minHeight="400px"
                         />
-                      </Button>
+                      </FormControl>
 
-                      {attachments.length > 0 && (
-                        <VStack spacing={2} align="stretch">
-                          {attachments.map((file, index) => (
-                            <HStack
-                              key={index}
-                              p={3}
-                              borderWidth="1px"
-                              borderColor={borderColor}
-                              borderRadius="lg"
-                              justify="space-between"
-                            >
-                              <VStack align="start" spacing={0}>
-                                <Text fontSize="sm" fontWeight="medium">
-                                  {file.name}
-                                </Text>
-                                <Text fontSize="xs" color="gray.500">
-                                  {(file.size / 1024 / 1024).toFixed(2)} MB
-                                </Text>
-                              </VStack>
-                              <IconButton
-                                aria-label="Eliminar archivo"
-                                icon={<FiX />}
-                                size="sm"
-                                variant="ghost"
-                                colorScheme="red"
-                                onClick={() => handleRemoveFile(index)}
-                              />
-                            </HStack>
-                          ))}
+                      <FormControl>
+                        <FormLabel>Archivos Adjuntos</FormLabel>
+                        <VStack spacing={3} align="stretch">
+                          <Button
+                            as="label"
+                            leftIcon={<FiUpload />}
+                            variant="outline"
+                            cursor="pointer"
+                            htmlFor="file-upload"
+                          >
+                            Seleccionar archivos
+                            <input
+                              id="file-upload"
+                              type="file"
+                              multiple
+                              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.dcm,.hl7,.xml"
+                              onChange={handleFileChange}
+                              style={{ display: 'none' }}
+                            />
+                          </Button>
+
+                          {attachments.length > 0 && (
+                            <VStack spacing={2} align="stretch">
+                              {attachments.map((file, index) => (
+                                <HStack
+                                  key={index}
+                                  p={3}
+                                  borderWidth="1px"
+                                  borderColor={borderColor}
+                                  borderRadius="lg"
+                                  justify="space-between"
+                                >
+                                  <VStack align="start" spacing={0}>
+                                    <Text fontSize="sm" fontWeight="medium">
+                                      {file.name}
+                                    </Text>
+                                    <Text fontSize="xs" color="gray.500">
+                                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                                    </Text>
+                                  </VStack>
+                                  <IconButton
+                                    aria-label="Eliminar archivo"
+                                    icon={<FiX />}
+                                    size="sm"
+                                    variant="ghost"
+                                    colorScheme="red"
+                                    onClick={() => handleRemoveFile(index)}
+                                  />
+                                </HStack>
+                              ))}
+                            </VStack>
+                          )}
+
+                          <Text fontSize="xs" color="gray.500">
+                            Tipos de archivo aceptados: Imágenes, videos, audio,
+                            PDF, Word, Excel, PowerPoint, DICOM, HL7, XML
+                          </Text>
                         </VStack>
-                      )}
-
-                      <Text fontSize="xs" color="gray.500">
-                        Tipos de archivo aceptados: Imágenes, videos, audio,
-                        PDF, Word, Excel, PowerPoint, DICOM, HL7, XML
-                      </Text>
-                    </VStack>
-                  </FormControl>
+                      </FormControl>
+                    </>
+                  ) : null}
                 </VStack>
               </CardBody>
             </Card>

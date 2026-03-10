@@ -122,7 +122,7 @@ const Compliance: React.FC = () => {
   const alertLevelBadge = (level: string) => {
     switch (level) {
       case 'ok':
-        return { color: 'green', label: 'OK', icon: FiCheckCircle };
+        return { color: 'green', label: 'Cumple', icon: FiCheckCircle };
       case 'warning':
         return { color: 'orange', label: 'Alerta', icon: FiAlertTriangle };
       case 'critical':
@@ -361,7 +361,7 @@ const Compliance: React.FC = () => {
                         {report.alert_breakdown.ok}
                       </Text>
                       <Badge colorScheme="green" borderRadius="full" px={2}>
-                        OK
+                        Cumple
                       </Badge>
                     </VStack>
                     <VStack spacing={1}>
@@ -517,6 +517,9 @@ const Compliance: React.FC = () => {
                                 />
                                 <Text fontSize="xs" color="gray.500" mt={1}>
                                   {m.detail}
+                                  {m.name === 'note_quality_average' && (
+                                    <> Las notas basadas en formularios no se evalúan.</>
+                                  )}
                                 </Text>
                               </Box>
                             ))}

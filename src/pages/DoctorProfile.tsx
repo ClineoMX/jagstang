@@ -55,7 +55,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { NoteTemplate, NoteType } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
-import FormulariosEditor from '../components/FormulariosEditor';
 
 const DoctorProfile: React.FC = () => {
   const { doctor } = useAuth();
@@ -280,6 +279,8 @@ const DoctorProfile: React.FC = () => {
         return 'Nota de Evolución';
       case 'exploration':
         return 'Exploración Física';
+      case 'document':
+        return 'Documento';
       default:
         return 'Nota Personalizada';
     }
@@ -311,7 +312,6 @@ const DoctorProfile: React.FC = () => {
             <Tab>Información Personal</Tab>
             <Tab>Documentos</Tab>
             <Tab>Plantillas de Notas</Tab>
-            <Tab>Formularios</Tab>
           </TabList>
 
           <TabPanels>
@@ -610,10 +610,6 @@ const DoctorProfile: React.FC = () => {
               </VStack>
             </TabPanel>
 
-            {/* Formularios Tab */}
-            <TabPanel px={0} pt={6}>
-              <FormulariosEditor />
-            </TabPanel>
           </TabPanels>
         </Tabs>
       </Container>

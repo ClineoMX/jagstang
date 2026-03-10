@@ -16,6 +16,7 @@ import PatientForm from './pages/PatientForm';
 import CalendarPage from './pages/Calendar';
 import NoteForm from './pages/NoteForm';
 import DoctorProfile from './pages/DoctorProfile';
+import FormulariosPage from './pages/FormulariosPage';
 import Compliance from './pages/Compliance';
 import ContactList from './pages/ContactList';
 import ContactForm from './pages/ContactForm';
@@ -175,6 +176,16 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <DoctorProfile />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/formularios"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormulariosPage />
             </Layout>
           </ProtectedRoute>
         }

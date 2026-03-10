@@ -67,8 +67,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion } from 'framer-motion';
-import type { NoteType, TemplateItem } from '../types';
-import { usePatient, usePatientAssets } from '../hooks/usePatients';
+import type { NoteType } from '../types';
+import { usePatient } from '../hooks/usePatients';
 import { useNotes } from '../hooks/useNotes';
 import {
   usePatientConsents,
@@ -85,41 +85,8 @@ import {
   type PatientIdentity,
 } from '../hooks/usePatientIdentity';
 import { Spinner, Alert, AlertIcon, AlertTitle, AlertDescription } from '@chakra-ui/react';
-
-// Mock: lista de formularios del doctor (futuro GET /forms/)
-const MOCK_DOCTOR_FORMS: { id: string; name: string; template: TemplateItem; pdfUrl: string | null }[] = [
-  {
-    id: 'form-1',
-    name: 'Consentimiento informado',
-    template: {
-      id: 't1',
-      name: 'Consentimiento informado',
-      pdfFileName: 'consentimiento.pdf',
-      fields: [
-        { id: 'f1', name: 'Nombre del paciente', type: 'text', required: true },
-        { id: 'f2', name: 'Fecha', type: 'date', required: true },
-        { id: 'f3', name: 'Acepta términos', type: 'checkbox', required: true },
-        { id: 'f4', name: 'Firma del paciente', type: 'signature', required: true },
-      ],
-    },
-    pdfUrl: null,
-  },
-  {
-    id: 'form-2',
-    name: 'Historia clínica breve',
-    template: {
-      id: 't2',
-      name: 'Historia clínica breve',
-      pdfFileName: null,
-      fields: [
-        { id: 'f1', name: 'Motivo de consulta', type: 'text', required: true },
-        { id: 'f2', name: 'Antecedentes relevantes', type: 'text', required: false },
-        { id: 'f3', name: 'Alergias', type: 'text', required: false },
-      ],
-    },
-    pdfUrl: null,
-  },
-];
+import FormNoteViewer, { type FormNoteViewerHandle } from '../components/FormNoteViewer';
+import type { FormFieldValue } from '../components/FormNoteFiller';
 
 const PatientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -133,11 +100,12 @@ const PatientDetail: React.FC = () => {
   const descriptionColor = useColorModeValue('gray.600', 'gray.400');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedNote, setSelectedNote] = useState<any>(null);
+  const formNoteViewerRef = React.useRef<FormNoteViewerHandle>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Usar hooks de API
   const { patient, profile, loading: patientLoading, error: patientError } = usePatient(id);
   const { notes, loading: notesLoading, error: notesError } = useNotes(id);
-  const { assets: patientAssets, loading: assetsLoading, refetch: refetchAssets } = usePatientAssets(id);
   const { consents: patientConsents, loading: consentsLoading, error: consentsError } = usePatientConsents(id);
   const {
     identity,
@@ -170,12 +138,6 @@ const PatientDetail: React.FC = () => {
     onClose: onIdentityModalClose,
   } = useDisclosure();
 
-  // Nuevo formulario modal (seleccionar formulario para llenar)
-  const {
-    isOpen: isFormSelectModalOpen,
-    onOpen: onFormSelectModalOpen,
-    onClose: onFormSelectModalClose,
-  } = useDisclosure();
   const [identityForm, setIdentityForm] = useState<Record<string, string>>({});
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
 
@@ -184,86 +146,6 @@ const PatientDetail: React.FC = () => {
     [notes]
   );
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-
-  const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB
-
-  const handleFiles = useCallback(
-    async (files: File[]) => {
-      if (!id || files.length === 0) return;
-      const oversized = files.filter((f) => f.size > MAX_FILE_SIZE);
-      if (oversized.length > 0) {
-        toast({
-          title: 'Archivo muy grande',
-          description: `Máximo 30MB por archivo. ${oversized.map((f) => f.name).join(', ')} excede el límite.`,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-      const valid = files.filter((f) => f.size <= MAX_FILE_SIZE);
-      if (valid.length === 0) return;
-
-      setIsUploading(true);
-      try {
-        await apiService.uploadPatientAssets(id, valid);
-        await refetchAssets();
-        toast({
-          title: 'Archivos subidos',
-          description: `${valid.length} archivo(s) subido(s) correctamente`,
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-      } catch (err: unknown) {
-        toast({
-          title: 'Error al subir',
-          description: err instanceof Error ? err.message : 'No se pudieron subir los archivos',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      } finally {
-        setIsUploading(false);
-      }
-    },
-    [id, toast, refetchAssets]
-  );
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setIsDragging(false);
-      const files = Array.from(e.dataTransfer.files);
-      handleFiles(files);
-    },
-    [handleFiles]
-  );
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  }, []);
-
-  const handleFileInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files ? Array.from(e.target.files) : [];
-      handleFiles(files);
-      e.target.value = '';
-    },
-    [handleFiles]
-  );
-
-  const allAttachments = patientAssets;
   const timelineLineColor = useColorModeValue('gray.200', 'gray.600');
 
   if (patientLoading) {
@@ -309,6 +191,8 @@ const PatientDetail: React.FC = () => {
         return 'Nota de Evolución';
       case 'exploration':
         return 'Exploración Física';
+      case 'document':
+        return 'Documento';
       default:
         return 'Nota Personalizada';
     }
@@ -322,6 +206,8 @@ const PatientDetail: React.FC = () => {
         return { icon: FiTrendingUp, color: 'blue.500', bg: 'blue.50' };
       case 'exploration':
         return { icon: FiSearch, color: 'green.500', bg: 'green.50' };
+      case 'document':
+        return { icon: FiFile, color: 'teal.500', bg: 'teal.50' };
       default:
         return { icon: FiFileText, color: 'gray.500', bg: 'gray.50' };
     }
@@ -555,26 +441,6 @@ const PatientDetail: React.FC = () => {
                   transition="all 0.2s"
                 >
                   Nueva Nota
-                </Button>
-                <Button
-                  leftIcon={<Icon as={FiFile} />}
-                  size="lg"
-                  colorScheme="whiteAlpha"
-                  bg="whiteAlpha.300"
-                  backdropFilter="blur(10px)"
-                  _hover={{
-                    bg: 'whiteAlpha.400',
-                    transform: 'translateY(-2px)',
-                    boxShadow: 'xl',
-                  }}
-                  _active={{
-                    bg: 'whiteAlpha.500',
-                    transform: 'translateY(0)',
-                  }}
-                  onClick={onFormSelectModalOpen}
-                  transition="all 0.2s"
-                >
-                  Nuevo formulario
                 </Button>
                 <Menu>
                   <MenuButton
@@ -842,7 +708,8 @@ const PatientDetail: React.FC = () => {
                 <VStack spacing={6} align="stretch">
                   {notes.map((note, noteIndex) => {
                     const noteIcon = getNoteTypeIcon(note.type as NoteType);
-                    const plainContent = stripHtml(note.content);
+                    const isDocument = note.type === 'document';
+                    const plainContent = isDocument ? '' : stripHtml(note.content);
                     return (
                       <motion.div
                         key={note.id}
@@ -876,7 +743,7 @@ const PatientDetail: React.FC = () => {
                             borderColor={borderColor}
                             borderRadius="xl"
                             shadow="sm"
-                            minH="120px"
+                            minH={isDocument ? '88px' : '120px'}
                             transition="all 0.2s"
                             _hover={{
                               shadow: 'md',
@@ -996,35 +863,74 @@ const PatientDetail: React.FC = () => {
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            <Box
-              sx={{
-                '& h1': { fontSize: '2xl', fontWeight: 'bold', mb: 4 },
-                '& h2': { fontSize: 'xl', fontWeight: 'bold', mb: 3, mt: 6 },
-                '& h3': { fontSize: 'lg', fontWeight: 'semibold', mb: 2, mt: 4 },
-                '& p': { mb: 2 },
-                '& ul, & ol': { ml: 6, mb: 4 },
-                '& li': { mb: 1 },
-                '& strong': { fontWeight: 'bold' },
-                '& em': { fontStyle: 'italic' },
-                '& a': { color: 'brand.500', textDecoration: 'underline' },
-              }}
-              dangerouslySetInnerHTML={{ __html: selectedNote?.content || '' }}
-            />
+            {selectedNote?.type === 'document' ? (
+              (() => {
+                try {
+                  const parsed = JSON.parse(selectedNote?.content || '{}');
+                  const formId = parsed?.formId;
+                  const fields: FormFieldValue[] = parsed?.fields ?? [];
+                  if (formId && Array.isArray(fields)) {
+                    return <FormNoteViewer ref={formNoteViewerRef} formId={formId} values={fields} title={selectedNote?.title} />;
+                  }
+                } catch { /* invalid JSON */ }
+                return (
+                  <Text color="gray.500" py={4}>
+                    Documento firmado. No se pudo cargar la vista previa.
+                  </Text>
+                );
+              })()
+            ) : (
+              <Box
+                sx={{
+                  '& h1': { fontSize: '2xl', fontWeight: 'bold', mb: 4 },
+                  '& h2': { fontSize: 'xl', fontWeight: 'bold', mb: 3, mt: 6 },
+                  '& h3': { fontSize: 'lg', fontWeight: 'semibold', mb: 2, mt: 4 },
+                  '& p': { mb: 2 },
+                  '& ul, & ol': { ml: 6, mb: 4 },
+                  '& li': { mb: 1 },
+                  '& strong': { fontWeight: 'bold' },
+                  '& em': { fontStyle: 'italic' },
+                  '& a': { color: 'brand.500', textDecoration: 'underline' },
+                }}
+                dangerouslySetInnerHTML={{ __html: selectedNote?.content || '' }}
+              />
+            )}
           </ModalBody>
           {selectedNote?.status === 'signed' && (
             <ModalFooter borderTopWidth="1px" borderColor={borderColor}>
-              <Button
-                colorScheme="brand"
-                leftIcon={<FiPlus />}
-                onClick={() => {
-                  onClose();
-                  navigate(`/patients/${patient.id}/notes/new`, {
-                    state: { followUpFromNoteId: selectedNote.id },
-                  });
-                }}
-              >
-                Seguimiento
-              </Button>
+              <HStack spacing={3}>
+                {selectedNote?.type === 'document' && (
+                  <Button
+                    leftIcon={<FiDownload />}
+                    variant="outline"
+                    colorScheme="brand"
+                    onClick={async () => {
+                      setIsDownloading(true);
+                      try {
+                        await formNoteViewerRef.current?.download();
+                      } finally {
+                        setIsDownloading(false);
+                      }
+                    }}
+                    isLoading={isDownloading}
+                    loadingText="Generando…"
+                  >
+                    Descargar PDF
+                  </Button>
+                )}
+                <Button
+                  colorScheme="brand"
+                  leftIcon={<FiPlus />}
+                  onClick={() => {
+                    onClose();
+                    navigate(`/patients/${patient.id}/notes/new`, {
+                      state: { followUpFromNoteId: selectedNote.id },
+                    });
+                  }}
+                >
+                  Seguimiento
+                </Button>
+              </HStack>
             </ModalFooter>
           )}
         </ModalContent>
@@ -1279,52 +1185,6 @@ const PatientDetail: React.FC = () => {
               </Button>
             </HStack>
           </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* Nuevo formulario - seleccionar formulario para llenar */}
-      <Modal isOpen={isFormSelectModalOpen} onClose={onFormSelectModalClose} size="md">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Nuevo formulario</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <Text fontSize="sm" color="gray.600" mb={4}>
-              Selecciona un formulario para completar en el expediente del paciente.
-            </Text>
-            <VStack spacing={2} align="stretch">
-              {MOCK_DOCTOR_FORMS.map((form) => (
-                <HStack
-                  key={form.id}
-                  p={4}
-                  borderRadius="lg"
-                  borderWidth="1px"
-                  borderColor={borderColor}
-                  justify="space-between"
-                  _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
-                >
-                  <Text fontWeight="medium">{form.name}</Text>
-                  <Button
-                    size="sm"
-                    colorScheme="brand"
-                    onClick={() => {
-                      onFormSelectModalClose();
-                      navigate('/templates/fill', {
-                        state: {
-                          template: form.template,
-                          pdfUrl: form.pdfUrl,
-                          patientId: patient.id,
-                          patientName: `${patient.firstName} ${patient.lastName}`,
-                        },
-                      });
-                    }}
-                  >
-                    Llenar
-                  </Button>
-                </HStack>
-              ))}
-            </VStack>
-          </ModalBody>
         </ModalContent>
       </Modal>
     </Box>

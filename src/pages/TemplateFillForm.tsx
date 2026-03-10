@@ -276,7 +276,7 @@ const TemplateFillForm: React.FC = () => {
           </HStack>
 
           <Text color="gray.600">
-            Completa los campos del formulario. Los datos se guardan al enviar (PoC con mock).
+            Completa los Formulario. Los datos se guardan al enviar (PoC con mock).
           </Text>
 
           <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: showPdfWithOverlays ? '1fr 360px' : '1fr' }} gap={6}>
@@ -315,7 +315,7 @@ const TemplateFillForm: React.FC = () => {
                               renderAnnotationLayer={true}
                             />
                             {template.fields
-                              .filter((f) => f.position?.pageIndex === i)
+                              .filter((f) => f.position?.page === i)
                               .map((field) => (
                                 <Box
                                   key={field.id}
@@ -372,7 +372,7 @@ const TemplateFillForm: React.FC = () => {
             <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
               <CardHeader>
                 <Heading size="md">
-                  {showPdfWithOverlays ? 'Campos (también sobre el PDF)' : 'Campos del formulario'}
+                  {showPdfWithOverlays ? 'Campos (también sobre el PDF)' : 'Formulario'}
                 </Heading>
               </CardHeader>
               <CardBody pt={0}>
@@ -423,7 +423,7 @@ const TemplateFillForm: React.FC = () => {
                         renderAnnotationLayer={true}
                       />
                       {template.fields
-                        .filter((f) => f.position?.pageIndex === i)
+                        .filter((f) => f.position?.page === i)
                         .map((field) => (
                           <Box
                             key={field.id}

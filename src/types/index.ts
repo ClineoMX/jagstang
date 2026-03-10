@@ -81,7 +81,7 @@ export interface Appointment {
 }
 
 // Medical Note types
-export type NoteType = 'interrogation' | 'exploration' | 'evolution';
+export type NoteType = 'interrogation' | 'exploration' | 'evolution' | 'document';
 
 export interface NoteTemplate {
   id: string;
@@ -274,6 +274,8 @@ export interface TemplateField {
   type: TemplateFieldType;
   required: boolean;
   position?: FieldPosition | null;
+  /** Solo en campos por defecto de la API */
+  tag?: string;
 }
 
 export interface TemplateItem {

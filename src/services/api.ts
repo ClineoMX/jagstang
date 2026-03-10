@@ -464,6 +464,142 @@ class ApiService {
   }
 
   /**
+   * GET /doctor/fields/
+   * Lista de campos creados por el doctor (para formularios).
+   */
+  async getDoctorFields(params?: { page?: number; size?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null) queryParams.append('page', params.page.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
+    const query = queryParams.toString();
+    return this.request<{
+      results: Array<{
+        id: string;
+        name: string;
+        type: string;
+        required: boolean;
+      }>;
+      count: number;
+      page: number;
+      size: number;
+    }>(`/doctor/fields/${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * POST /doctor/fields/
+   * Crear campo del doctor. Payload: { name, type, required }.
+   */
+  async createDoctorField(body: { name: string; type: string; required: boolean }) {
+    return this.request<{
+      id: string;
+      name: string;
+      type: string;
+      required: boolean;
+    }>('/doctor/fields/', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * PATCH /doctor/fields/<id>/
+   * Actualizar campo. Mismo payload que POST.
+   */
+  async updateDoctorField(
+    fieldId: string,
+    body: { name: string; type: string; required: boolean }
+  ) {
+    return this.request<{
+      id: string;
+      name: string;
+      type: string;
+      required: boolean;
+    }>(`/doctor/fields/${fieldId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * DELETE /doctor/fields/<id>/
+   */
+  async deleteDoctorField(fieldId: string) {
+    return this.request<void>(`/doctor/fields/${fieldId}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * POST /doctor/forms/
+   * multipart/form-data: files (PDF), name, fields (JSON string)
+   */
+  async createDoctorForm(pdfFile: File, name: string, fields: unknown[]) {
+    const formData = new FormData();
+    formData.append('files', pdfFile);
+    formData.append('name', name);
+    formData.append('fields', JSON.stringify(fields));
+    return this.request<{ id: string; name: string }>('/doctor/forms/', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
+  /**
+   * DELETE /doctor/forms/<form_id>/
+   */
+  async deleteDoctorForm(formId: string) {
+    return this.request<void>(`/doctor/forms/${formId}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * GET /doctor/forms/
+   * Lista de formularios guardados del doctor.
+   */
+  async listDoctorForms(params?: { page?: number; size?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null) queryParams.append('page', params.page.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
+    const query = queryParams.toString();
+    return this.request<{
+      results: Array<{ id: string; name: string }>;
+      count: number;
+      page: number;
+      size: number;
+    }>(`/doctor/forms/${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * GET /doctor/forms/<formId>/
+   * Detalle de un formulario guardado.
+   */
+  async getDoctorForm(formId: string) {
+    return this.request<{
+      id: string;
+      name: string;
+      key: string;
+      fields: Array<{
+        id: string;
+        position?: { x: number; y: number; page: number; width: number; height: number };
+      }>;
+    }>(`/doctor/forms/${formId}/`);
+  }
+
+  /**
+   * GET /doctor/assets/<assetId>/
+   * Descarga un asset (PDF) como blob.
+   */
+  async getDoctorAsset(assetId: string): Promise<Blob> {
+    const url = `${API_BASE_URL}/doctor/assets/${assetId}/`;
+    const response = await fetch(url, { headers: this.getAuthHeaders() });
+    if (!response.ok) {
+      throw { message: 'Error al descargar el asset', status: response.status } as ApiError;
+    }
+    return response.blob();
+  }
+
+  /**
    * GET /doctor/compliance/
    */
   async getDoctorCompliance() {

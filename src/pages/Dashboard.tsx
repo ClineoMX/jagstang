@@ -27,6 +27,7 @@ import {
   FiCalendar,
   FiUsers,
   FiFileText,
+  FiFile,
   FiClock,
   FiCheckCircle,
   FiEdit,
@@ -44,7 +45,7 @@ import { usePatients } from '../hooks/usePatients';
 import { useAppointments } from '../hooks/useAppointments';
 import { apiService } from '../services/api';
 
-type NoteType = 'interrogation' | 'evolution' | 'exploration';
+type NoteType = 'interrogation' | 'evolution' | 'exploration' | 'document';
 
 function getNoteTypeIcon(type: string) {
   switch (type) {
@@ -54,6 +55,8 @@ function getNoteTypeIcon(type: string) {
       return { icon: FiTrendingUp, color: 'blue.500' as const, bg: 'blue.50' as const };
     case 'exploration':
       return { icon: FiSearch, color: 'green.500' as const, bg: 'green.50' as const };
+    case 'document':
+      return { icon: FiFile, color: 'teal.500' as const, bg: 'teal.50' as const };
     default:
       return { icon: FiFileText, color: 'gray.500' as const, bg: 'gray.50' as const };
   }
@@ -67,6 +70,8 @@ function getNoteTypeLabel(type: string) {
       return 'Nota de Evolución';
     case 'exploration':
       return 'Exploración Física';
+    case 'document':
+      return 'Documento';
     default:
       return 'Nota Personalizada';
   }

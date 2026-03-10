@@ -944,3 +944,95 @@ Response:
 }
 ```
 
+
+# List Forms
+
+Path: `/doctor/forms/`
+Method: `GET`
+
+
+Headers: `Content-Type: application/json;X-Clineo-Api-Key: process.env.apikey; X-Clineo-Id: login.id;Authorization:Bearer login.access;`
+
+Payload:
+```json
+null
+```
+
+Response:
+```json
+{
+  "results": [
+    {
+      "id": "88c82935-a8d0-402c-a8e6-4cfc891d5147",
+      "name": "Consentimiento informado"
+    }
+  ],
+  "count": 1,
+  "page": 1,
+  "size": 10
+}
+```
+
+# Get Form
+
+
+Path: `/doctor/forms/<form_id>/`
+Method: `GET`
+
+
+Headers: `Content-Type: application/json;X-Clineo-Api-Key: process.env.apikey; X-Clineo-Id: login.id;Authorization:Bearer login.access;`
+
+Payload:
+```json
+null
+```
+
+Response:
+```json
+{
+  "id": "b1454cc0-4cdc-41ed-bcf1-8edc18b1991a",
+  "name": "Consentimiento informado",
+  "key": "6d8bbe1d-9f5b-47dc-94ac-2961906cb424",
+  "fields": [
+    {
+      "id": "272142e5-6ac3-46d4-a058-5fb726535d18",
+      "position": {
+        "x": 60.84077380952382,
+        "y": 84.27724106203996,
+        "page": 0,
+        "width": 30,
+        "height": 6
+      }
+    }
+  ]
+}
+```
+
+# Get Asset
+
+
+Path: `/doctor/assets/<id>/`
+Method: `GET`
+
+
+Headers: `Content-Type: application/json;X-Clineo-Api-Key: process.env.apikey; X-Clineo-Id: login.id;Authorization:Bearer login.access;`
+
+Payload:
+```json
+null
+```
+
+Response Headers:
+```
+Connection: close
+Content-Disposition: attachment; filename="d8ec59ee-b061-700d-d674-feb01250158b/forms/comprobante_de_la_transaccion_28-feb-2026_20_01_49.pdf"
+Content-Length: 423604
+Content-Type: application/pdf
+Date: Mon, 09 Mar 2026 17:37:23 GMT
+Vary: Origin
+```
+
+Response:
+```
+<binary data>
+```
