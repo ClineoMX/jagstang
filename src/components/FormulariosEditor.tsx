@@ -85,7 +85,7 @@ const FIELD_TYPE_ICONS: Record<TemplateFieldType, React.ElementType> = {
   signature: FiEdit3,
 };
 
-const DEFAULT_FIELD_SIZE = { width: 30, height: 6 };
+const DEFAULT_FIELD_SIZE = { width: 20, height: 5 };
 
 /** Mapea el tipo de la API al TemplateFieldType del frontend */
 function mapApiTypeToFieldType(apiType: string): TemplateFieldType {
@@ -446,7 +446,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
         return;
       }
 
-      const minSize = 4; // %
+      const minSize = 2; // % mínimo para poder hacer cajas más pequeñas
       const width = clamp(cur.startWidth + dxPct, minSize, 100 - cur.startX);
       const height = clamp(cur.startHeight + dyPct, minSize, 100 - cur.startY);
       updateFieldPosition(cur.fieldId, { width, height });
