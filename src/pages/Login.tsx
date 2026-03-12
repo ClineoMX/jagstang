@@ -17,10 +17,12 @@ import {
   Card,
   CardBody,
   HStack,
+  Link,
 } from '@chakra-ui/react';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import ClineoLogo from '../components/ClineoLogo';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -72,38 +74,20 @@ const Login: React.FC = () => {
     <Box bg={bgColor} minH="100vh">
       {/* Header with Gradient */}
       <Box
-        bgGradient="linear(135deg, brand.500 0%, brand.600 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
-        py={12}
+        py={5}
       >
         <Container maxW="container.xl">
-          <VStack spacing={4} align="center">
-            <Box
-              bg="whiteAlpha.300"
-              p={4}
-              borderRadius="2xl"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-              backdropFilter="blur(10px)"
-            >
-              <Text fontSize="5xl">
-                🏥
-              </Text>
-            </Box>
-            <Heading size="xl" fontWeight="bold" textAlign="center">
-              MedApp
-            </Heading>
-            <Text fontSize="lg" opacity={0.9} textAlign="center">
-              Sistema de Gestión Médica
-            </Text>
+          <VStack spacing={2} align="center">
+            <ClineoLogo variant="vertical" color="white" height={48} />
           </VStack>
         </Container>
       </Box>
 
       {/* Login Form */}
-      <Container maxW="md" py={12}>
+      <Container maxW="md" py={8}>
         <Card
           bg={cardBg}
           borderRadius="2xl"
@@ -132,6 +116,7 @@ const Login: React.FC = () => {
                       size="lg"
                       autoComplete="email"
                       bg={useColorModeValue('white', 'gray.800')}
+                      fontFamily="monospace"
                     />
                   </FormControl>
 
@@ -145,6 +130,7 @@ const Login: React.FC = () => {
                         placeholder="••••••••"
                         autoComplete="current-password"
                         bg={useColorModeValue('white', 'gray.800')}
+                        fontFamily="monospace"
                       />
                       <InputRightElement>
                         <IconButton
@@ -177,12 +163,23 @@ const Login: React.FC = () => {
               </form>
 
               <Box pt={4} borderTop="1px" borderColor={useColorModeValue('gray.200', 'gray.700')}>
-                <Text fontSize="sm" color="gray.500" textAlign="center">
-                  ¿Problemas para acceder?{' '}
-                  <Text as="span" color="brand.500" fontWeight="medium">
-                    Contacta al soporte
+                <VStack spacing={2}>
+                  <Link
+                    as={RouterLink}
+                    to="/forgot-password"
+                    fontSize="sm"
+                    color="brand.500"
+                    fontWeight="medium"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </Link>
+                  <Text fontSize="sm" color="gray.500" textAlign="center">
+                    ¿Problemas para acceder?{' '}
+                    <Text as="span" color="brand.500" fontWeight="medium">
+                      Contacta al soporte
+                    </Text>
                   </Text>
-                </Text>
+                </VStack>
               </Box>
             </VStack>
           </CardBody>

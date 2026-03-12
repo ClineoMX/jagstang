@@ -2,13 +2,8 @@ import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
-import { Box, HStack, IconButton, useColorModeValue } from '@chakra-ui/react';
-import {
-  FiBold,
-  FiItalic,
-  FiList,
-  FiCode,
-} from 'react-icons/fi';
+import { Box, Button, HStack, IconButton, useColorModeValue } from '@chakra-ui/react';
+import { FiBold, FiItalic, FiList } from 'react-icons/fi';
 import { MdFormatListNumbered, MdFormatQuote } from 'react-icons/md';
 
 interface RichTextEditorProps {
@@ -22,6 +17,7 @@ interface RichTextEditorProps {
 const MenuBar = ({ editor }: any) => {
   const activeBg = useColorModeValue('gray.200', 'gray.600');
   const hoverBg = useColorModeValue('gray.100', 'gray.700');
+  const iconColor = useColorModeValue('gray.700', 'gray.200');
 
   if (!editor) {
     return null;
@@ -36,11 +32,14 @@ const MenuBar = ({ editor }: any) => {
       bg={useColorModeValue('white', 'gray.800')}
       borderTopRadius="md"
       flexWrap="wrap"
+      color={iconColor}
     >
       <IconButton
         aria-label="Bold"
         icon={<FiBold />}
         size="sm"
+        variant="ghost"
+        color={iconColor}
         onClick={() => editor.chain().focus().toggleBold().run()}
         bg={editor.isActive('bold') ? activeBg : 'transparent'}
         _hover={{ bg: hoverBg }}
@@ -49,6 +48,8 @@ const MenuBar = ({ editor }: any) => {
         aria-label="Italic"
         icon={<FiItalic />}
         size="sm"
+        variant="ghost"
+        color={iconColor}
         onClick={() => editor.chain().focus().toggleItalic().run()}
         bg={editor.isActive('italic') ? activeBg : 'transparent'}
         _hover={{ bg: hoverBg }}
@@ -57,6 +58,8 @@ const MenuBar = ({ editor }: any) => {
         aria-label="Bullet List"
         icon={<FiList />}
         size="sm"
+        variant="ghost"
+        color={iconColor}
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         bg={editor.isActive('bulletList') ? activeBg : 'transparent'}
         _hover={{ bg: hoverBg }}
@@ -65,51 +68,59 @@ const MenuBar = ({ editor }: any) => {
         aria-label="Ordered List"
         icon={<MdFormatListNumbered />}
         size="sm"
+        variant="ghost"
+        color={iconColor}
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         bg={editor.isActive('orderedList') ? activeBg : 'transparent'}
         _hover={{ bg: hoverBg }}
       />
-      <IconButton
+      <Button
         aria-label="Heading 1"
         size="sm"
+        variant="ghost"
+        color={iconColor}
+        fontWeight="bold"
+        fontSize="xs"
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         bg={editor.isActive('heading', { level: 1 }) ? activeBg : 'transparent'}
         _hover={{ bg: hoverBg }}
       >
         H1
-      </IconButton>
-      <IconButton
+      </Button>
+      <Button
         aria-label="Heading 2"
         size="sm"
+        variant="ghost"
+        color={iconColor}
+        fontWeight="bold"
+        fontSize="xs"
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         bg={editor.isActive('heading', { level: 2 }) ? activeBg : 'transparent'}
         _hover={{ bg: hoverBg }}
       >
         H2
-      </IconButton>
-      <IconButton
+      </Button>
+      <Button
         aria-label="Heading 3"
         size="sm"
+        variant="ghost"
+        color={iconColor}
+        fontWeight="bold"
+        fontSize="xs"
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         bg={editor.isActive('heading', { level: 3 }) ? activeBg : 'transparent'}
         _hover={{ bg: hoverBg }}
       >
         H3
-      </IconButton>
+      </Button>
       <IconButton
         aria-label="Blockquote"
         icon={<MdFormatQuote />}
         size="sm"
+        variant="ghost"
+        color={iconColor}
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         bg={editor.isActive('blockquote') ? activeBg : 'transparent'}
-        _hover={{ bg: hoverBg }}
-      />
-      <IconButton
-        aria-label="Code Block"
-        icon={<FiCode />}
-        size="sm"
-        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        bg={editor.isActive('codeBlock') ? activeBg : 'transparent'}
         _hover={{ bg: hoverBg }}
       />
     </HStack>

@@ -26,9 +26,11 @@ import {
   FiUser,
   FiActivity,
   FiBook,
+  FiFileText,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import ClineoLogo from './ClineoLogo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -100,16 +102,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const sidebarBg = useColorModeValue('gray.800', 'gray.900');
+  const sidebarBg = useColorModeValue('secondary.800', 'secondary.900');
   const bgColor = useColorModeValue('background.light', 'background.dark');
 
   const navItems = [
     { icon: FiHome, label: 'Home', path: '/' },
     { icon: FiUsers, label: 'Pacientes', path: '/patients' },
     { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
+    { icon: FiFileText, label: 'Formularios', path: '/formularios' },
     { icon: FiBook, label: 'Contactos', path: '/contacts' },
     { icon: FiActivity, label: 'NOM', path: '/compliance' },
-
   ];
 
   const handleLogout = () => {
@@ -135,16 +137,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           mb={8}
         >
           <Box
-            bg="whiteAlpha.200"
-            p={3}
-            borderRadius="2xl"
+            p={2}
             display="flex"
             alignItems="center"
             justifyContent="center"
           >
-            <Text fontSize="3xl">
-              🏥
-            </Text>
+            <ClineoLogo variant="icon" color="white" size={12} />
           </Box>
         </Flex>
 
@@ -158,7 +156,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               path={item.path}
               isActive={
                 location.pathname === item.path ||
-                (item.path === '/contacts' && location.pathname.startsWith('/contacts'))
+                (item.path === '/contacts' && location.pathname.startsWith('/contacts')) ||
+                (item.path === '/formularios' && location.pathname.startsWith('/formularios'))
               }
               onClick={() => navigate(item.path)}
             />
@@ -193,7 +192,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <Avatar
                     size="md"
                     name={`${doctor.firstName} ${doctor.lastName}`}
-                    src={doctor.avatar}
+                    src={doctor.avatar || undefined}
+                    bg="brand.400"
+                    color="white"
                     border="2px solid"
                     borderColor="whiteAlpha.300"
                     _hover={{
@@ -201,6 +202,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       transform: 'scale(1.05)',
                     }}
                     transition="all 0.2s"
+                    sx={{
+                      '& span': {
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%',
+                        height: '100%',
+                      },
+                    }}
                   />
                 </Tooltip>
               </MenuButton>

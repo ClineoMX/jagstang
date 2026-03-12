@@ -137,7 +137,7 @@ export const mockNoteTemplates: NoteTemplate[] = [
   {
     id: 'tpl-1',
     name: 'Interrogatorio',
-    type: 'initial_interrogation',
+    type: 'interrogation',
     content: `<h1>Interrogatorio</h1>
 
 <h2>Datos Generales</h2>
@@ -196,7 +196,7 @@ export const mockNoteTemplates: NoteTemplate[] = [
   {
     id: 'tpl-2',
     name: 'Nota de Evolución',
-    type: 'evolution_note',
+    type: 'evolution',
     content: `<h1>Nota de Evolución</h1>
 
 <p><strong>Fecha:</strong> [Fecha de la consulta]<br>
@@ -237,7 +237,7 @@ export const mockNoteTemplates: NoteTemplate[] = [
   {
     id: 'tpl-3',
     name: 'Exploración Física',
-    type: 'physical_examination',
+    type: 'exploration',
     content: `<h1>Exploración Física</h1>
 
 <p><strong>Fecha:</strong> [Fecha del examen]<br>
@@ -351,7 +351,7 @@ export const mockMedicalNotes: MedicalNote[] = [
     patientId: 'pat-1',
     doctorId: 'doc-1',
     title: 'Interrogatorio - Juan Pérez',
-    type: 'initial_interrogation',
+    type: 'interrogation',
     content: `<h1>Interrogatorio</h1>
 
 <h2>Datos Generales</h2>
@@ -417,7 +417,7 @@ export const mockMedicalNotes: MedicalNote[] = [
     patientId: 'pat-2',
     doctorId: 'doc-1',
     title: 'Nota de Evolución - Ana Rodríguez',
-    type: 'evolution_note',
+    type: 'evolution',
     content: `<h1>Nota de Evolución</h1>
 
 <p><strong>Fecha:</strong> 18 de octubre de 2024<br>
@@ -465,7 +465,7 @@ export const mockMedicalNotes: MedicalNote[] = [
     patientId: 'pat-5',
     doctorId: 'doc-1',
     title: 'Exploración Física - Roberto González',
-    type: 'physical_examination',
+    type: 'exploration',
     content: `<h1>Exploración Física</h1>
 
 <p><strong>Fecha:</strong> 20 de octubre de 2024<br>
@@ -554,7 +554,7 @@ export const mockMedicalNotes: MedicalNote[] = [
     patientId: 'pat-1',
     doctorId: 'doc-1',
     title: 'Nota de Evolución - Seguimiento Dolor Abdominal',
-    type: 'evolution_note',
+    type: 'evolution',
     content: `<h1>Nota de Evolución</h1>
 
 <p><strong>Fecha:</strong> 15 de octubre de 2024<br>
@@ -601,7 +601,7 @@ export const mockMedicalNotes: MedicalNote[] = [
     patientId: 'pat-1',
     doctorId: 'doc-1',
     title: 'Exploración Física - Juan Pérez',
-    type: 'physical_examination',
+    type: 'exploration',
     content: `<h1>Exploración Física</h1>
 
 <p><strong>Fecha:</strong> 15 de octubre de 2024<br>
@@ -689,7 +689,7 @@ export const mockMedicalNotes: MedicalNote[] = [
     patientId: 'pat-2',
     doctorId: 'doc-1',
     title: 'Nota de Seguimiento - Ana Rodríguez',
-    type: 'evolution_note',
+    type: 'evolution',
     content: `<h1>Nota de Evolución</h1>
 
 <p><strong>Fecha:</strong> 18 de octubre de 2024<br>
@@ -736,7 +736,7 @@ export const mockMedicalNotes: MedicalNote[] = [
     patientId: 'pat-1',
     doctorId: 'doc-1',
     title: 'Resultados de Laboratorio',
-    type: 'evolution_note',
+    type: 'evolution',
     content: `<h1>Nota de Evolución</h1>
 
 <p><strong>Fecha:</strong> 15 de octubre de 2024<br>
@@ -777,7 +777,7 @@ export const mockMedicalNotes: MedicalNote[] = [
     patientId: 'pat-1',
     doctorId: 'doc-1',
     title: 'Nota de Evolución - Borrador',
-    type: 'evolution_note',
+    type: 'evolution',
     content: `<h1>Nota de Evolución</h1>
 
 <p><strong>Fecha:</strong> 22 de octubre de 2024<br>

@@ -5,28 +5,42 @@ const config: ThemeConfig = {
   useSystemColorMode: false,
 };
 
-// Medical-grade professional color palette
+// Clineo brand palette (from telecaster/public/assets guidelines)
+// Primary: #4cb7d7 (cyan/turquoise), Secondary: #7d87a1 (gray-blue), Dark: #231f20
 const colors = {
   brand: {
-    50: '#E6F2FF',
-    100: '#BAE0FF',
-    200: '#8DCDFF',
-    300: '#61BAFF',
-    400: '#34A7FF',
-    500: '#007AFF', // Primary - Medical Blue
-    600: '#0062CC',
-    700: '#004999',
-    800: '#003166',
-    900: '#001933',
+    50: '#eef9fc',
+    100: '#d4f0f7',
+    200: '#a9e1ef',
+    300: '#7dd2e7',
+    400: '#4cb7d7', // Primary Clineo cyan
+    500: '#3a9fbf',
+    600: '#2e7f99',
+    700: '#235f73',
+    800: '#17404d',
+    900: '#0c2026',
   },
-  // Semantic colors for medical context
+  secondary: {
+    50: '#f0f1f4',
+    100: '#d9dce3',
+    200: '#b3b9c7',
+    300: '#8d96ab',
+    400: '#7d87a1', // Secondary Clineo gray-blue
+    500: '#636d87',
+    600: '#4f576c',
+    700: '#3b4151',
+    800: '#282c36',
+    900: '#14161b',
+  },
+  dark: '#231f20',
+  // Semantic colors (medical context, aligned with brand)
   success: {
     50: '#E8F8ED',
     100: '#C3ECCE',
     200: '#9FE0AF',
     300: '#7AD490',
     400: '#56C871',
-    500: '#34C759', // iOS Green
+    500: '#34C759',
     600: '#2AA048',
     700: '#1F7936',
     800: '#155124',
@@ -38,7 +52,7 @@ const colors = {
     200: '#FF9693',
     300: '#FF6D69',
     400: '#FF443F',
-    500: '#FF3B30', // iOS Red
+    500: '#FF3B30',
     600: '#CC2F26',
     700: '#99231D',
     800: '#661713',
@@ -50,40 +64,31 @@ const colors = {
     200: '#FFCC8A',
     300: '#FFB85C',
     400: '#FFA42E',
-    500: '#FF9500', // iOS Orange
+    500: '#FF9500',
     600: '#CC7700',
     700: '#995900',
     800: '#663C00',
     900: '#331E00',
   },
   info: {
-    50: '#E6F5FF',
-    100: '#B8E2FF',
-    200: '#8ACFFF',
-    300: '#5CBCFF',
-    400: '#2EA9FF',
-    500: '#5AC8FA', // iOS Teal
+    50: '#eef9fc',
+    100: '#d4f0f7',
+    200: '#a9e1ef',
+    300: '#7dd2e7',
+    400: '#4cb7d7',
+    500: '#5AC8FA',
     600: '#48A0C8',
     700: '#367896',
     800: '#245064',
     900: '#122832',
   },
-  // Medical semantic colors
-  allergy: {
-    500: '#FF3B30', // Critical red for allergies
-  },
-  medication: {
-    500: '#5AC8FA', // Teal for medications
-  },
-  diagnosis: {
-    500: '#AF52DE', // Purple for diagnoses
-  },
-  examination: {
-    500: '#34C759', // Green for examinations
-  },
+  allergy: { 500: '#FF3B30' },
+  medication: { 500: '#4cb7d7' },
+  diagnosis: { 500: '#AF52DE' },
+  examination: { 500: '#34C759' },
   background: {
     light: '#F2F2F7',
-    dark: '#000000',
+    dark: '#14161b',
   },
   card: {
     light: '#FFFFFF',
@@ -99,41 +104,41 @@ const theme = extendTheme({
   config,
   colors,
   fonts: {
-    heading: `-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Roboto', sans-serif`,
-    body: `-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Roboto', sans-serif`,
+    heading: `'Utendo Bold', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif`,
+    body: `'Utendo Regular', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif`,
   },
   fontSizes: {
-    xs: '0.75rem', // 12px
-    sm: '0.875rem', // 14px
-    md: '1rem', // 16px
-    lg: '1.125rem', // 18px
-    xl: '1.25rem', // 20px
-    '2xl': '1.5rem', // 24px
-    '3xl': '1.875rem', // 30px
-    '4xl': '2.25rem', // 36px
+    xs: '0.75rem',
+    sm: '0.875rem',
+    md: '1rem',
+    lg: '1.125rem',
+    xl: '1.25rem',
+    '2xl': '1.5rem',
+    '3xl': '1.875rem',
+    '4xl': '2.25rem',
   },
   space: {
     px: '1px',
     0: '0',
-    0.5: '0.125rem', // 2px
-    1: '0.25rem', // 4px
-    2: '0.5rem', // 8px
-    3: '0.75rem', // 12px
-    4: '1rem', // 16px
-    5: '1.25rem', // 20px
-    6: '1.5rem', // 24px
-    8: '2rem', // 32px
-    10: '2.5rem', // 40px
-    12: '3rem', // 48px
-    16: '4rem', // 64px
+    0.5: '0.125rem',
+    1: '0.25rem',
+    2: '0.5rem',
+    3: '0.75rem',
+    4: '1rem',
+    5: '1.25rem',
+    6: '1.5rem',
+    8: '2rem',
+    10: '2.5rem',
+    12: '3rem',
+    16: '4rem',
   },
   radii: {
     none: '0',
-    sm: '0.25rem', // 4px
-    base: '0.5rem', // 8px
-    md: '0.75rem', // 12px
-    lg: '1rem', // 16px
-    xl: '1.5rem', // 24px
+    sm: '0.25rem',
+    base: '0.5rem',
+    md: '0.75rem',
+    lg: '1rem',
+    xl: '1.5rem',
     full: '9999px',
   },
   shadows: {
@@ -147,7 +152,7 @@ const theme = extendTheme({
     global: (props: any) => ({
       body: {
         bg: props.colorMode === 'dark' ? 'background.dark' : 'background.light',
-        color: props.colorMode === 'dark' ? 'white' : 'gray.800',
+        color: props.colorMode === 'dark' ? 'white' : 'dark',
         lineHeight: '1.6',
       },
     }),
@@ -180,15 +185,15 @@ const theme = extendTheme({
       },
       variants: {
         solid: (props: any) => ({
-          bg: props.colorScheme === 'brand' ? 'brand.500' : undefined,
+          bg: props.colorScheme === 'brand' ? 'brand.400' : undefined,
           color: 'white',
           _hover: {
-            bg: props.colorScheme === 'brand' ? 'brand.600' : undefined,
+            bg: props.colorScheme === 'brand' ? 'brand.500' : undefined,
             transform: 'translateY(-1px)',
             boxShadow: 'md',
           },
           _active: {
-            bg: props.colorScheme === 'brand' ? 'brand.700' : undefined,
+            bg: props.colorScheme === 'brand' ? 'brand.600' : undefined,
             transform: 'translateY(0)',
           },
         }),
@@ -221,8 +226,8 @@ const theme = extendTheme({
               borderColor: 'gray.400',
             },
             _focus: {
-              borderColor: 'brand.500',
-              boxShadow: '0 0 0 3px rgba(0, 122, 255, 0.1)',
+              borderColor: 'brand.400',
+              boxShadow: '0 0 0 3px rgba(76, 183, 215, 0.2)',
             },
           },
         },
@@ -237,6 +242,29 @@ const theme = extendTheme({
         fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: '0.5px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        lineHeight: 1,
+      },
+    },
+    Avatar: {
+      baseStyle: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        '& span': {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          height: '100%',
+          lineHeight: 1,
+          textAlign: 'center',
+          // Ajuste óptico: muchas fuentes desplazan las mayúsculas ligeramente arriba-izquierda
+          paddingTop: '2px',
+          paddingLeft: '1px',
+        },
       },
     },
   },

@@ -80,7 +80,7 @@ const DoctorProfile: React.FC = () => {
     {
       id: 'tpl-1',
       name: 'Interrogatorio Personalizado',
-      type: 'initial_interrogation',
+      type: 'interrogation',
       content: `<h1>Interrogatorio</h1>
 <h2>Datos del Paciente</h2>
 <ul>
@@ -273,12 +273,14 @@ const DoctorProfile: React.FC = () => {
 
   const getNoteTypeLabel = (type: NoteType) => {
     switch (type) {
-      case 'initial_interrogation':
+      case 'interrogation':
         return 'Interrogatorio';
-      case 'evolution_note':
+      case 'evolution':
         return 'Nota de Evolución';
-      case 'physical_examination':
+      case 'exploration':
         return 'Exploración Física';
+      case 'document':
+        return 'Documento';
       default:
         return 'Nota Personalizada';
     }
@@ -288,7 +290,7 @@ const DoctorProfile: React.FC = () => {
     <Box>
       {/* Header with Gradient */}
       <Box
-        bgGradient="linear(135deg, brand.500 0%, brand.600 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
         py={8}
@@ -328,6 +330,15 @@ const DoctorProfile: React.FC = () => {
                           size="2xl"
                           name={`${firstName} ${lastName}`}
                           src={avatarUrl}
+                          sx={{
+                            '& span': {
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '100%',
+                              height: '100%',
+                            },
+                          }}
                         />
                         <input
                           ref={fileInputRef}
@@ -598,6 +609,7 @@ const DoctorProfile: React.FC = () => {
                 </Card>
               </VStack>
             </TabPanel>
+
           </TabPanels>
         </Tabs>
       </Container>
@@ -631,9 +643,9 @@ const DoctorProfile: React.FC = () => {
                   value={templateType}
                   onChange={(e) => setTemplateType(e.target.value as NoteType)}
                 >
-                  <option value="initial_interrogation">Interrogatorio</option>
-                  <option value="evolution_note">Nota de Evolución</option>
-                  <option value="physical_examination">
+                  <option value="interrogation">Interrogatorio</option>
+                  <option value="evolution">Nota de Evolución</option>
+                  <option value="exploration">
                     Exploración Física
                   </option>
                   <option value="custom">Personalizada</option>

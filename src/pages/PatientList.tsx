@@ -40,7 +40,7 @@ const PatientList: React.FC = () => {
   const [editingPatientId, setEditingPatientId] = useState<string | undefined>();
 
   // Usar hook de API
-  const { patients, loading, error } = usePatients();
+  const { patients, loading, error, refetch } = usePatients();
 
   // Filtrar pacientes localmente (hasta que haya endpoint de búsqueda)
   const filteredPatients = useMemo(() => {
@@ -67,7 +67,7 @@ const PatientList: React.FC = () => {
     <Box>
       {/* Header with Gradient */}
       <Box
-        bgGradient="linear(135deg, purple.500 0%, purple.600 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
         py={8}
@@ -76,7 +76,7 @@ const PatientList: React.FC = () => {
           <VStack spacing={6} align="stretch">
             <HStack justify="space-between" flexWrap="wrap" gap={4}>
               <VStack align="start" spacing={2}>
-                <Heading size="xl">Pacientes 👥</Heading>
+                <Heading size="xl">Pacientes</Heading>
                 <Text fontSize="md" opacity={0.9}>
                   Gestiona tu lista de pacientes
                 </Text>
@@ -205,7 +205,7 @@ const PatientList: React.FC = () => {
                     right="-40px"
                     w="120px"
                     h="120px"
-                    bgGradient="linear(135deg, purple.400 0%, purple.500 100%)"
+                    bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
                     borderRadius="full"
                     opacity={0.1}
                     pointerEvents="none"
@@ -221,12 +221,30 @@ const PatientList: React.FC = () => {
                           src={patient.avatar}
                           bg="purple.500"
                           color="white"
+                          sx={{
+                            '& span': {
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '100%',
+                              height: '100%',
+                            },
+                          }}
                         />
                         <VStack align="start" spacing={1} flex={1}>
                           <Text fontWeight="bold" fontSize="lg" noOfLines={1}>
                             {patient.firstName} {patient.lastName}
                           </Text>
                           <HStack spacing={2} flexWrap="wrap">
+                            <Badge
+                              colorScheme={patient.isRecurrent ? 'green' : 'gray'}
+                              fontSize="xs"
+                              px={2}
+                              py={1}
+                              borderRadius="full"
+                            >
+                              {patient.isRecurrent ? 'Recurrente' : 'Primera vez'}
+                            </Badge>
                             {patient.gender && (
                               <Badge
                                 colorScheme={
@@ -262,36 +280,20 @@ const PatientList: React.FC = () => {
                       </HStack>
 
                       {/* Contact Info */}
-                      <VStack align="stretch" spacing={3}>
-                        {patient.email && (
-                          <HStack
-                            spacing={3}
-                            fontSize="sm"
-                            color="gray.600"
-                            bg={useColorModeValue('gray.50', 'gray.700')}
-                            px={3}
-                            py={2}
-                            borderRadius="lg"
-                          >
-                            <Icon as={FiMail} color="purple.500" boxSize={4} />
-                            <Text noOfLines={1}>{patient.email}</Text>
-                          </HStack>
-                        )}
-                        {patient.phone && (
-                          <HStack
-                            spacing={3}
-                            fontSize="sm"
-                            color="gray.600"
-                            bg={useColorModeValue('gray.50', 'gray.700')}
-                            px={3}
-                            py={2}
-                            borderRadius="lg"
-                          >
-                            <Icon as={FiPhone} color="purple.500" boxSize={4} />
-                            <Text>{patient.phone}</Text>
-                          </HStack>
-                        )}
-                      </VStack>
+                      {patient.email && (
+                        <HStack
+                          spacing={3}
+                          fontSize="sm"
+                          color="gray.600"
+                          bg={useColorModeValue('gray.50', 'gray.700')}
+                          px={3}
+                          py={2}
+                          borderRadius="lg"
+                        >
+                          <Icon as={FiMail} color="purple.500" boxSize={4} />
+                          <Text noOfLines={1}>{patient.email}</Text>
+                        </HStack>
+                      )}
 
                       {/* Last Visit */}
                       {patient.lastVisit && (
@@ -329,11 +331,7 @@ const PatientList: React.FC = () => {
           setEditingPatientId(undefined);
         }}
         patientId={editingPatientId}
-        onSuccess={() => {
-          // El hook se recargará automáticamente si está usando API
-          // Para mock data, necesitaríamos recargar la página o usar un estado global
-          window.location.reload();
-        }}
+        onSuccess={refetch}
       />
     </Box>
   );

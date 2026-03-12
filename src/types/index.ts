@@ -4,6 +4,7 @@ export interface Doctor {
   firstName: string;
   lastName: string;
   email: string;
+  gender?: 'male' | 'female';
   speciality?: string;
   licenseNumber?: string;
   phone?: string;
@@ -26,6 +27,7 @@ export interface Patient {
   id: string;
   firstName: string;
   lastName: string;
+  lastNameMaternal?: string;
   email?: string;
   phone?: string;
   dateOfBirth?: string;
@@ -46,10 +48,20 @@ export interface Patient {
   updatedAt: string;
   lastVisit?: string;
   avatar?: string;
+  /** Habilita pestañas Expediente/Archivos/Consentimientos y botón Nueva Nota */
+  isRecurrent?: boolean;
 }
 
 // Appointment types
 export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled';
+
+export interface ApiAppointment {
+  id: string;
+  patient_id: string;
+  starts_at: string;
+  ends_at: string;
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+}
 
 export interface Appointment {
   id: string;
@@ -69,11 +81,7 @@ export interface Appointment {
 }
 
 // Medical Note types
-export type NoteType =
-  | 'initial_interrogation'
-  | 'evolution_note'
-  | 'physical_examination'
-  | 'custom';
+export type NoteType = 'interrogation' | 'exploration' | 'evolution' | 'document';
 
 export interface NoteTemplate {
   id: string;
@@ -112,14 +120,8 @@ export interface MedicalNote {
 
 export interface NoteCompletenessAnalysis {
   completeness_score: number;
-  reasoning: {
-    has_diagnostic_impression?: string;
-    has_disease_evolution?: string;
-    has_physical_exam?: string;
-    has_treatment_plan?: string;
-    has_vital_signs?: string;
-    [key: string]: string | undefined;
-  };
+  missing_fields?: string[];
+  reasoning: Record<string, string>;
 }
 
 // Attachment types
@@ -248,4 +250,37 @@ export interface Contact {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// PDF Form templates (formularios llenables)
+export interface FieldPosition {
+  pageIndex: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type TemplateFieldType =
+  | 'text'
+  | 'number'
+  | 'date'
+  | 'checkbox'
+  | 'signature';
+
+export interface TemplateField {
+  id: string;
+  name: string;
+  type: TemplateFieldType;
+  required: boolean;
+  position?: FieldPosition | null;
+  /** Solo en campos por defecto de la API */
+  tag?: string;
+}
+
+export interface TemplateItem {
+  id: string;
+  name: string;
+  pdfFileName: string | null;
+  fields: TemplateField[];
 }

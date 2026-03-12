@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -21,40 +21,141 @@ import {
   useColorModeValue,
   Flex,
   useDisclosure,
+  Tooltip,
 } from '@chakra-ui/react';
 import {
-  FiPlus,
   FiCalendar,
   FiUsers,
   FiFileText,
+  FiFile,
   FiClock,
   FiCheckCircle,
+  FiEdit,
+  FiClipboard,
+  FiTrendingUp,
+  FiSearch,
 } from 'react-icons/fi';
+import { MdVerified } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
-import {
-  mockAppointments,
-  mockMedicalNotes,
-} from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PatientFormModal from '../components/PatientFormModal';
+import { useAuth } from '../contexts/AuthContext';
 import { usePatients } from '../hooks/usePatients';
-import { useMemo } from 'react';
+import { useAppointments } from '../hooks/useAppointments';
+import { apiService } from '../services/api';
+
+type NoteType = 'interrogation' | 'evolution' | 'exploration' | 'document';
+
+function getNoteTypeIcon(type: string) {
+  switch (type) {
+    case 'interrogation':
+      return { icon: FiClipboard, color: 'purple.500' as const, bg: 'purple.50' as const };
+    case 'evolution':
+      return { icon: FiTrendingUp, color: 'blue.500' as const, bg: 'blue.50' as const };
+    case 'exploration':
+      return { icon: FiSearch, color: 'green.500' as const, bg: 'green.50' as const };
+    case 'document':
+      return { icon: FiFile, color: 'teal.500' as const, bg: 'teal.50' as const };
+    default:
+      return { icon: FiFileText, color: 'gray.500' as const, bg: 'gray.50' as const };
+  }
+}
+
+function getNoteTypeLabel(type: string) {
+  switch (type) {
+    case 'interrogation':
+      return 'Detalles';
+    case 'evolution':
+      return 'Nota de Evolución';
+    case 'exploration':
+      return 'Exploración Física';
+    case 'document':
+      return 'Documento';
+    default:
+      return 'Nota Personalizada';
+  }
+}
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { doctor } = useAuth();
 
-  // Usar hook de API para pacientes
-  const { patients, loading: patientsLoading } = usePatients();
+  const welcomeLabel = (() => {
+    const name = doctor?.firstName?.trim() || '';
+    if (doctor?.gender === 'female') {
+      return name ? `Bienvenida de nuevo, ${name}` : 'Bienvenida de nuevo';
+    }
+    return name ? `Bienvenido de nuevo, ${name}` : 'Bienvenido de nuevo';
+  })();
 
-  // Get today's appointments (todavía usando mock hasta que haya endpoint)
+  const { patients, count: patientsCount, loading: patientsLoading, refetch } = usePatients();
+  const { appointments } = useAppointments();
+  const [notesCount, setNotesCount] = useState<number | null>(null);
+  const [notesDraft, setNotesDraft] = useState<number>(0);
+  const [notesSigned, setNotesSigned] = useState<number>(0);
+  const [recentNotes, setRecentNotes] = useState<
+    Array<{
+      id: string;
+      title: string;
+      status: string;
+      type?: string;
+      patient_id: string;
+      patient_name: string;
+      patient_lastname: string;
+      created_at?: string;
+      accessed_at?: string;
+    }>
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiService
+      .getDoctorNotesRecent({ limit: 500 })
+      .then((res) => {
+        if (cancelled) return;
+        setNotesCount(res.count);
+        setNotesDraft(res.results.filter((n) => n.status !== 'signed').length);
+        setNotesSigned(res.results.filter((n) => n.status === 'signed').length);
+        setRecentNotes(
+          res.results.slice(0, 5).map((n) => ({
+            id: n.id,
+            title: n.title,
+            status: n.status,
+            type: (n as { type?: string; note_type?: string }).type ?? (n as { type?: string; note_type?: string }).note_type,
+            patient_id: n.patient_id,
+            patient_name: n.patient_name,
+            patient_lastname: n.patient_lastname,
+            created_at: n.created_at,
+            accessed_at: n.accessed_at,
+          }))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setNotesCount(0);
+          setNotesDraft(0);
+          setNotesSigned(0);
+          setRecentNotes([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const today = format(new Date(), 'yyyy-MM-dd');
-  const todayAppointments = mockAppointments.filter((apt) => apt.date === today);
 
-  // Get recent patients (last 5) - usando datos de API
+  const todayAppointments = useMemo(() => {
+    return appointments.filter((apt) => {
+      const d = new Date(apt.starts_at);
+      return format(d, 'yyyy-MM-dd') === today;
+    });
+  }, [appointments, today]);
+
   const recentPatients = useMemo(() => {
     return [...patients]
       .sort(
@@ -65,35 +166,40 @@ const Dashboard: React.FC = () => {
       .slice(0, 5);
   }, [patients]);
 
-  // Get recent notes (last 3) - todavía usando mock hasta que haya endpoint
-  const recentNotes = [...mockMedicalNotes]
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    .slice(0, 3);
+  const firstTimeCount = useMemo(
+    () => patients.filter((p) => !p.isRecurrent).length,
+    [patients]
+  );
+  const recurrentCount = useMemo(
+    () => patients.filter((p) => p.isRecurrent).length,
+    [patients]
+  );
 
-  // Get upcoming appointments (next 5) - todavía usando mock
-  const upcomingAppointments = mockAppointments
-    .filter((apt) => apt.date >= today && apt.status !== 'cancelled')
-    .sort((a, b) => {
-      const dateA = new Date(`${a.date}T${a.startTime}`);
-      const dateB = new Date(`${b.date}T${b.startTime}`);
-      return dateA.getTime() - dateB.getTime();
-    })
-    .slice(0, 5);
+  const upcomingAppointments = useMemo(() => {
+    const now = new Date();
+    return [...appointments]
+      .filter(
+        (apt) =>
+          new Date(apt.starts_at) >= now && apt.status !== 'CANCELLED'
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+      )
+      .slice(0, 5);
+  }, [appointments]);
 
   const getPatientById = (id: string) => {
     return patients.find((p) => p.id === id);
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
+    switch (status?.toUpperCase()) {
+      case 'CONFIRMED':
         return 'success';
-      case 'pending':
+      case 'PENDING':
         return 'warning';
-      case 'cancelled':
+      case 'CANCELLED':
         return 'error';
       default:
         return 'gray';
@@ -101,15 +207,15 @@ const Dashboard: React.FC = () => {
   };
 
   const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'confirmed':
+    switch (status?.toUpperCase()) {
+      case 'CONFIRMED':
         return 'Confirmada';
-      case 'pending':
+      case 'PENDING':
         return 'Pendiente';
-      case 'cancelled':
+      case 'CANCELLED':
         return 'Cancelada';
       default:
-        return status;
+        return status ?? '';
     }
   };
 
@@ -117,7 +223,7 @@ const Dashboard: React.FC = () => {
     <Box bg={useColorModeValue('gray.50', 'gray.900')} minH="100vh">
       {/* Header with Gradient - Medtters Style */}
       <Box
-        bgGradient="linear(135deg, brand.500 0%, brand.600 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
         py={8}
@@ -126,7 +232,7 @@ const Dashboard: React.FC = () => {
           <Flex justify="space-between" align="center" mb={6}>
             <VStack align="start" spacing={1}>
               <Heading size="xl" fontWeight="bold">
-                Bienvenido de nuevo 👋
+                {welcomeLabel}
               </Heading>
               <Text fontSize="lg" opacity={0.9}>
                 {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", {
@@ -190,6 +296,9 @@ const Dashboard: React.FC = () => {
                     p={3}
                     borderRadius="xl"
                     color="brand.500"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
                   >
                     <Icon as={FiCalendar} boxSize={6} />
                   </Box>
@@ -214,7 +323,7 @@ const Dashboard: React.FC = () => {
                     <HStack spacing={1}>
                       <Icon as={FiCheckCircle} color="success.500" />
                       <Text color="success.600" fontWeight="medium">
-                        {todayAppointments.filter((a) => a.status === 'confirmed').length} confirmadas
+                        {todayAppointments.filter((a) => a.status === 'CONFIRMED').length} confirmadas
                       </Text>
                     </HStack>
                   </StatHelpText>
@@ -238,7 +347,7 @@ const Dashboard: React.FC = () => {
                 right={0}
                 width="120px"
                 height="120px"
-                bgGradient="linear(135deg, purple.400 0%, purple.500 100%)"
+                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
                 opacity={0.1}
                 borderRadius="full"
                 transform="translate(30%, -30%)"
@@ -250,6 +359,9 @@ const Dashboard: React.FC = () => {
                     p={3}
                     borderRadius="xl"
                     color="purple.500"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
                   >
                     <Icon as={FiUsers} boxSize={6} />
                   </Box>
@@ -265,15 +377,26 @@ const Dashboard: React.FC = () => {
                 </HStack>
                 <Stat>
                   <StatNumber fontSize="4xl" fontWeight="bold" color="gray.800">
-                    {patientsLoading ? '...' : patients.length}
+                    {patientsLoading ? '...' : patientsCount}
                   </StatNumber>
                   <StatLabel fontSize="md" color="gray.600" mt={2}>
                     Pacientes Activos
                   </StatLabel>
                   <StatHelpText mt={3}>
-                    <Text color="gray.500">
-                      En el sistema
-                    </Text>
+                    <HStack spacing={3} flexWrap="wrap">
+                      <HStack spacing={1}>
+                        <Icon as={FiUsers} color="purple.500" boxSize={3.5} />
+                        <Text color="gray.600" fontWeight="medium">
+                          {patientsLoading ? '...' : firstTimeCount} primera vez
+                        </Text>
+                      </HStack>
+                      <HStack spacing={1}>
+                        <Icon as={FiCheckCircle} color="green.500" boxSize={3.5} />
+                        <Text color="gray.600" fontWeight="medium">
+                          {patientsLoading ? '...' : recurrentCount} recurrentes
+                        </Text>
+                      </HStack>
+                    </HStack>
                   </StatHelpText>
                 </Stat>
               </CardBody>
@@ -295,7 +418,7 @@ const Dashboard: React.FC = () => {
                 right={0}
                 width="120px"
                 height="120px"
-                bgGradient="linear(135deg, green.400 0%, green.500 100%)"
+                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
                 opacity={0.1}
                 borderRadius="full"
                 transform="translate(30%, -30%)"
@@ -307,6 +430,9 @@ const Dashboard: React.FC = () => {
                     p={3}
                     borderRadius="xl"
                     color="success.600"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
                   >
                     <Icon as={FiFileText} boxSize={6} />
                   </Box>
@@ -322,15 +448,26 @@ const Dashboard: React.FC = () => {
                 </HStack>
                 <Stat>
                   <StatNumber fontSize="4xl" fontWeight="bold" color="gray.800">
-                    {mockMedicalNotes.length}
+                    {notesCount === null ? '...' : notesCount}
                   </StatNumber>
                   <StatLabel fontSize="md" color="gray.600" mt={2}>
                     Notas Médicas
                   </StatLabel>
                   <StatHelpText mt={3}>
-                    <Text color="gray.500">
-                      Total de registros
-                    </Text>
+                    <HStack spacing={3} flexWrap="wrap">
+                      <HStack spacing={1}>
+                        <Icon as={FiEdit} color="orange.500" boxSize={3.5} />
+                        <Text color="gray.600" fontWeight="medium">
+                          {notesCount === null ? '...' : notesDraft} borradores
+                        </Text>
+                      </HStack>
+                      <HStack spacing={1}>
+                        <Icon as={FiCheckCircle} color="success.500" boxSize={3.5} />
+                        <Text color="gray.600" fontWeight="medium">
+                          {notesCount === null ? '...' : notesSigned} firmadas
+                        </Text>
+                      </HStack>
+                    </HStack>
                   </StatHelpText>
                 </Stat>
               </CardBody>
@@ -339,7 +476,7 @@ const Dashboard: React.FC = () => {
         </Container>
       </Box>
 
-      <Container maxW="container.xl" py={8} mt={-8}>
+      <Container maxW="container.xl" pt={12} pb={8} mt={-8}>
         <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
           {/* Próximas Citas - Medtters Style */}
           <Card
@@ -357,12 +494,14 @@ const Dashboard: React.FC = () => {
               <HStack justify="space-between">
                 <HStack spacing={3}>
                   <Box
-                    bg="brand.500"
+                    bg="brand.50"
                     p={2}
                     borderRadius="lg"
-                    color="white"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
                   >
-                    <Icon as={FiClock} boxSize={5} />
+                    <Icon as={FiClock} boxSize={5} color="brand.500" />
                   </Box>
                   <Heading size="md">Próximas Citas</Heading>
                 </HStack>
@@ -394,7 +533,7 @@ const Dashboard: React.FC = () => {
                   </VStack>
                 ) : (
                   upcomingAppointments.map((apt) => {
-                    const patient = getPatientById(apt.patientId);
+                    const patient = getPatientById(apt.patient_id);
                     return (
                       <Box
                         key={apt.id}
@@ -410,7 +549,7 @@ const Dashboard: React.FC = () => {
                           transform: 'translateX(4px)',
                         }}
                         transition="all 0.2s"
-                        onClick={() => navigate(`/patients/${apt.patientId}`)}
+                        onClick={() => navigate(`/patients/${apt.patient_id}`)}
                       >
                         <HStack spacing={4}>
                           <Avatar
@@ -419,6 +558,15 @@ const Dashboard: React.FC = () => {
                             src={patient?.avatar}
                             bg="brand.100"
                             color="brand.600"
+                            sx={{
+                              '& span': {
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                                height: '100%',
+                              },
+                            }}
                           />
                           <VStack align="start" spacing={1} flex={1}>
                             <Text fontWeight="semibold" fontSize="md">
@@ -428,7 +576,7 @@ const Dashboard: React.FC = () => {
                               <Icon as={FiClock} boxSize={3} color="gray.500" />
                               <Text fontSize="sm" color="gray.600">
                                 {format(
-                                  new Date(`${apt.date}T${apt.startTime}`),
+                                  new Date(apt.starts_at),
                                   "d MMM, HH:mm 'hrs'",
                                   { locale: es }
                                 )}
@@ -469,12 +617,14 @@ const Dashboard: React.FC = () => {
               <HStack justify="space-between">
                 <HStack spacing={3}>
                   <Box
-                    bg="purple.500"
+                    bg="purple.50"
                     p={2}
                     borderRadius="lg"
-                    color="white"
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
                   >
-                    <Icon as={FiUsers} boxSize={5} />
+                    <Icon as={FiUsers} boxSize={5} color="purple.500" />
                   </Box>
                   <Heading size="md">Pacientes Recientes</Heading>
                 </HStack>
@@ -514,6 +664,15 @@ const Dashboard: React.FC = () => {
                         src={patient.avatar}
                         bg="purple.100"
                         color="purple.600"
+                        sx={{
+                          '& span': {
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100%',
+                            height: '100%',
+                          },
+                        }}
                       />
                       <VStack align="start" spacing={1} flex={1}>
                         <Text fontWeight="semibold" fontSize="md">
@@ -554,21 +713,28 @@ const Dashboard: React.FC = () => {
           >
             <HStack spacing={3}>
               <Box
-                bg="success.500"
+                bg="success.50"
                 p={2}
                 borderRadius="lg"
-                color="white"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
               >
-                <Icon as={FiFileText} boxSize={5} />
+                <Icon as={FiFileText} boxSize={5} color="success.500" />
               </Box>
               <Heading size="md">Últimas Notas Médicas</Heading>
             </HStack>
           </CardHeader>
           <CardBody p={6}>
             <VStack spacing={4} align="stretch">
-              {recentNotes.map((note) => {
-                const patient = getPatientById(note.patientId);
-                return (
+              {recentNotes.length === 0 ? (
+                <Text color="gray.500" py={6} textAlign="center">
+                  No hay notas este mes
+                </Text>
+              ) : (
+                recentNotes.map((note) => {
+                  const noteIcon = getNoteTypeIcon(note.type ?? 'evolution');
+                  return (
                   <Box
                     key={note.id}
                     p={5}
@@ -583,53 +749,66 @@ const Dashboard: React.FC = () => {
                       transform: 'translateX(4px)',
                     }}
                     transition="all 0.2s"
-                    onClick={() => navigate(`/patients/${note.patientId}`)}
+                    onClick={() => navigate(`/patients/${note.patient_id}`)}
                   >
                     <HStack spacing={4} align="start">
-                      <Avatar
-                        size="md"
-                        name={`${patient?.firstName} ${patient?.lastName}`}
-                        src={patient?.avatar}
-                        bg="success.100"
-                        color="success.600"
-                      />
+                      <Tooltip label={getNoteTypeLabel(note.type ?? 'evolution')} placement="top" hasArrow>
+                        <Box
+                          bg={noteIcon.bg}
+                          p={3}
+                          borderRadius="xl"
+                          color={noteIcon.color}
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                        >
+                          <Icon as={noteIcon.icon} boxSize={5} />
+                        </Box>
+                      </Tooltip>
                       <VStack align="start" spacing={2} flex={1}>
-                        <HStack justify="space-between" w="full">
-                          <Text fontWeight="semibold" fontSize="md">
+                        <HStack justify="space-between" w="full" align="center">
+                          <Text fontWeight="semibold" fontSize="md" flex={1} noOfLines={1}>
                             {note.title}
                           </Text>
+                          {note.status === 'signed' ? (
+                            <Tooltip label="Firmada" placement="top" hasArrow>
+                              <Box as="span" display="inline-flex" color="green.500" alignItems="center" flexShrink={0}>
+                                <Icon as={MdVerified} boxSize={4} />
+                              </Box>
+                            </Tooltip>
+                          ) : (
+                            <Tooltip
+                              label={note.created_at ? `Borrador creado el ${format(new Date(note.created_at), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}` : 'Borrador'}
+                              placement="top"
+                              hasArrow
+                            >
+                              <Box as="span" display="inline-flex" color="orange.500" alignItems="center" flexShrink={0}>
+                                <Icon as={FiEdit} boxSize={4} />
+                              </Box>
+                            </Tooltip>
+                          )}
+                        </HStack>
+                        <HStack justify="space-between" w="full">
+                          <Text fontSize="sm" color="gray.600">
+                            Paciente: {note.patient_name} {note.patient_lastname}
+                          </Text>
                           <Text fontSize="sm" color="gray.500">
-                            {format(
-                              new Date(note.createdAt),
-                              "d 'de' MMM, HH:mm",
-                              { locale: es }
-                            )}
+                            {(() => {
+                              const dateStr = note.created_at ?? note.accessed_at;
+                              if (!dateStr) return '—';
+                              const d = new Date(dateStr);
+                              return Number.isNaN(d.getTime())
+                                ? '—'
+                                : format(d, "d 'de' MMM, HH:mm", { locale: es });
+                            })()}
                           </Text>
                         </HStack>
-                        <Text fontSize="sm" color="gray.600">
-                          Paciente: {patient?.firstName} {patient?.lastName}
-                        </Text>
-                        {note.status === 'signed' ? (
-                          <HStack spacing={2}>
-                            <Badge colorScheme="green" fontSize="xs">
-                              Firmada
-                            </Badge>
-                            {note.signedBy && (
-                              <Text fontSize="xs" color="gray.500">
-                                por {note.signedBy}
-                              </Text>
-                            )}
-                          </HStack>
-                        ) : (
-                          <Badge colorScheme="orange" fontSize="xs">
-                            Borrador
-                          </Badge>
-                        )}
                       </VStack>
                     </HStack>
                   </Box>
-                );
-              })}
+                  );
+                })
+              )}
             </VStack>
           </CardBody>
         </Card>
@@ -638,9 +817,7 @@ const Dashboard: React.FC = () => {
       <PatientFormModal
         isOpen={isOpen}
         onClose={onClose}
-        onSuccess={() => {
-          // Refresh dashboard if needed
-        }}
+        onSuccess={refetch}
       />
     </Box>
   );

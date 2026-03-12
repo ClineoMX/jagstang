@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Container,
@@ -12,195 +12,187 @@ import {
   Text,
   Progress,
   Badge,
-  Button,
-  Divider,
-  Alert,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription,
   Icon,
   useColorModeValue,
   Stat,
   StatLabel,
   StatNumber,
   StatHelpText,
+  Spinner,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
+  Avatar,
 } from '@chakra-ui/react';
 import {
   FiCheckCircle,
   FiAlertTriangle,
   FiXCircle,
-  FiFileText,
-  FiDownload,
-  FiSettings,
   FiTrendingUp,
+  FiUsers,
   FiShield,
 } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
+import { apiService } from '../services/api';
+
+const METRIC_LABELS: Record<string, string> = {
+  profile_completeness: 'Completitud del perfil',
+  initial_interrogation: 'Interrogatorio inicial',
+  signed_notes_ratio: 'Notas firmadas',
+  note_quality_average: 'Calidad de notas',
+  consent_coverage: 'Cobertura de consentimientos',
+};
+
+type ComplianceReport = {
+  doctor_id: string;
+  overall_score: number;
+  patient_count: number;
+  alert_breakdown: { critical: number; ok: number; warning: number };
+  worst_metric: string;
+  patients: Array<{
+    patient_id: string;
+    overall_score: number;
+    alert_level: 'ok' | 'warning' | 'critical';
+    metrics: Record<
+      string,
+      { name: string; score: number; detail: string; items: number; passing: number }
+    >;
+    computed_at: string;
+  }>;
+};
+
+type PatientNameMap = Record<string, { name: string; lastname: string }>;
 
 const Compliance: React.FC = () => {
   const cardBg = useColorModeValue('card.light', 'card.dark');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const subtleBg = useColorModeValue('gray.50', 'gray.700');
+  const navigate = useNavigate();
 
-  // Mock compliance data
-  const complianceData = {
-    overall: 92,
-    nom004: 95,
-    nom024: 88,
-    lastUpdate: new Date(),
-    activeIssues: 3,
-  };
+  const [report, setReport] = useState<ComplianceReport | null>(null);
+  const [patientNames, setPatientNames] = useState<PatientNameMap>({});
+  const [loading, setLoading] = useState(true);
 
-  const alerts = [
-    {
-      id: 1,
-      severity: 'critical',
-      title: 'Faltan firmas digitales en 5 notas del último mes',
-      category: 'NOM-004',
-      timestamp: '2 días',
-    },
-    {
-      id: 2,
-      severity: 'warning',
-      title: '8 pacientes sin actualización de consentimientos',
-      category: 'NOM-024',
-      timestamp: '5 días',
-    },
-    {
-      id: 3,
-      severity: 'warning',
-      title: 'Backup de datos pendiente desde hace 48 horas',
-      category: 'NOM-024',
-      timestamp: '2 días',
-    },
-  ];
+  useEffect(() => {
+    let cancelled = false;
 
-  const nom004Requirements = [
-    { id: 1, name: 'Identificación del paciente', progress: 100, status: 'complete' },
-    { id: 2, name: 'Datos generales', progress: 98, status: 'complete' },
-    { id: 3, name: 'Firma digital', progress: 92, status: 'warning' },
-    { id: 4, name: 'Historia clínica', progress: 96, status: 'complete' },
-    { id: 5, name: 'Consentimiento informado', progress: 94, status: 'complete' },
-  ];
+    Promise.all([
+      apiService.getDoctorCompliance(),
+      apiService.listPatients({ limit: 200 }),
+    ])
+      .then(([compliance, patients]) => {
+        if (cancelled) return;
+        setReport(compliance);
+        const nameMap: PatientNameMap = {};
+        patients.results.forEach((p) => {
+          nameMap[p.id] = { name: p.name, lastname: p.lastname };
+        });
+        setPatientNames(nameMap);
+      })
+      .catch(() => {
+        if (!cancelled) setReport(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-  const nom024Requirements = [
-    { id: 1, name: 'Seguridad de acceso', progress: 98, status: 'complete' },
-    { id: 2, name: 'Trazabilidad', progress: 95, status: 'complete' },
-    { id: 3, name: 'Respaldo de datos', progress: 85, status: 'warning' },
-    { id: 4, name: 'Cifrado', progress: 90, status: 'complete' },
-    { id: 5, name: 'Auditoría', progress: 82, status: 'warning' },
-  ];
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const getComplianceColor = (value: number) => {
-    if (value >= 90) return 'success';
-    if (value >= 70) return 'warning';
+  const pct = (v: number) => Math.round(v * 100);
+
+  const scoreColor = (score: number) => {
+    if (score >= 0.9) return 'success';
+    if (score >= 0.7) return 'warning';
     return 'error';
   };
 
-  const getComplianceStatus = (value: number) => {
-    if (value >= 90) return 'Cumple';
-    if (value >= 70) return 'En Riesgo';
+  const scoreStatus = (score: number) => {
+    if (score >= 0.9) return 'Cumple';
+    if (score >= 0.7) return 'En Riesgo';
     return 'No Cumple';
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
+  const alertLevelBadge = (level: string) => {
+    switch (level) {
+      case 'ok':
+        return { color: 'green', label: 'Cumple', icon: FiCheckCircle };
+      case 'warning':
+        return { color: 'orange', label: 'Alerta', icon: FiAlertTriangle };
       case 'critical':
-        return 'error';
-      case 'warning':
-        return 'warning';
+        return { color: 'red', label: 'Crítico', icon: FiXCircle };
       default:
-        return 'info';
+        return { color: 'gray', label: level, icon: FiShield };
     }
   };
 
-  const getSeverityIcon = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return FiXCircle;
-      case 'warning':
-        return FiAlertTriangle;
-      default:
-        return FiCheckCircle;
-    }
+  const computedAtFormatted = () => {
+    if (!report?.patients?.length) return null;
+    const latest = report.patients.reduce((a, b) =>
+      new Date(a.computed_at) > new Date(b.computed_at) ? a : b
+    );
+    const d = new Date(latest.computed_at);
+    if (Number.isNaN(d.getTime())) return null;
+    return format(d, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es });
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'complete':
-        return FiCheckCircle;
-      case 'warning':
-        return FiAlertTriangle;
-      default:
-        return FiXCircle;
-    }
-  };
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minH="60vh">
+        <Spinner size="xl" color="success.500" thickness="4px" />
+      </Box>
+    );
+  }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'complete':
-        return 'success.500';
-      case 'warning':
-        return 'warning.500';
-      default:
-        return 'error.500';
-    }
-  };
+  if (!report) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minH="60vh">
+        <Text color="gray.500" fontSize="lg">
+          No se pudo cargar el reporte de cumplimiento.
+        </Text>
+      </Box>
+    );
+  }
+
+  const lastUpdate = computedAtFormatted();
 
   return (
     <Box>
-      {/* Header with Gradient */}
+      {/* Header */}
       <Box
-        bgGradient="linear(135deg, success.500 0%, success.600 100%)"
+        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
         color="white"
         px={8}
         py={8}
       >
         <Container maxW="container.xl">
           <VStack spacing={4} align="stretch">
-            <HStack justify="space-between" flexWrap="wrap" gap={4}>
-              <VStack align="start" spacing={2}>
-                <Heading size="xl">Cumplimiento Normativo 🛡️</Heading>
-                <Text fontSize="md" opacity={0.9}>
-                  Monitoreo de NOM-004 y NOM-024
-                </Text>
-              </VStack>
-              <Button
-                leftIcon={<FiDownload />}
-                size="lg"
-                colorScheme="whiteAlpha"
-                bg="whiteAlpha.300"
-                backdropFilter="blur(10px)"
-                _hover={{
-                  bg: 'whiteAlpha.400',
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'xl',
-                }}
-                _active={{
-                  bg: 'whiteAlpha.500',
-                  transform: 'translateY(0)',
-                }}
-                transition="all 0.2s"
-              >
-                Generar Reporte
-              </Button>
-            </HStack>
-
-            <Text fontSize="sm" opacity={0.9}>
-              Última actualización:{' '}
-              {format(complianceData.lastUpdate, "d 'de' MMMM 'de' yyyy, HH:mm", {
-                locale: es,
-              })}
-            </Text>
+            <VStack align="start" spacing={2}>
+              <Heading size="xl">Cumplimiento NOM-004</Heading>
+              <Text fontSize="md" opacity={0.9}>
+                Expediente Clínico Electrónico
+              </Text>
+            </VStack>
+            {lastUpdate && (
+              <Text fontSize="sm" opacity={0.9}>
+                Última actualización: {lastUpdate}
+              </Text>
+            )}
           </VStack>
         </Container>
       </Box>
 
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="stretch">
-          {/* Main Metrics */}
+          {/* Top Metric Cards */}
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-            {/* Overall Compliance */}
+            {/* Overall Score */}
             <Card
               bg={cardBg}
               borderRadius="2xl"
@@ -209,33 +201,31 @@ const Compliance: React.FC = () => {
               position="relative"
               overflow="hidden"
               transition="all 0.3s"
-              _hover={{
-                transform: 'translateY(-8px)',
-                shadow: '2xl',
-              }}
+              _hover={{ transform: 'translateY(-8px)', shadow: '2xl' }}
             >
-              {/* Decorative gradient circle */}
               <Box
                 position="absolute"
                 top="-60px"
                 right="-60px"
                 w="180px"
                 h="180px"
-                bgGradient="linear(135deg, success.400 0%, success.500 100%)"
+                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
                 borderRadius="full"
                 opacity={0.1}
                 pointerEvents="none"
               />
-
               <CardBody p={8}>
                 <Stat>
                   <StatLabel>
                     <HStack spacing={3} mb={3}>
                       <Box
-                        bg="success.500"
+                        bg="success.50"
                         p={3}
                         borderRadius="xl"
-                        color="white"
+                        color="success.600"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
                       >
                         <Icon as={FiTrendingUp} boxSize={6} />
                       </Box>
@@ -245,34 +235,31 @@ const Compliance: React.FC = () => {
                     </HStack>
                   </StatLabel>
                   <StatNumber fontSize="5xl" fontWeight="bold" mb={2}>
-                    {complianceData.overall}%
+                    {pct(report.overall_score)}%
                   </StatNumber>
                   <StatHelpText>
                     <Badge
-                      colorScheme={getComplianceColor(complianceData.overall)}
+                      colorScheme={scoreColor(report.overall_score)}
                       fontSize="sm"
                       px={3}
                       py={1}
                       borderRadius="full"
                     >
-                      {getComplianceStatus(complianceData.overall)}
+                      {scoreStatus(report.overall_score)}
                     </Badge>
                   </StatHelpText>
                   <Progress
-                    value={complianceData.overall}
-                    colorScheme={getComplianceColor(complianceData.overall)}
+                    value={pct(report.overall_score)}
+                    colorScheme={scoreColor(report.overall_score)}
                     size="lg"
                     mt={4}
                     borderRadius="full"
                   />
-                  <Text fontSize="sm" color="gray.500" mt={3}>
-                    {complianceData.activeIssues} issues pendientes
-                  </Text>
                 </Stat>
               </CardBody>
             </Card>
 
-            {/* NOM-004 Compliance */}
+            {/* Patient Count */}
             <Card
               bg={cardBg}
               borderRadius="2xl"
@@ -281,70 +268,52 @@ const Compliance: React.FC = () => {
               position="relative"
               overflow="hidden"
               transition="all 0.3s"
-              _hover={{
-                transform: 'translateY(-8px)',
-                shadow: '2xl',
-              }}
+              _hover={{ transform: 'translateY(-8px)', shadow: '2xl' }}
             >
-              {/* Decorative gradient circle */}
               <Box
                 position="absolute"
                 top="-60px"
                 right="-60px"
                 w="180px"
                 h="180px"
-                bgGradient="linear(135deg, blue.400 0%, blue.500 100%)"
+                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
                 borderRadius="full"
                 opacity={0.1}
                 pointerEvents="none"
               />
-
               <CardBody p={8}>
                 <Stat>
                   <StatLabel>
                     <HStack spacing={3} mb={3}>
                       <Box
-                        bg="blue.500"
+                        bg="blue.50"
                         p={3}
                         borderRadius="xl"
-                        color="white"
+                        color="blue.500"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
                       >
-                        <Icon as={FiFileText} boxSize={6} />
+                        <Icon as={FiUsers} boxSize={6} />
                       </Box>
                       <Text fontSize="md" fontWeight="semibold">
-                        NOM-004
+                        Pacientes Evaluados
                       </Text>
                     </HStack>
                   </StatLabel>
                   <StatNumber fontSize="5xl" fontWeight="bold" mb={2}>
-                    {complianceData.nom004}%
+                    {report.patient_count}
                   </StatNumber>
                   <StatHelpText>
-                    <Badge
-                      colorScheme={getComplianceColor(complianceData.nom004)}
-                      fontSize="sm"
-                      px={3}
-                      py={1}
-                      borderRadius="full"
-                    >
-                      {getComplianceStatus(complianceData.nom004)}
-                    </Badge>
+                    <Text fontSize="sm" color="gray.500">
+                      Métrica más baja: {METRIC_LABELS[report.worst_metric] ?? report.worst_metric}
+                    </Text>
                   </StatHelpText>
-                  <Progress
-                    value={complianceData.nom004}
-                    colorScheme={getComplianceColor(complianceData.nom004)}
-                    size="lg"
-                    mt={4}
-                    borderRadius="full"
-                  />
-                  <Text fontSize="sm" color="gray.500" mt={3}>
-                    Expediente Clínico
-                  </Text>
                 </Stat>
               </CardBody>
             </Card>
 
-            {/* NOM-024 Compliance */}
+            {/* Alert Breakdown */}
             <Card
               bg={cardBg}
               borderRadius="2xl"
@@ -353,406 +322,214 @@ const Compliance: React.FC = () => {
               position="relative"
               overflow="hidden"
               transition="all 0.3s"
-              _hover={{
-                transform: 'translateY(-8px)',
-                shadow: '2xl',
-              }}
+              _hover={{ transform: 'translateY(-8px)', shadow: '2xl' }}
             >
-              {/* Decorative gradient circle */}
               <Box
                 position="absolute"
                 top="-60px"
                 right="-60px"
                 w="180px"
                 h="180px"
-                bgGradient="linear(135deg, purple.400 0%, purple.500 100%)"
+                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
                 borderRadius="full"
                 opacity={0.1}
                 pointerEvents="none"
               />
-
               <CardBody p={8}>
                 <Stat>
                   <StatLabel>
                     <HStack spacing={3} mb={3}>
                       <Box
-                        bg="purple.500"
+                        bg="orange.50"
                         p={3}
                         borderRadius="xl"
-                        color="white"
+                        color="orange.500"
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
                       >
                         <Icon as={FiShield} boxSize={6} />
                       </Box>
                       <Text fontSize="md" fontWeight="semibold">
-                        NOM-024
+                        Estado de Alertas
                       </Text>
                     </HStack>
                   </StatLabel>
-                  <StatNumber fontSize="5xl" fontWeight="bold" mb={2}>
-                    {complianceData.nom024}%
-                  </StatNumber>
-                  <StatHelpText>
-                    <Badge
-                      colorScheme={getComplianceColor(complianceData.nom024)}
-                      fontSize="sm"
-                      px={3}
-                      py={1}
-                      borderRadius="full"
-                    >
-                      {getComplianceStatus(complianceData.nom024)}
-                    </Badge>
-                  </StatHelpText>
-                  <Progress
-                    value={complianceData.nom024}
-                    colorScheme={getComplianceColor(complianceData.nom024)}
-                    size="lg"
-                    mt={4}
-                    borderRadius="full"
-                  />
-                  <Text fontSize="sm" color="gray.500" mt={3}>
-                    Sistemas de Información
-                  </Text>
+                  <HStack spacing={6} mt={4}>
+                    <VStack spacing={1}>
+                      <Text fontSize="3xl" fontWeight="bold" color="green.500">
+                        {report.alert_breakdown.ok}
+                      </Text>
+                      <Badge colorScheme="green" borderRadius="full" px={2}>
+                        Cumple
+                      </Badge>
+                    </VStack>
+                    <VStack spacing={1}>
+                      <Text fontSize="3xl" fontWeight="bold" color="orange.500">
+                        {report.alert_breakdown.warning}
+                      </Text>
+                      <Badge colorScheme="orange" borderRadius="full" px={2}>
+                        Alerta
+                      </Badge>
+                    </VStack>
+                    <VStack spacing={1}>
+                      <Text fontSize="3xl" fontWeight="bold" color="red.500">
+                        {report.alert_breakdown.critical}
+                      </Text>
+                      <Badge colorScheme="red" borderRadius="full" px={2}>
+                        Crítico
+                      </Badge>
+                    </VStack>
+                  </HStack>
                 </Stat>
               </CardBody>
             </Card>
           </SimpleGrid>
 
-          {/* Active Alerts */}
+          {/* Per-Patient Compliance */}
           <Card
             bg={cardBg}
             borderRadius="2xl"
             borderWidth="1px"
             borderColor={borderColor}
           >
-            <CardHeader bg={useColorModeValue('red.50', 'gray.700')} borderTopRadius="2xl">
-              <HStack justify="space-between">
-                <HStack spacing={3}>
-                  <Box
-                    bg="red.500"
-                    p={2}
-                    borderRadius="lg"
-                    color="white"
-                  >
-                    <Icon as={FiAlertTriangle} boxSize={5} />
-                  </Box>
-                  <Heading size="md">
-                    Alertas Activas ({alerts.length})
-                  </Heading>
-                </HStack>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  _hover={{
-                    bg: useColorModeValue('red.100', 'gray.600'),
-                  }}
-                >
-                  Ver todas →
-                </Button>
-              </HStack>
-            </CardHeader>
-            <CardBody>
-              <VStack spacing={4} align="stretch">
-                {alerts.map((alert) => (
-                  <Alert
-                    key={alert.id}
-                    status={getSeverityColor(alert.severity)}
-                    variant="left-accent"
-                    borderRadius="xl"
-                    p={4}
-                  >
-                    <AlertIcon as={getSeverityIcon(alert.severity)} />
-                    <Box flex="1">
-                      <AlertTitle fontSize="md" fontWeight="semibold">
-                        {alert.title}
-                      </AlertTitle>
-                      <AlertDescription fontSize="sm">
-                        <HStack spacing={2} mt={2}>
-                          <Badge size="sm" borderRadius="full">
-                            {alert.category}
-                          </Badge>
-                          <Text color="gray.500">Hace {alert.timestamp}</Text>
-                        </HStack>
-                      </AlertDescription>
-                    </Box>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      _hover={{
-                        bg: useColorModeValue('gray.100', 'gray.700'),
-                      }}
-                    >
-                      Ver detalles →
-                    </Button>
-                  </Alert>
-                ))}
-              </VStack>
-            </CardBody>
-          </Card>
-
-          {/* Requirements Breakdown */}
-          <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-            {/* NOM-004 Requirements */}
-            <Card
-              bg={cardBg}
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor={borderColor}
-            >
-              <CardHeader bg={useColorModeValue('blue.50', 'gray.700')} borderTopRadius="2xl">
-                <HStack justify="space-between">
-                  <HStack spacing={3}>
-                    <Box
-                      bg="blue.500"
-                      p={2}
-                      borderRadius="lg"
-                      color="white"
-                    >
-                      <Icon as={FiFileText} boxSize={5} />
-                    </Box>
-                    <Heading size="md">NOM-004 Detalle</Heading>
-                  </HStack>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    _hover={{
-                      bg: useColorModeValue('blue.100', 'gray.600'),
-                    }}
-                  >
-                    Ver todo →
-                  </Button>
-                </HStack>
-              </CardHeader>
-              <CardBody>
-                <VStack spacing={5} align="stretch">
-                  {nom004Requirements.map((req) => (
-                    <Box key={req.id}>
-                      <HStack justify="space-between" mb={3}>
-                        <HStack spacing={3}>
-                          <Icon
-                            as={getStatusIcon(req.status)}
-                            color={getStatusColor(req.status)}
-                            boxSize={5}
-                          />
-                          <Text fontSize="md" fontWeight="medium">
-                            {req.name}
-                          </Text>
-                        </HStack>
-                        <Text fontSize="md" fontWeight="bold" color="blue.600">
-                          {req.progress}%
-                        </Text>
-                      </HStack>
-                      <Progress
-                        value={req.progress}
-                        size="md"
-                        colorScheme={
-                          req.progress >= 95
-                            ? 'success'
-                            : req.progress >= 85
-                            ? 'warning'
-                            : 'error'
-                        }
-                        borderRadius="full"
-                      />
-                      {req.status === 'warning' && (
-                        <Text fontSize="xs" color="warning.600" mt={2} fontWeight="medium">
-                          ⚠️ Acción requerida
-                        </Text>
-                      )}
-                    </Box>
-                  ))}
-                </VStack>
-              </CardBody>
-            </Card>
-
-            {/* NOM-024 Requirements */}
-            <Card
-              bg={cardBg}
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor={borderColor}
-            >
-              <CardHeader bg={useColorModeValue('purple.50', 'gray.700')} borderTopRadius="2xl">
-                <HStack justify="space-between">
-                  <HStack spacing={3}>
-                    <Box
-                      bg="purple.500"
-                      p={2}
-                      borderRadius="lg"
-                      color="white"
-                    >
-                      <Icon as={FiShield} boxSize={5} />
-                    </Box>
-                    <Heading size="md">NOM-024 Detalle</Heading>
-                  </HStack>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    _hover={{
-                      bg: useColorModeValue('purple.100', 'gray.600'),
-                    }}
-                  >
-                    Ver todo →
-                  </Button>
-                </HStack>
-              </CardHeader>
-              <CardBody>
-                <VStack spacing={5} align="stretch">
-                  {nom024Requirements.map((req) => (
-                    <Box key={req.id}>
-                      <HStack justify="space-between" mb={3}>
-                        <HStack spacing={3}>
-                          <Icon
-                            as={getStatusIcon(req.status)}
-                            color={getStatusColor(req.status)}
-                            boxSize={5}
-                          />
-                          <Text fontSize="md" fontWeight="medium">
-                            {req.name}
-                          </Text>
-                        </HStack>
-                        <Text fontSize="md" fontWeight="bold" color="purple.600">
-                          {req.progress}%
-                        </Text>
-                      </HStack>
-                      <Progress
-                        value={req.progress}
-                        size="md"
-                        colorScheme={
-                          req.progress >= 95
-                            ? 'success'
-                            : req.progress >= 85
-                            ? 'warning'
-                            : 'error'
-                        }
-                        borderRadius="full"
-                      />
-                      {req.status === 'warning' && (
-                        <Text fontSize="xs" color="warning.600" mt={2} fontWeight="medium">
-                          ⚠️ Acción requerida
-                        </Text>
-                      )}
-                    </Box>
-                  ))}
-                </VStack>
-              </CardBody>
-            </Card>
-          </SimpleGrid>
-
-          {/* Actions */}
-          <Card
-            bg={cardBg}
-            borderRadius="2xl"
-            borderWidth="1px"
-            borderColor={borderColor}
-          >
-            <CardHeader bg={useColorModeValue('gray.50', 'gray.700')} borderTopRadius="2xl">
+            <CardHeader bg={subtleBg} borderTopRadius="2xl">
               <HStack spacing={3}>
                 <Box
-                  bg="gray.600"
+                  bg="blue.50"
                   p={2}
                   borderRadius="lg"
-                  color="white"
+                  color="blue.500"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
                 >
-                  <Icon as={FiSettings} boxSize={5} />
+                  <Icon as={FiUsers} boxSize={5} />
                 </Box>
-                <Heading size="md">Acciones Rápidas</Heading>
+                <Heading size="md">Cumplimiento por Paciente</Heading>
               </HStack>
             </CardHeader>
-            <CardBody>
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4}>
-                <Button
-                  leftIcon={<FiFileText />}
-                  variant="outline"
-                  size="lg"
-                  h="auto"
-                  py={6}
-                  borderRadius="xl"
-                  borderWidth="2px"
-                  _hover={{
-                    transform: 'translateY(-4px)',
-                    shadow: 'lg',
-                    borderColor: 'brand.500',
-                    bg: useColorModeValue('brand.50', 'gray.700'),
-                  }}
-                  transition="all 0.2s"
-                >
-                  <VStack spacing={1}>
-                    <Text fontWeight="semibold">Generar Reporte</Text>
-                    <Text fontSize="xs" color="gray.500">
-                      Completo
-                    </Text>
-                  </VStack>
-                </Button>
-                <Button
-                  leftIcon={<FiDownload />}
-                  variant="outline"
-                  size="lg"
-                  h="auto"
-                  py={6}
-                  borderRadius="xl"
-                  borderWidth="2px"
-                  _hover={{
-                    transform: 'translateY(-4px)',
-                    shadow: 'lg',
-                    borderColor: 'success.500',
-                    bg: useColorModeValue('success.50', 'gray.700'),
-                  }}
-                  transition="all 0.2s"
-                >
-                  <VStack spacing={1}>
-                    <Text fontWeight="semibold">Exportar</Text>
-                    <Text fontSize="xs" color="gray.500">
-                      Métricas
-                    </Text>
-                  </VStack>
-                </Button>
-                <Button
-                  leftIcon={<FiCheckCircle />}
-                  variant="outline"
-                  size="lg"
-                  h="auto"
-                  py={6}
-                  borderRadius="xl"
-                  borderWidth="2px"
-                  _hover={{
-                    transform: 'translateY(-4px)',
-                    shadow: 'lg',
-                    borderColor: 'purple.500',
-                    bg: useColorModeValue('purple.50', 'gray.700'),
-                  }}
-                  transition="all 0.2s"
-                >
-                  <VStack spacing={1}>
-                    <Text fontWeight="semibold">Ver Requisitos</Text>
-                    <Text fontSize="xs" color="gray.500">
-                      Completos
-                    </Text>
-                  </VStack>
-                </Button>
-                <Button
-                  leftIcon={<FiSettings />}
-                  variant="outline"
-                  size="lg"
-                  h="auto"
-                  py={6}
-                  borderRadius="xl"
-                  borderWidth="2px"
-                  _hover={{
-                    transform: 'translateY(-4px)',
-                    shadow: 'lg',
-                    borderColor: 'orange.500',
-                    bg: useColorModeValue('orange.50', 'gray.700'),
-                  }}
-                  transition="all 0.2s"
-                >
-                  <VStack spacing={1}>
-                    <Text fontWeight="semibold">Configurar</Text>
-                    <Text fontSize="xs" color="gray.500">
-                      Alertas
-                    </Text>
-                  </VStack>
-                </Button>
-              </SimpleGrid>
+            <CardBody p={0}>
+              {report.patients.length === 0 ? (
+                <Text color="gray.500" py={8} textAlign="center">
+                  No hay pacientes evaluados.
+                </Text>
+              ) : (
+                <Accordion allowMultiple>
+                  {report.patients.map((patient) => {
+                    const info = patientNames[patient.patient_id];
+                    const fullName = info
+                      ? `${info.name} ${info.lastname}`
+                      : patient.patient_id;
+                    const badge = alertLevelBadge(patient.alert_level);
+                    const metrics = Object.values(patient.metrics);
+
+                    return (
+                      <AccordionItem key={patient.patient_id} border="none">
+                        <AccordionButton
+                          px={6}
+                          py={4}
+                          _hover={{ bg: subtleBg }}
+                        >
+                          <HStack flex="1" spacing={4}>
+                            <Avatar
+                              size="sm"
+                              name={fullName}
+                              bg="blue.100"
+                              color="blue.600"
+                              sx={{
+                                '& span': {
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '100%',
+                                  height: '100%',
+                                },
+                              }}
+                            />
+                            <Text
+                              fontWeight="semibold"
+                              cursor="pointer"
+                              _hover={{ textDecoration: 'underline' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/patients/${patient.patient_id}`);
+                              }}
+                            >
+                              {fullName}
+                            </Text>
+                            <Badge
+                              colorScheme={badge.color}
+                              borderRadius="full"
+                              px={2}
+                              fontSize="xs"
+                            >
+                              <HStack spacing={1}>
+                                <Icon as={badge.icon} boxSize={3} />
+                                <Text>{badge.label}</Text>
+                              </HStack>
+                            </Badge>
+                          </HStack>
+
+                          <HStack spacing={4}>
+                            <Text fontWeight="bold" fontSize="lg" color={`${scoreColor(patient.overall_score)}.500`}>
+                              {pct(patient.overall_score)}%
+                            </Text>
+                            <AccordionIcon />
+                          </HStack>
+                        </AccordionButton>
+
+                        <AccordionPanel px={6} pb={6}>
+                          <VStack spacing={4} align="stretch">
+                            {metrics.map((m) => (
+                              <Box key={m.name}>
+                                <HStack justify="space-between" mb={2}>
+                                  <HStack spacing={2}>
+                                    <Icon
+                                      as={m.score >= 0.9 ? FiCheckCircle : m.score >= 0.7 ? FiAlertTriangle : FiXCircle}
+                                      color={
+                                        m.score >= 0.9
+                                          ? 'success.500'
+                                          : m.score >= 0.7
+                                          ? 'warning.500'
+                                          : 'error.500'
+                                      }
+                                      boxSize={4}
+                                    />
+                                    <Text fontSize="sm" fontWeight="medium">
+                                      {METRIC_LABELS[m.name] ?? m.name}
+                                    </Text>
+                                  </HStack>
+                                  <HStack spacing={3}>
+                                    <Text fontSize="xs" color="gray.500">
+                                      {m.passing}/{m.items}
+                                    </Text>
+                                    <Text fontSize="sm" fontWeight="bold" color={`${scoreColor(m.score)}.600`}>
+                                      {pct(m.score)}%
+                                    </Text>
+                                  </HStack>
+                                </HStack>
+                                <Progress
+                                  value={pct(m.score)}
+                                  size="sm"
+                                  colorScheme={scoreColor(m.score)}
+                                  borderRadius="full"
+                                />
+                                <Text fontSize="xs" color="gray.500" mt={1}>
+                                  {m.detail}
+                                  {m.name === 'note_quality_average' && (
+                                    <> Las notas basadas en formularios no se evalúan.</>
+                                  )}
+                                </Text>
+                              </Box>
+                            ))}
+                          </VStack>
+                        </AccordionPanel>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              )}
             </CardBody>
           </Card>
         </VStack>

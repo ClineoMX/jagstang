@@ -6,6 +6,9 @@ import theme from './theme';
 
 // Pages
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import PatientList from './pages/PatientList';
 import PatientDetail from './pages/PatientDetail';
@@ -13,9 +16,11 @@ import PatientForm from './pages/PatientForm';
 import CalendarPage from './pages/Calendar';
 import NoteForm from './pages/NoteForm';
 import DoctorProfile from './pages/DoctorProfile';
+import FormulariosPage from './pages/FormulariosPage';
 import Compliance from './pages/Compliance';
 import ContactList from './pages/ContactList';
 import ContactForm from './pages/ContactForm';
+import TemplateFillForm from './pages/TemplateFillForm';
 
 // Components
 import Layout from './components/Layout';
@@ -58,11 +63,28 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public Routes */}
+      <Route path="/landing" element={<LandingPage />} />
       <Route
         path="/login"
         element={
           <PublicRoute>
             <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPassword />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <PublicRoute>
+            <ResetPassword />
           </PublicRoute>
         }
       />
@@ -154,6 +176,26 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <DoctorProfile />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/formularios"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormulariosPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/templates/fill"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TemplateFillForm />
             </Layout>
           </ProtectedRoute>
         }
