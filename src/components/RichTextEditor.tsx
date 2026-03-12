@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
 import { Box, Button, HStack, IconButton, useColorModeValue } from '@chakra-ui/react';
 import { FiBold, FiItalic, FiList } from 'react-icons/fi';
 import { MdFormatListNumbered, MdFormatQuote } from 'react-icons/md';
@@ -139,9 +138,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
-      Link.configure({
-        openOnClick: false,
+      StarterKit.configure({
+        link: { openOnClick: false },
       }),
     ],
     content: value,

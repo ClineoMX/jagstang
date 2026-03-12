@@ -132,15 +132,29 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
         const form = await apiService.getDoctorForm(formId);
         if (cancelled) return;
 
-        const formFields: FormField[] = (form.fields ?? [])
-          .map((f: Record<string, unknown>) => ({
-            name: (f.name as string) || '',
-            tag: (f.tag as string) || undefined,
-            type: (f.type as string) || 'TEXT',
-            required: Boolean(f.required),
-            position: f.position as FormField['position'],
-          }))
-          .filter((f) => f.position != null);
+        const formFields: FormField[] = (form.fields ?? []).flatMap(
+          (f: Record<string, unknown>) => {
+            const pos = f.position as { page?: number; pageIndex?: number; x: number; y: number; width: number; height: number } | null;
+            if (!pos) return [];
+            const normalizedPosition: FormField['position'] = {
+              x: pos.x,
+              y: pos.y,
+              pageIndex: pos.pageIndex ?? pos.page ?? 0,
+              width: pos.width,
+              height: pos.height,
+            };
+            const field: FormField = {
+              name: (f.name as string) || '',
+              type: (f.type as string) || 'TEXT',
+              required: Boolean(f.required),
+              position: normalizedPosition,
+            };
+            if ((f.tag as string) != null && (f.tag as string) !== '') {
+              field.tag = f.tag as string;
+            }
+            return [field];
+          }
+        );
         setFields(formFields);
 
         if (initialValues && initialValues.length > 0 && !initialValuesApplied.current) {

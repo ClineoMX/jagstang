@@ -16,6 +16,11 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import { apiService } from '../services/api';
 import type { FormFieldValue } from './FormNoteFiller';
 
+/** API returns position.page; we use position.pageIndex. Support both. */
+function getPositionPageIndex(pos: { pageIndex?: number; page?: number }): number {
+  return pos.pageIndex ?? pos.page ?? 0;
+}
+
 const pdfWorkerSrc =
   typeof import.meta.env?.VITE_PDF_WORKER === 'string'
     ? import.meta.env.VITE_PDF_WORKER
@@ -132,7 +137,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
 
       for (const field of fieldsWithPosition) {
         const pos = field.position!;
-        const page = doc.getPage(pos.pageIndex);
+        const page = doc.getPage(getPositionPageIndex(pos));
         const { width: pageWidth, height: pageHeight } = page.getSize();
 
         const x = (pos.x / 100) * pageWidth + 2;
@@ -267,7 +272,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
                 renderAnnotationLayer={true}
               />
               {fieldsWithPosition
-                .filter((v) => v.position!.pageIndex === pageIdx)
+                .filter((v) => getPositionPageIndex(v.position!) === pageIdx)
                 .map((v, i) => {
                   const pos = v.position!;
                   const displayValue = (v.value || '').trim() || '—';
