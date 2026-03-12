@@ -36,7 +36,6 @@ import {
   useDisclosure,
   Checkbox,
   Divider,
-  Badge,
   Icon,
   Tooltip,
 } from '@chakra-ui/react';
@@ -88,7 +87,7 @@ const NoteForm: React.FC = () => {
   // Estados para detectar cambios
   const [savedTitle, setSavedTitle] = useState('');
   const [savedContent, setSavedContent] = useState('');
-  const [savedReceta, setSavedReceta] = useState('');
+  const [, setSavedReceta] = useState('');
   const [savedType, setSavedType] = useState<NoteType>('evolution');
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(noteId || null);
   const [noteStatus, setNoteStatus] = useState<'new' | 'draft' | 'signed'>('new');
@@ -100,7 +99,6 @@ const NoteForm: React.FC = () => {
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
   // Refs para comparar cambios
-  const hasChangesRef = useRef(false);
   const isLoadingAnalysisAfterSaveRef = useRef(false);
   const followUpLoadedRef = useRef(false);
 
@@ -564,19 +562,6 @@ const NoteForm: React.FC = () => {
     }
     onSignModalClose();
     navigate(`/patients/${patientId}`);
-  };
-
-  const getNoteTypeLabel = (type: NoteType) => {
-    switch (type) {
-      case 'interrogation':
-        return 'Interrogatorio';
-      case 'evolution':
-        return 'Nota de Evolución';
-      case 'exploration':
-        return 'Exploración Física';
-      default:
-        return 'Nota Médica';
-    }
   };
 
   const getMissingFields = (): string[] => {

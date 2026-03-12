@@ -18,14 +18,12 @@ import {
   useColorModeValue,
   Icon,
   useDisclosure,
-  IconButton,
   Spinner,
   Alert,
   AlertIcon,
 } from '@chakra-ui/react';
-import { FiPlus, FiPhone, FiMail, FiSearch, FiEdit } from 'react-icons/fi';
+import { FiPlus, FiMail, FiSearch } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import { searchPatients } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PatientFormModal from '../components/PatientFormModal';

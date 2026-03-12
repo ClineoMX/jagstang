@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 import {
   Box,
   VStack,
@@ -10,7 +10,7 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { Document, Page, pdfjs } from 'react-pdf';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { apiService } from '../services/api';
@@ -132,7 +132,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
 
       for (const field of fieldsWithPosition) {
         const pos = field.position!;
-        const page = doc.getPage(pos.page);
+        const page = doc.getPage(pos.pageIndex);
         const { width: pageWidth, height: pageHeight } = page.getSize();
 
         const x = (pos.x / 100) * pageWidth + 2;
@@ -153,12 +153,12 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
           y: yPdf + (boxHeight - fontSize) / 2,
           size: fontSize,
           font,
-          color: { type: 'RGB', red: 0.2, green: 0.2, blue: 0.2 },
+          color: rgb(0.2, 0.2, 0.2),
         });
       }
 
       const filledPdf = await doc.save();
-      const blob = new Blob([filledPdf], { type: 'application/pdf' });
+      const blob = new Blob([new Uint8Array(filledPdf)], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -267,7 +267,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
                 renderAnnotationLayer={true}
               />
               {fieldsWithPosition
-                .filter((v) => v.position!.page === pageIdx)
+                .filter((v) => v.position!.pageIndex === pageIdx)
                 .map((v, i) => {
                   const pos = v.position!;
                   const displayValue = (v.value || '').trim() || '—';

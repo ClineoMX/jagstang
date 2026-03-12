@@ -143,6 +143,7 @@ class ApiService {
       lastname_m: string | null;
       is_recurrent: boolean;
       grant_type: string;
+      phone?: string;
     }>(`/patients/${patientId}/`);
   }
 

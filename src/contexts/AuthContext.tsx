@@ -115,8 +115,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         speciality: '',
         licenseNumber: '',
         phone: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
       setDoctor(doctorData);
       localStorage.setItem('doctor', JSON.stringify(doctorData));

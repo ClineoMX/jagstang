@@ -5,7 +5,6 @@ import {
   Heading,
   HStack,
   VStack,
-  Text,
   Button,
   FormControl,
   FormLabel,

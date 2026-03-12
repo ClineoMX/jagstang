@@ -55,7 +55,7 @@ interface FormField {
   position: {
     x: number;
     y: number;
-    page: number;
+    pageIndex: number;
     width: number;
     height: number;
   } | null;
@@ -354,7 +354,7 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
                     />
                     {fields
                       .map((f, i) => ({ field: f, index: i }))
-                      .filter(({ field }) => field.position?.page === pageIdx)
+                      .filter(({ field }) => field.position?.pageIndex === pageIdx)
                       .map(({ field, index }) => {
                         const pos = field.position!;
                         const filled = (values[String(index)] ?? '').trim() !== '';

@@ -31,7 +31,7 @@ import {
   ButtonGroup,
 } from '@chakra-ui/react';
 import { FiPlus, FiCalendar as FiCalendarIcon, FiCheck, FiX } from 'react-icons/fi';
-import { Calendar as BigCalendar, dateFnsLocalizer } from 'react-big-calendar';
+import { Calendar as BigCalendar, dateFnsLocalizer, type View, type NavigateAction, type ToolbarProps } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -56,24 +56,19 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-interface CalendarToolbarProps {
-  label: string;
-  onNavigate: (action: string) => void;
-  localizer: { messages: Record<string, string> };
-}
-
-function CalendarToolbar({ label, onNavigate, localizer: loc }: CalendarToolbarProps) {
-  const messages = loc?.messages ?? {};
+function CalendarToolbar(props: ToolbarProps<CalendarEvent, object>) {
+  const { label, onNavigate, localizer: loc } = props;
+  const messages = (loc?.messages ?? {}) as Record<string, string>;
   return (
     <div className="rbc-toolbar">
       <span className="rbc-btn-group">
-        <button type="button" onClick={() => onNavigate('TODAY')}>
+        <button type="button" onClick={() => onNavigate('TODAY' as NavigateAction)}>
           {messages.today ?? 'Hoy'}
         </button>
-        <button type="button" onClick={() => onNavigate('PREV')}>
+        <button type="button" onClick={() => onNavigate('PREV' as NavigateAction)}>
           {messages.previous ?? 'Anterior'}
         </button>
-        <button type="button" onClick={() => onNavigate('NEXT')}>
+        <button type="button" onClick={() => onNavigate('NEXT' as NavigateAction)}>
           {messages.next ?? 'Siguiente'}
         </button>
       </span>
@@ -122,7 +117,7 @@ const CalendarPage: React.FC = () => {
   const [initialPatientId, setInitialPatientId] = useState<string | undefined>(
     undefined
   );
-  const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
+  const [calendarView, setCalendarView] = useState<View>('month');
   const [calendarDate, setCalendarDate] = useState(() => new Date());
 
   const handleNavigate = (newDate: Date) => {
@@ -499,7 +494,7 @@ const CalendarPage: React.FC = () => {
               time: 'Hora',
               event: 'Cita',
               noEventsInRange: 'No hay citas en este rango',
-              showMore: (total) => `+ Ver más (${total})`,
+              showMore: (total: number) => `+ Ver más (${total})`,
             }}
             eventPropGetter={eventStyleGetter}
             culture="es"

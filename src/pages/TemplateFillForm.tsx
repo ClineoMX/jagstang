@@ -228,7 +228,7 @@ const TemplateFillForm: React.FC = () => {
   const hasPositionedFields = template.fields.some((f) => f.position);
   const showPdfWithOverlays = pdfUrl && hasPositionedFields && numPages != null;
 
-  const formatValueForPreview = (fieldId: string, value: string | number | boolean): string => {
+  const formatValueForPreview = (fieldId: string, _value: string | number | boolean): string => {
     const v = formValues[fieldId];
     if (v === undefined || v === null) return '—';
     if (typeof v === 'boolean') return v ? 'Sí' : 'No';
@@ -315,7 +315,7 @@ const TemplateFillForm: React.FC = () => {
                               renderAnnotationLayer={true}
                             />
                             {template.fields
-                              .filter((f) => f.position?.page === i)
+                              .filter((f) => f.position?.pageIndex === i)
                               .map((field) => (
                                 <Box
                                   key={field.id}
@@ -423,7 +423,7 @@ const TemplateFillForm: React.FC = () => {
                         renderAnnotationLayer={true}
                       />
                       {template.fields
-                        .filter((f) => f.position?.page === i)
+                        .filter((f) => f.position?.pageIndex === i)
                         .map((field) => (
                           <Box
                             key={field.id}
