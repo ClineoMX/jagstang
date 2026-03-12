@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -10,7 +10,6 @@ import {
   Avatar,
   Badge,
   Card,
-  CardHeader,
   CardBody,
   useColorModeValue,
   SimpleGrid,
@@ -47,9 +46,6 @@ import {
   FiCalendar,
   FiFileText,
   FiEdit,
-  FiPhone,
-  FiMail,
-  FiMapPin,
   FiFile,
   FiDownload,
   FiArrowLeft,
@@ -58,7 +54,7 @@ import {
   FiTrendingUp,
   FiSearch,
   FiPaperclip,
-  FiUpload,
+  FiPhone,
   FiPlus,
   FiMoreVertical,
 } from 'react-icons/fi';
@@ -76,10 +72,8 @@ import {
   getConsentTypeDescription,
   type PatientConsentItem,
 } from '../hooks/usePatientConsents';
-import { apiService } from '../services/api';
 import {
   usePatientIdentity,
-  IDENTITY_FIELD_LABELS,
   GENDER_LABELS,
   MARITAL_STATUS_LABELS,
   type PatientIdentity,
@@ -105,7 +99,7 @@ const PatientDetail: React.FC = () => {
 
   // Usar hooks de API
   const { patient, profile, loading: patientLoading, error: patientError } = usePatient(id);
-  const { notes, loading: notesLoading, error: notesError } = useNotes(id);
+  const { notes, loading: notesLoading } = useNotes(id);
   const { consents: patientConsents, loading: consentsLoading, error: consentsError } = usePatientConsents(id);
   const {
     identity,
@@ -113,7 +107,6 @@ const PatientDetail: React.FC = () => {
     loading: identityLoading,
     error: identityError,
     saveIdentity,
-    refetch: refetchIdentity,
   } = usePatientIdentity(id);
 
   // Consent modal (detail)
@@ -219,9 +212,6 @@ const PatientDetail: React.FC = () => {
     return tmp.textContent || tmp.innerText || '';
   };
 
-  const getFileIcon = (fileType: string) => {
-    return <FiFile />;
-  };
 
   const handleConsentClick = (consent: PatientConsentItem) => {
     setSelectedConsent(consent);

@@ -16,7 +16,6 @@ import {
   useColorModeValue,
   Card,
   CardBody,
-  HStack,
   Link,
 } from '@chakra-ui/react';
 import { FiEye, FiEyeOff } from 'react-icons/fi';

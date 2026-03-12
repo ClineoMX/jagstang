@@ -23,7 +23,6 @@ import {
   FiClock,
   FiActivity,
   FiCheckCircle,
-  FiTrendingUp,
   FiLock,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';

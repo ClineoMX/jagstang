@@ -32,7 +32,6 @@ import {
   ModalCloseButton,
   ModalFooter,
   useDisclosure,
-  Textarea,
   Select,
   Table,
   Thead,
@@ -60,7 +59,6 @@ const DoctorProfile: React.FC = () => {
   const { doctor } = useAuth();
   const toast = useToast();
   const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profile states

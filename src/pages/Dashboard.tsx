@@ -45,8 +45,6 @@ import { usePatients } from '../hooks/usePatients';
 import { useAppointments } from '../hooks/useAppointments';
 import { apiService } from '../services/api';
 
-type NoteType = 'interrogation' | 'evolution' | 'exploration' | 'document';
-
 function getNoteTypeIcon(type: string) {
   switch (type) {
     case 'interrogation':
