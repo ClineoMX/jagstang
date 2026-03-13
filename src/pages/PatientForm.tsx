@@ -45,24 +45,13 @@ const PatientForm: React.FC = () => {
       return;
     }
 
-    if (!phone.trim()) {
-      toast({
-        title: 'Error',
-        description: 'El teléfono es obligatorio',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       await apiService.createPatient({
         name: firstName,
         lastname: lastName,
         lastname_m: lastNameMaternal.trim() || undefined,
-        phone,
+        ...(phone.trim() && { phone: phone.trim() }),
       });
       toast({
         title: 'Paciente creado',
@@ -139,7 +128,7 @@ const PatientForm: React.FC = () => {
                   />
                 </FormControl>
 
-                <FormControl isRequired>
+                <FormControl>
                   <FormLabel>Teléfono</FormLabel>
                   <Input
                     type="tel"

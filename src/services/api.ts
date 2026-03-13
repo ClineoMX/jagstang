@@ -154,7 +154,7 @@ class ApiService {
     name: string;
     lastname: string;
     lastname_m?: string;
-    phone: string;
+    phone?: string;
   }) {
     return this.request<{
       id: string;

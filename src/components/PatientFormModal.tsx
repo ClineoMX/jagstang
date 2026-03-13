@@ -73,22 +73,11 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
       return;
     }
 
-    if (!phone.trim()) {
-      toast({
-        title: 'Error',
-        description: 'El teléfono es obligatorio',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
       if (isEditing && patientId) {
-        await apiService.updatePatientProfile(patientId, { phone });
+        await apiService.updatePatientProfile(patientId, { phone: phone.trim() || undefined });
         toast({
           title: 'Paciente actualizado',
           description: 'El paciente ha sido actualizado exitosamente',
@@ -101,7 +90,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
           name: firstName,
           lastname: lastName,
           lastname_m: lastNameMaternal.trim() || undefined,
-          phone,
+          ...(phone.trim() && { phone: phone.trim() }),
         });
         toast({
           title: 'Paciente creado',
@@ -173,7 +162,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
                   />
                 </FormControl>
 
-                <FormControl isRequired>
+                <FormControl>
                   <FormLabel>Teléfono</FormLabel>
                   <Input
                     type="tel"
