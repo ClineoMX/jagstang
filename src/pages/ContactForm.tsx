@@ -22,6 +22,7 @@ import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ContactType } from '../types';
 import { apiService } from '../services/api';
+import PhoneNumberField, { phoneNumberFieldUtils } from '../components/PhoneNumberField';
 
 const ContactForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,11 +37,12 @@ const ContactForm: React.FC = () => {
   const [lastName, setLastName] = useState('');
   const [alias, setAlias] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState({ countryIso2: 'MX', nationalNumber: '' });
   const [type, setType] = useState<ContactType | ''>('');
   const [company, setCompany] = useState('');
   const [position, setPosition] = useState('');
   const [notes, setNotes] = useState('');
+  const [loadedPhoneE164, setLoadedPhoneE164] = useState<string | null>(null);
 
   // Load contact data if editing
   useEffect(() => {
@@ -52,7 +54,8 @@ const ContactForm: React.FC = () => {
           setLastName(contact.lastname);
           setAlias(contact.alias || '');
           setEmail(contact.email || '');
-          setPhone(contact.phone || '');
+          setLoadedPhoneE164(contact.phone || null);
+          setPhone({ countryIso2: 'MX', nationalNumber: '' });
           setType((contact.type as ContactType) || 'other');
           setCompany(contact.organization || '');
           setPosition(contact.role || '');
@@ -96,13 +99,14 @@ const ContactForm: React.FC = () => {
     }
 
     try {
+      const phoneE164 = phoneNumberFieldUtils.toE164(phone.countryIso2, phone.nationalNumber);
       const payload = {
         name: firstName.trim(),
         lastname: lastName.trim(),
         alias: alias.trim() || undefined,
         type: type as string,
         email: email.trim() || undefined,
-        phone: phone.trim() || undefined,
+        phone: phoneE164,
         organization: company.trim() || undefined,
         role: position.trim() || undefined,
       };
@@ -235,15 +239,7 @@ const ContactForm: React.FC = () => {
                       />
                     </FormControl>
 
-                    <FormControl>
-                      <FormLabel>Teléfono</FormLabel>
-                      <Input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+52 55 1234 5678"
-                      />
-                    </FormControl>
+                    <PhoneNumberField value={phone} onChange={setPhone} e164Value={loadedPhoneE164} />
                   </SimpleGrid>
                 </VStack>
               </CardBody>
