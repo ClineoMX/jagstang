@@ -197,9 +197,9 @@ export const mockNoteTemplates: NoteTemplate[] = [
     type: 'evolution',
     content: `<h1>Nota de Evolución</h1>
 <h2>Evolución</h2>
-
+<br />
 <h2>Síntomas Actuales</h2>
-
+<br />
 <h2>Signos Vitales</h2>
 <ul>
 <li><strong>Presión Arterial:</strong></li>
@@ -212,11 +212,11 @@ export const mockNoteTemplates: NoteTemplate[] = [
 </ul>
 
 <h2>Exploración Física</h2>
-
+<br />
 <h2>Impresión Diagnóstica</h2>
-
+<br />
 <h2>Plan de Tratamiento</h2>
-
+<br />
 <h2>Próxima Cita</h2>
 `,
     createdAt: '2024-01-01T00:00:00Z',
@@ -241,7 +241,7 @@ export const mockNoteTemplates: NoteTemplate[] = [
 </ul>
 
 <h2>Aspecto General</h2>
-
+<br />
 <h2>Cabeza y Cuello</h2>
 <ul>
 <li><strong>Cabeza:</strong></li>
@@ -252,7 +252,7 @@ export const mockNoteTemplates: NoteTemplate[] = [
 <li><strong>Cuello:</strong></li>
 <li><strong>Tiroides:</strong></li>
 </ul>
-
+<br />
 <h2>Tórax</h2>
 <ul>
 <li><strong>Inspección:</strong></li>
@@ -260,14 +260,14 @@ export const mockNoteTemplates: NoteTemplate[] = [
 <li><strong>Percusión:</strong></li>
 <li><strong>Auscultación:</strong></li>
 </ul>
-
+<br />
 <h2>Sistema Cardiovascular</h2>
 <ul>
 <li><strong>Inspección:</strong></li>
 <li><strong>Palpación:</strong></li>
 <li><strong>Auscultación:</strong></li>
 </ul>
-
+<br />
 <h2>Abdomen</h2>
 <ul>
 <li><strong>Inspección:</strong></li>
@@ -275,7 +275,7 @@ export const mockNoteTemplates: NoteTemplate[] = [
 <li><strong>Percusión:</strong></li>
 <li><strong>Auscultación:</strong></li>
 </ul>
-
+<br />
 <h2>Extremidades</h2>
 <ul>
 <li><strong>Superiores:</strong></li>
@@ -283,7 +283,7 @@ export const mockNoteTemplates: NoteTemplate[] = [
 <li><strong>Pulsos:</strong></li>
 <li><strong>Edema:</strong></li>
 </ul>
-
+<br />
 <h2>Sistema Neurológico</h2>
 <ul>
 <li><strong>Estado mental:</strong></li>
@@ -293,7 +293,7 @@ export const mockNoteTemplates: NoteTemplate[] = [
 <li><strong>Reflejos:</strong></li>
 <li><strong>Coordinación:</strong></li>
 </ul>
-
+<br />
 <h2>Conclusiones</h2>
 `,
     createdAt: '2024-01-01T00:00:00Z',
