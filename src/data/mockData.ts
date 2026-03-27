@@ -149,7 +149,6 @@ export const mockNoteTemplates: NoteTemplate[] = [
 </ul>
 
 <h2>Motivo de Consulta</h2>
-<p>[Describir el motivo principal de la consulta]</p>
 
 <h2>Antecedentes Heredofamiliares</h2>
 <ul>
@@ -177,7 +176,6 @@ export const mockNoteTemplates: NoteTemplate[] = [
 </ul>
 
 <h2>Padecimiento Actual</h2>
-<p>[Descripción detallada del padecimiento actual]</p>
 
 <h2>Interrogatorio por Aparatos y Sistemas</h2>
 <ul>
@@ -198,15 +196,9 @@ export const mockNoteTemplates: NoteTemplate[] = [
     name: 'Nota de Evolución',
     type: 'evolution',
     content: `<h1>Nota de Evolución</h1>
-
-<p><strong>Fecha:</strong> [Fecha de la consulta]<br>
-<strong>Hora:</strong> [Hora de la consulta]</p>
-
 <h2>Evolución</h2>
-<p>[Describir la evolución del paciente desde la última consulta]</p>
 
 <h2>Síntomas Actuales</h2>
-<p>[Describir síntomas actuales]</p>
 
 <h2>Signos Vitales</h2>
 <ul>
@@ -220,16 +212,13 @@ export const mockNoteTemplates: NoteTemplate[] = [
 </ul>
 
 <h2>Exploración Física</h2>
-<p>[Hallazgos relevantes en la exploración física]</p>
 
 <h2>Impresión Diagnóstica</h2>
-<p>[Diagnóstico o impresión clínica]</p>
 
 <h2>Plan de Tratamiento</h2>
-<p>[Medicamentos, estudios, indicaciones]</p>
 
 <h2>Próxima Cita</h2>
-<p>[Fecha de próxima cita de seguimiento]</p>`,
+`,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     isDefault: true,
@@ -239,10 +228,6 @@ export const mockNoteTemplates: NoteTemplate[] = [
     name: 'Exploración Física',
     type: 'exploration',
     content: `<h1>Exploración Física</h1>
-
-<p><strong>Fecha:</strong> [Fecha del examen]<br>
-<strong>Paciente:</strong> [Nombre del paciente]</p>
-
 <h2>Signos Vitales</h2>
 <ul>
 <li><strong>Presión Arterial:</strong> ___ / ___ mmHg</li>
@@ -256,7 +241,6 @@ export const mockNoteTemplates: NoteTemplate[] = [
 </ul>
 
 <h2>Aspecto General</h2>
-<p>[Describir aspecto general del paciente]</p>
 
 <h2>Cabeza y Cuello</h2>
 <ul>
@@ -311,7 +295,7 @@ export const mockNoteTemplates: NoteTemplate[] = [
 </ul>
 
 <h2>Conclusiones</h2>
-<p>[Resumen de hallazgos relevantes]</p>`,
+`,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     isDefault: true,
