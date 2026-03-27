@@ -54,6 +54,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { NoteTemplate, NoteType } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
+import PhoneNumberField from '../components/PhoneNumberField';
 
 const DoctorProfile: React.FC = () => {
   const { doctor } = useAuth();
@@ -68,7 +69,8 @@ const DoctorProfile: React.FC = () => {
   const [licenseNumber, setLicenseNumber] = useState(
     doctor?.licenseNumber || ''
   );
-  const [phone, setPhone] = useState(doctor?.phone || '');
+  const [phone, setPhone] = useState({ countryIso2: 'MX', nationalNumber: '' });
+  const [loadedPhoneE164, setLoadedPhoneE164] = useState<string | null>(doctor?.phone || null);
   const [email, setEmail] = useState(doctor?.email || '');
   const [avatarUrl, setAvatarUrl] = useState(doctor?.avatar || '');
 
@@ -159,6 +161,10 @@ const DoctorProfile: React.FC = () => {
       duration: 3000,
     });
   };
+
+  React.useEffect(() => {
+    setLoadedPhoneE164(doctor?.phone || null);
+  }, [doctor?.phone]);
 
   const handleAvatarUpload = () => {
     fileInputRef.current?.click();
@@ -387,13 +393,11 @@ const DoctorProfile: React.FC = () => {
                           />
                         </FormControl>
 
-                        <FormControl>
-                          <FormLabel>Teléfono</FormLabel>
-                          <Input
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                          />
-                        </FormControl>
+                        <PhoneNumberField
+                          value={phone}
+                          onChange={setPhone}
+                          e164Value={loadedPhoneE164}
+                        />
 
                         <FormControl>
                           <FormLabel>Email</FormLabel>

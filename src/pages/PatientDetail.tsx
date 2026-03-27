@@ -81,6 +81,7 @@ import {
 import { Spinner, Alert, AlertIcon, AlertTitle, AlertDescription } from '@chakra-ui/react';
 import FormNoteViewer, { type FormNoteViewerHandle } from '../components/FormNoteViewer';
 import type { FormFieldValue } from '../components/FormNoteFiller';
+import PhoneNumberField, { phoneNumberFieldUtils } from '../components/PhoneNumberField';
 
 const PatientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -133,6 +134,10 @@ const PatientDetail: React.FC = () => {
 
   const [identityForm, setIdentityForm] = useState<Record<string, string>>({});
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
+  const [emergencyPhone, setEmergencyPhone] = useState({
+    countryIso2: 'MX',
+    nationalNumber: '',
+  });
 
   const interrogatoryNote = useMemo(
     () => notes.find((n) => n.type === 'interrogation'),
@@ -225,8 +230,16 @@ const PatientDetail: React.FC = () => {
         if (value != null) form[key] = String(value);
       }
       setIdentityForm(form);
+      const parsedEmergency = phoneNumberFieldUtils.splitE164ToCountry(
+        form.emergency_contact_phone || ''
+      );
+      setEmergencyPhone({
+        countryIso2: parsedEmergency.countryIso2,
+        nationalNumber: parsedEmergency.national,
+      });
     } else {
       setIdentityForm({});
+      setEmergencyPhone({ countryIso2: 'MX', nationalNumber: '' });
     }
     onIdentityModalOpen();
   };
@@ -234,7 +247,17 @@ const PatientDetail: React.FC = () => {
   const handleSaveIdentity = async () => {
     setIsSavingIdentity(true);
     try {
-      await saveIdentity(identityForm);
+      const normalizedForm: Record<string, string> = { ...identityForm };
+      const emergencyE164 = phoneNumberFieldUtils.toE164(
+        emergencyPhone.countryIso2,
+        emergencyPhone.nationalNumber
+      );
+      if (emergencyE164) {
+        normalizedForm.emergency_contact_phone = emergencyE164;
+      } else {
+        delete normalizedForm.emergency_contact_phone;
+      }
+      await saveIdentity(normalizedForm);
       onIdentityModalClose();
       toast({
         title: identityExists ? 'Ficha actualizada' : 'Ficha creada',
@@ -1130,34 +1153,47 @@ const PatientDetail: React.FC = () => {
           <ModalCloseButton />
           <ModalBody pb={4}>
             <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-              {identityFields.map((field) => (
-                <FormControl key={field.key}>
-                  <FormLabel fontSize="sm">{field.label}</FormLabel>
-                  {field.type === 'select' && field.options ? (
-                    <Select
-                      size="sm"
-                      placeholder="Seleccionar..."
-                      value={identityForm[field.key] || ''}
-                      onChange={(e) =>
-                        setIdentityForm((prev) => ({ ...prev, [field.key]: e.target.value }))
-                      }
-                    >
-                      {Object.entries(field.options).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                      ))}
-                    </Select>
-                  ) : (
-                    <Input
-                      size="sm"
-                      type={field.type === 'date' ? 'date' : 'text'}
-                      value={identityForm[field.key] || ''}
-                      onChange={(e) =>
-                        setIdentityForm((prev) => ({ ...prev, [field.key]: e.target.value }))
-                      }
+              {identityFields.map((field) => {
+                if (field.key === 'emergency_contact_phone') {
+                  return (
+                    <PhoneNumberField
+                      key={field.key}
+                      label={field.label}
+                      value={emergencyPhone}
+                      onChange={setEmergencyPhone}
+                      e164Value={identityForm.emergency_contact_phone || ''}
                     />
-                  )}
-                </FormControl>
-              ))}
+                  );
+                }
+                return (
+                  <FormControl key={field.key}>
+                    <FormLabel fontSize="sm">{field.label}</FormLabel>
+                    {field.type === 'select' && field.options ? (
+                      <Select
+                        size="sm"
+                        placeholder="Seleccionar..."
+                        value={identityForm[field.key] || ''}
+                        onChange={(e) =>
+                          setIdentityForm((prev) => ({ ...prev, [field.key]: e.target.value }))
+                        }
+                      >
+                        {Object.entries(field.options).map(([val, label]) => (
+                          <option key={val} value={val}>{label}</option>
+                        ))}
+                      </Select>
+                    ) : (
+                      <Input
+                        size="sm"
+                        type={field.type === 'date' ? 'date' : 'text'}
+                        value={identityForm[field.key] || ''}
+                        onChange={(e) =>
+                          setIdentityForm((prev) => ({ ...prev, [field.key]: e.target.value }))
+                        }
+                      />
+                    )}
+                  </FormControl>
+                );
+              })}
             </SimpleGrid>
           </ModalBody>
           <ModalFooter>

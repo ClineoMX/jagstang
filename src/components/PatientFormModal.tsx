@@ -19,6 +19,7 @@ import {
 } from '@chakra-ui/react';
 import { apiService } from '../services/api';
 import { usePatient } from '../hooks/usePatients';
+import PhoneNumberField, { phoneNumberFieldUtils } from './PhoneNumberField';
 
 interface PatientFormModalProps {
   isOpen: boolean;
@@ -43,19 +44,22 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [lastNameMaternal, setLastNameMaternal] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState({ countryIso2: 'MX', nationalNumber: '' });
+  const [loadedPhoneE164, setLoadedPhoneE164] = useState<string | null>(null);
 
   useEffect(() => {
     if (isEditing && patientId && apiPatient) {
       setFirstName(apiPatient.firstName);
       setLastName(apiPatient.lastName);
       setLastNameMaternal(apiPatient.lastNameMaternal ?? '');
-      setPhone(apiPatient.phone ?? apiProfile?.phone ?? '');
+      setLoadedPhoneE164(apiPatient.phone ?? apiProfile?.phone ?? null);
+      setPhone({ countryIso2: 'MX', nationalNumber: '' });
     } else if (!isEditing) {
       setFirstName('');
       setLastName('');
       setLastNameMaternal('');
-      setPhone('');
+      setLoadedPhoneE164(null);
+      setPhone({ countryIso2: 'MX', nationalNumber: '' });
     }
   }, [isEditing, patientId, isOpen, apiPatient, apiProfile]);
 
@@ -76,8 +80,9 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
     setIsSubmitting(true);
 
     try {
+      const phoneE164 = phoneNumberFieldUtils.toE164(phone.countryIso2, phone.nationalNumber);
       if (isEditing && patientId) {
-        await apiService.updatePatientProfile(patientId, { phone: phone.trim() || undefined });
+        await apiService.updatePatientProfile(patientId, { phone: phoneE164 });
         toast({
           title: 'Paciente actualizado',
           description: 'El paciente ha sido actualizado exitosamente',
@@ -90,7 +95,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
           name: firstName,
           lastname: lastName,
           lastname_m: lastNameMaternal.trim() || undefined,
-          ...(phone.trim() && { phone: phone.trim() }),
+          ...(phoneE164 && { phone: phoneE164 }),
         });
         toast({
           title: 'Paciente creado',
@@ -162,15 +167,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
                   />
                 </FormControl>
 
-                <FormControl>
-                  <FormLabel>Teléfono</FormLabel>
-                  <Input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+52 55 1234 5678"
-                  />
-                </FormControl>
+                <PhoneNumberField value={phone} onChange={setPhone} e164Value={loadedPhoneE164} />
               </VStack>
             </ModalBody>
             <ModalFooter>

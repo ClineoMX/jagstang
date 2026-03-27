@@ -18,6 +18,7 @@ import {
 import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
+import PhoneNumberField, { phoneNumberFieldUtils } from '../components/PhoneNumberField';
 
 const PatientForm: React.FC = () => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const PatientForm: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [lastNameMaternal, setLastNameMaternal] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState({ countryIso2: 'MX', nationalNumber: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,11 +48,12 @@ const PatientForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      const phoneE164 = phoneNumberFieldUtils.toE164(phone.countryIso2, phone.nationalNumber);
       await apiService.createPatient({
         name: firstName,
         lastname: lastName,
         lastname_m: lastNameMaternal.trim() || undefined,
-        ...(phone.trim() && { phone: phone.trim() }),
+        ...(phoneE164 && { phone: phoneE164 }),
       });
       toast({
         title: 'Paciente creado',
@@ -128,15 +130,7 @@ const PatientForm: React.FC = () => {
                   />
                 </FormControl>
 
-                <FormControl>
-                  <FormLabel>Teléfono</FormLabel>
-                  <Input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+52 55 1234 5678"
-                  />
-                </FormControl>
+                <PhoneNumberField value={phone} onChange={setPhone} />
 
                 <HStack justify="flex-end" spacing={3} w="full" pt={4}>
                   <Button variant="ghost" onClick={() => navigate('/patients')}>
