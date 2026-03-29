@@ -212,9 +212,17 @@ const PatientDetail: React.FC = () => {
   };
 
   const stripHtml = (html: string): string => {
+    const withBreaks = html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(
+        /<\/(p|div|h[1-6]|li|tr|blockquote|section|article|header|footer|pre)>/gi,
+        '\n'
+      );
     const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
+    tmp.innerHTML = withBreaks;
+    return (tmp.textContent || tmp.innerText || '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   };
 
 
@@ -538,7 +546,7 @@ const PatientDetail: React.FC = () => {
                   )}
                   <AccordionIcon />
                 </AccordionButton>
-                <AccordionPanel pb={5} pt={0} px={5}>
+                <AccordionPanel pb={5} pt={4} px={5}>
                   {identityLoading ? (
                     <HStack justify="center" py={6}>
                       <Spinner size="md" />
@@ -594,7 +602,7 @@ const PatientDetail: React.FC = () => {
                   </HStack>
                   <AccordionIcon />
                 </AccordionButton>
-                <AccordionPanel pb={5} pt={0} px={5}>
+                <AccordionPanel pb={5} pt={4} px={5}>
                   {notesLoading ? (
                     <HStack justify="center" py={6}>
                       <Spinner size="md" />
@@ -806,6 +814,7 @@ const PatientDetail: React.FC = () => {
                                     color="gray.600"
                                     noOfLines={3}
                                     lineHeight="tall"
+                                    whiteSpace="pre-line"
                                   >
                                     {plainContent}
                                   </Text>
