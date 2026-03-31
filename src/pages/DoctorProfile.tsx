@@ -55,6 +55,7 @@ import { es } from 'date-fns/locale';
 import type { NoteTemplate, NoteType } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import PhoneNumberField from '../components/PhoneNumberField';
+import { apiService } from '../services/api';
 
 const DoctorProfile: React.FC = () => {
   const { doctor } = useAuth();
@@ -75,8 +76,7 @@ const DoctorProfile: React.FC = () => {
   const [avatarUrl, setAvatarUrl] = useState(doctor?.avatar || '');
 
   // Templates states
-  const [templates, setTemplates] = useState<NoteTemplate[]>([
-    // Mock data - in real app this would come from API
+  const mockTemplates: NoteTemplate[] = [
     {
       id: 'tpl-1',
       name: 'Interrogatorio Personalizado',
@@ -110,7 +110,9 @@ const DoctorProfile: React.FC = () => {
       isDefault: false,
       doctorId: doctor?.id,
     },
-  ]);
+  ];
+
+  const [templates, setTemplates] = useState<NoteTemplate[]>([]);
 
   const {
     isOpen: isTemplateModalOpen,
@@ -165,6 +167,43 @@ const DoctorProfile: React.FC = () => {
   React.useEffect(() => {
     setLoadedPhoneE164(doctor?.phone || null);
   }, [doctor?.phone]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const loadTemplates = async () => {
+      try {
+        const res = await apiService.listDoctorTemplates({ page: 1, size: 50 });
+        if (cancelled) return;
+
+        if (res.count === 0) {
+          setTemplates(mockTemplates);
+          return;
+        }
+
+        const now = new Date().toISOString();
+        setTemplates(
+          res.results.map((t) => ({
+            id: t.id,
+            name: t.name,
+            type: 'custom',
+            content: t.content,
+            createdAt: now,
+            updatedAt: now,
+            isDefault: false,
+            doctorId: doctor?.id,
+          }))
+        );
+      } catch {
+        if (!cancelled) setTemplates(mockTemplates);
+      }
+    };
+
+    loadTemplates();
+    return () => {
+      cancelled = true;
+    };
+  }, [doctor?.id]);
 
   const handleAvatarUpload = () => {
     fileInputRef.current?.click();

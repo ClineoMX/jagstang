@@ -105,13 +105,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const sidebarBg = useColorModeValue('secondary.800', 'secondary.900');
   const bgColor = useColorModeValue('background.light', 'background.dark');
 
+  const hideNom = (doctor?.role ?? '').toUpperCase() === 'WELLNESS';
   const navItems = [
     { icon: FiHome, label: 'Home', path: '/' },
     { icon: FiUsers, label: 'Pacientes', path: '/patients' },
     { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
     { icon: FiFileText, label: 'Formularios', path: '/formularios' },
     { icon: FiBook, label: 'Contactos', path: '/contacts' },
-    { icon: FiActivity, label: 'NOM', path: '/compliance' },
+    ...(hideNom ? [] : [{ icon: FiActivity, label: 'NOM', path: '/compliance' }]),
   ];
 
   const handleLogout = () => {

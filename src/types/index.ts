@@ -4,6 +4,8 @@ export interface Doctor {
   firstName: string;
   lastName: string;
   email: string;
+  /** Role comes from identity token (e.g. "DOCTOR", "WELLNESS") */
+  role?: string;
   gender?: 'male' | 'female';
   speciality?: string;
   licenseNumber?: string;

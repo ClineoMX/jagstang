@@ -601,6 +601,23 @@ class ApiService {
   }
 
   /**
+   * GET /doctor/templates/
+   * Lista de templates (notas/plantillas) del doctor.
+   */
+  async listDoctorTemplates(params?: { page?: number; size?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null) queryParams.append('page', params.page.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
+    const query = queryParams.toString();
+    return this.request<{
+      results: Array<{ id: string; name: string; content: string }>;
+      count: number;
+      page: number;
+      size: number;
+    }>(`/doctor/templates/${query ? `?${query}` : ''}`);
+  }
+
+  /**
    * GET /doctor/compliance/
    */
   async getDoctorCompliance() {

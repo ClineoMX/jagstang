@@ -1036,3 +1036,32 @@ Response:
 ```
 <binary data>
 ```
+
+# List Forms
+
+Path: `/doctor/templates/`
+Method: `GET`
+
+
+Headers: `Content-Type: application/json;X-Clineo-Api-Key: process.env.apikey; X-Clineo-Id: login.id;Authorization:Bearer login.access;`
+
+Payload:
+```json
+null
+```
+
+Response:
+```json
+{
+  "results": [
+    {
+      "id": "88c82935-a8d0-402c-a8e6-4cfc891d5147",
+      "name": "Mi Exploración física",
+      "content": "Rich text content here"
+    }
+  ],
+  "count": 1,
+  "page": 1,
+  "size": 10
+}
+```

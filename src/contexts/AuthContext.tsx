@@ -3,8 +3,30 @@ import type { Doctor, LoginCredentials } from '../types';
 import { apiService } from '../services/api';
 
 /** Decode X-Clineo-Identity token (JWT payload or JSON) to get name, family_name, gender, avatar_url */
-function decodeIdentityToken(idToken: string | null): { name?: string; family_name?: string; gender?: 'male' | 'female'; avatar_url?: string } | null {
+function decodeIdentityToken(
+  idToken: string | null
+): {
+  name?: string;
+  family_name?: string;
+  gender?: 'male' | 'female';
+  avatar_url?: string;
+  role?: string;
+} | null {
   if (!idToken || typeof idToken !== 'string') return null;
+
+  const getRoleFromParsed = (parsed: Record<string, unknown>): string | undefined => {
+    const groups = parsed['cognito:groups'];
+    if (
+      Array.isArray(groups) &&
+      groups.length > 0 &&
+      typeof groups[0] === 'string' &&
+      groups[0].trim().length > 0
+    ) {
+      return groups[0];
+    }
+    return typeof parsed.role === 'string' ? parsed.role : undefined;
+  };
+
   try {
     // Try as plain JSON first
     const parsed = JSON.parse(idToken) as Record<string, unknown>;
@@ -14,6 +36,7 @@ function decodeIdentityToken(idToken: string | null): { name?: string; family_na
         family_name: typeof parsed.family_name === 'string' ? parsed.family_name : undefined,
         gender: parsed.gender === 'male' || parsed.gender === 'female' ? parsed.gender : undefined,
         avatar_url: typeof parsed.avatar_url === 'string' ? parsed.avatar_url : undefined,
+        role: getRoleFromParsed(parsed),
       };
     }
   } catch {
@@ -32,6 +55,7 @@ function decodeIdentityToken(idToken: string | null): { name?: string; family_na
         family_name: typeof parsed.family_name === 'string' ? parsed.family_name : undefined,
         gender: parsed.gender === 'male' || parsed.gender === 'female' ? parsed.gender : undefined,
         avatar_url: typeof parsed.avatar_url === 'string' ? parsed.avatar_url : undefined,
+        role: getRoleFromParsed(parsed),
       };
     }
   } catch {
@@ -74,13 +98,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (storedDoctor && storedToken) {
       const doctorData = JSON.parse(storedDoctor) as Doctor;
       const identity = decodeIdentityToken(idToken);
-      if (identity?.name !== undefined || identity?.family_name !== undefined || identity?.gender !== undefined || identity?.avatar_url !== undefined) {
+      if (
+        identity?.name !== undefined ||
+        identity?.family_name !== undefined ||
+        identity?.gender !== undefined ||
+        identity?.avatar_url !== undefined ||
+        identity?.role !== undefined
+      ) {
         setDoctor({
           ...doctorData,
           firstName: identity.name ?? doctorData.firstName,
           lastName: identity.family_name ?? doctorData.lastName,
           gender: identity.gender ?? doctorData.gender,
           avatar: identity.avatar_url ?? doctorData.avatar,
+          role: identity.role ?? doctorData.role,
         });
       } else {
         setDoctor(doctorData);
@@ -110,6 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         firstName: identity?.name ?? '',
         lastName: identity?.family_name ?? '',
         email: credentials.email,
+        role: identity?.role,
         gender: identity?.gender,
         avatar: identity?.avatar_url,
         speciality: '',
