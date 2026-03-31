@@ -189,6 +189,10 @@ const PatientDetail: React.FC = () => {
         return 'Nota de Evolución';
       case 'exploration':
         return 'Exploración Física';
+      case 'psychology-interrogation':
+        return 'Psicología · Historia Clínica Inicial';
+      case 'psychology-evolution':
+        return 'Psicología · Nota de Sesión';
       case 'document':
         return 'Documento';
       default:
@@ -204,6 +208,10 @@ const PatientDetail: React.FC = () => {
         return { icon: FiTrendingUp, color: 'blue.500', bg: 'blue.50' };
       case 'exploration':
         return { icon: FiSearch, color: 'green.500', bg: 'green.50' };
+      case 'psychology-interrogation':
+        return { icon: FiClipboard, color: 'purple.500', bg: 'purple.50' };
+      case 'psychology-evolution':
+        return { icon: FiTrendingUp, color: 'blue.500', bg: 'blue.50' };
       case 'document':
         return { icon: FiFile, color: 'teal.500', bg: 'teal.50' };
       default:

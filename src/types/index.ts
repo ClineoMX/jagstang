@@ -83,7 +83,14 @@ export interface Appointment {
 }
 
 // Medical Note types
-export type NoteType = 'interrogation' | 'exploration' | 'evolution' | 'document' | 'custom';
+export type NoteType =
+  | 'interrogation'
+  | 'exploration'
+  | 'evolution'
+  | 'document'
+  | 'custom'
+  | 'psychology-interrogation'
+  | 'psychology-evolution';
 
 export interface NoteTemplate {
   id: string;

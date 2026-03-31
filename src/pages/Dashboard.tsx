@@ -53,6 +53,10 @@ function getNoteTypeIcon(type: string) {
       return { icon: FiTrendingUp, color: 'blue.500' as const, bg: 'blue.50' as const };
     case 'exploration':
       return { icon: FiSearch, color: 'green.500' as const, bg: 'green.50' as const };
+    case 'psychology-interrogation':
+      return { icon: FiClipboard, color: 'purple.500' as const, bg: 'purple.50' as const };
+    case 'psychology-evolution':
+      return { icon: FiTrendingUp, color: 'blue.500' as const, bg: 'blue.50' as const };
     case 'document':
       return { icon: FiFile, color: 'teal.500' as const, bg: 'teal.50' as const };
     default:
@@ -68,6 +72,10 @@ function getNoteTypeLabel(type: string) {
       return 'Nota de Evolución';
     case 'exploration':
       return 'Exploración Física';
+    case 'psychology-interrogation':
+      return 'Psicología · Historia Clínica Inicial';
+    case 'psychology-evolution':
+      return 'Psicología · Nota de Sesión';
     case 'document':
       return 'Documento';
     default:

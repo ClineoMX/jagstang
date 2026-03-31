@@ -55,7 +55,7 @@ import { es } from 'date-fns/locale';
 import type { NoteTemplate, NoteType } from '../types';
 import RichTextEditor from '../components/RichTextEditor';
 import PhoneNumberField from '../components/PhoneNumberField';
-import { apiService } from '../services/api';
+import { mockNoteTemplates, mockWellnessNoteTemplates } from '../data/mockData';
 
 const DoctorProfile: React.FC = () => {
   const { doctor } = useAuth();
@@ -75,44 +75,13 @@ const DoctorProfile: React.FC = () => {
   const [email, setEmail] = useState(doctor?.email || '');
   const [avatarUrl, setAvatarUrl] = useState(doctor?.avatar || '');
 
-  // Templates states
-  const mockTemplates: NoteTemplate[] = [
-    {
-      id: 'tpl-1',
-      name: 'Interrogatorio Personalizado',
-      type: 'interrogation',
-      content: `<h1>Interrogatorio</h1>
-<h2>Datos del Paciente</h2>
-<ul>
-<li><strong>Nombre</strong>: [Nombre del paciente]</li>
-<li><strong>Edad</strong>: [Edad]</li>
-<li><strong>Fecha</strong>: [Fecha]</li>
-</ul>
-<h2>Motivo de Consulta</h2>
-<p>[Describir el motivo principal de la consulta]</p>
-<h2>Historia de la Enfermedad Actual</h2>
-<p>[Detalles sobre la evolución de los síntomas]</p>
-<h2>Antecedentes</h2>
-<h3>Personales Patológicos</h3>
-<ul>
-<li>[Lista de antecedentes]</li>
-</ul>
-<h3>Familiares</h3>
-<ul>
-<li>[Antecedentes familiares relevantes]</li>
-</ul>
-<h2>Revisión por Sistemas</h2>
-<ul>
-<li>[Revisar cada sistema]</li>
-</ul>`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isDefault: false,
-      doctorId: doctor?.id,
-    },
-  ];
+  const role = (doctor?.role ?? '').toUpperCase();
+  const isWellness = role === 'WELLNESS';
 
-  const [templates, setTemplates] = useState<NoteTemplate[]>([]);
+  // Templates states (role-based)
+  const [templates, setTemplates] = useState<NoteTemplate[]>(() =>
+    isWellness ? mockWellnessNoteTemplates : mockNoteTemplates
+  );
 
   const {
     isOpen: isTemplateModalOpen,
@@ -169,41 +138,8 @@ const DoctorProfile: React.FC = () => {
   }, [doctor?.phone]);
 
   React.useEffect(() => {
-    let cancelled = false;
-
-    const loadTemplates = async () => {
-      try {
-        const res = await apiService.listDoctorTemplates({ page: 1, size: 50 });
-        if (cancelled) return;
-
-        if (res.count === 0) {
-          setTemplates(mockTemplates);
-          return;
-        }
-
-        const now = new Date().toISOString();
-        setTemplates(
-          res.results.map((t) => ({
-            id: t.id,
-            name: t.name,
-            type: 'custom',
-            content: t.content,
-            createdAt: now,
-            updatedAt: now,
-            isDefault: false,
-            doctorId: doctor?.id,
-          }))
-        );
-      } catch {
-        if (!cancelled) setTemplates(mockTemplates);
-      }
-    };
-
-    loadTemplates();
-    return () => {
-      cancelled = true;
-    };
-  }, [doctor?.id]);
+    setTemplates(isWellness ? mockWellnessNoteTemplates : mockNoteTemplates);
+  }, [isWellness]);
 
   const handleAvatarUpload = () => {
     fileInputRef.current?.click();
@@ -226,6 +162,15 @@ const DoctorProfile: React.FC = () => {
 
   // Template functions
   const handleCreateTemplate = () => {
+    if (isWellness) {
+      toast({
+        title: 'Plantillas no editables',
+        description: 'En modo WELLNESS solo existen dos tipos de notas predefinidos.',
+        status: 'info',
+        duration: 3500,
+      });
+      return;
+    }
     setEditingTemplate(null);
     setTemplateName('');
     setTemplateType('custom');
@@ -234,6 +179,7 @@ const DoctorProfile: React.FC = () => {
   };
 
   const handleEditTemplate = (template: NoteTemplate) => {
+    if (isWellness) return;
     setEditingTemplate(template);
     setTemplateName(template.name);
     setTemplateType(template.type);
@@ -247,6 +193,7 @@ const DoctorProfile: React.FC = () => {
   };
 
   const handleSaveTemplate = () => {
+    if (isWellness) return;
     if (!templateName.trim() || !templateContent.trim()) {
       toast({
         title: 'Error',
@@ -303,6 +250,7 @@ const DoctorProfile: React.FC = () => {
   };
 
   const handleDeleteTemplate = (templateId: string) => {
+    if (isWellness) return;
     if (window.confirm('¿Estás seguro de eliminar esta plantilla?')) {
       setTemplates((prev) => prev.filter((t) => t.id !== templateId));
       toast({
@@ -322,6 +270,10 @@ const DoctorProfile: React.FC = () => {
         return 'Nota de Evolución';
       case 'exploration':
         return 'Exploración Física';
+      case 'psychology-interrogation':
+        return 'Psicología · Historia Clínica Inicial';
+      case 'psychology-evolution':
+        return 'Psicología · Nota de Sesión';
       case 'document':
         return 'Documento';
       default:
@@ -554,6 +506,7 @@ const DoctorProfile: React.FC = () => {
                         leftIcon={<FiPlus />}
                         colorScheme="brand"
                         onClick={handleCreateTemplate}
+                        isDisabled={isWellness}
                       >
                         Nueva Plantilla
                       </Button>
@@ -686,9 +639,7 @@ const DoctorProfile: React.FC = () => {
                 >
                   <option value="interrogation">Interrogatorio</option>
                   <option value="evolution">Nota de Evolución</option>
-                  <option value="exploration">
-                    Exploración Física
-                  </option>
+                  <option value="exploration">Exploración Física</option>
                   <option value="custom">Personalizada</option>
                 </Select>
               </FormControl>

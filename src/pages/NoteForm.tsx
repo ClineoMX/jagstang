@@ -43,7 +43,7 @@ import { FiUpload, FiX, FiArrowLeft, FiCheckCircle, FiAlertCircle, FiEdit } from
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { mockNoteTemplates } from '../data/mockData';
+import { mockNoteTemplates, mockWellnessNoteTemplates } from '../data/mockData';
 import RichTextEditor from '../components/RichTextEditor';
 import FormNoteFiller from '../components/FormNoteFiller';
 import type { FormFieldValue } from '../components/FormNoteFiller';
@@ -51,6 +51,7 @@ import type { NoteType, NoteCompletenessAnalysis } from '../types';
 import { usePatient } from '../hooks/usePatients';
 import { useNotes } from '../hooks/useNotes';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const RECETA_DELIMITER = '<!-- ___RECETA___ -->';
 
@@ -59,6 +60,7 @@ const NoteForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
+  const { doctor } = useAuth();
 
   const cardBg = useColorModeValue('card.light', 'card.dark');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -101,6 +103,10 @@ const NoteForm: React.FC = () => {
   // Refs para comparar cambios
   const isLoadingAnalysisAfterSaveRef = useRef(false);
   const followUpLoadedRef = useRef(false);
+
+  const role = (doctor?.role ?? '').toUpperCase();
+  const isWellness = role === 'WELLNESS';
+  const templatesForRole = isWellness ? mockWellnessNoteTemplates : mockNoteTemplates;
 
   // Detectar si hay cambios
   const hasChanges = () => {
@@ -295,12 +301,23 @@ const NoteForm: React.FC = () => {
   // Load template when note type changes (solo si es nota nueva, no Seguimiento, y no modo formulario)
   useEffect(() => {
     if (noteStatus !== 'new' || followUpLoadedRef.current || useFormMode) return;
-    const template = mockNoteTemplates.find((t) => t.type === noteType);
+    const template = templatesForRole.find((t) => t.type === noteType);
     if (!template) return;
     const today = format(new Date(), "d 'de' MMM yyyy", { locale: es });
     setTitle(`${template.name} - ${today}`);
     setContent(template.content);
-  }, [noteType, noteStatus, useFormMode]);
+  }, [noteType, noteStatus, useFormMode, templatesForRole]);
+
+  // Ensure default type fits role
+  useEffect(() => {
+    if (!isWellness) return;
+    if (noteStatus !== 'new') return;
+    if (useFormMode) return;
+    // If current noteType isn't available for WELLNESS, force a valid default.
+    if (noteType !== 'psychology-interrogation' && noteType !== 'psychology-evolution') {
+      setNoteType('psychology-evolution');
+    }
+  }, [isWellness, noteStatus, useFormMode, noteType]);
 
   // Set initial note type from location state
   useEffect(() => {
@@ -734,9 +751,22 @@ const NoteForm: React.FC = () => {
                           onChange={(e) => handleNoteTypeSelectChange(e.target.value)}
                           size="lg"
                         >
-                          <option value="interrogation">Interrogatorio</option>
-                          <option value="evolution">Nota de Evolución</option>
-                          <option value="exploration">Exploración Física</option>
+                          {isWellness ? (
+                            <>
+                              <option value="psychology-interrogation">
+                                Historia Clínica Psicológica Inicial
+                              </option>
+                              <option value="psychology-evolution">
+                                Nota de Sesión Psicológica
+                              </option>
+                            </>
+                          ) : (
+                            <>
+                              <option value="interrogation">Interrogatorio</option>
+                              <option value="evolution">Nota de Evolución</option>
+                              <option value="exploration">Exploración Física</option>
+                            </>
+                          )}
                           <option value="form">Usar formulario</option>
                         </Select>
                       </FormControl>
@@ -856,9 +886,22 @@ const NoteForm: React.FC = () => {
                         onChange={(e) => handleNoteTypeSelectChange(e.target.value)}
                         size="lg"
                       >
-                        <option value="interrogation">Interrogatorio</option>
-                        <option value="evolution">Nota de Evolución</option>
-                        <option value="exploration">Exploración Física</option>
+                        {isWellness ? (
+                          <>
+                            <option value="psychology-interrogation">
+                              Historia Clínica Psicológica Inicial
+                            </option>
+                            <option value="psychology-evolution">
+                              Nota de Sesión Psicológica
+                            </option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="interrogation">Interrogatorio</option>
+                            <option value="evolution">Nota de Evolución</option>
+                            <option value="exploration">Exploración Física</option>
+                          </>
+                        )}
                         <option value="form">Usar formulario</option>
                       </Select>
                       {!useFormMode && (
@@ -1072,7 +1115,7 @@ const NoteForm: React.FC = () => {
                 <VStack align="start" spacing={1}>
                   <AlertTitle>Advertencia</AlertTitle>
                   <AlertDescription fontSize="sm">
-                    La nota tiene una completitud del {completenessAnalysis?.completeness_score || 0}%, que está por debajo del 80% recomendado.
+                    La nota tiene una completitud del {completenessAnalysis?.completeness_score || 0}%, que está por debajo del 70% recomendado.
                   </AlertDescription>
                 </VStack>
               </Alert>

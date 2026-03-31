@@ -302,6 +302,81 @@ export const mockNoteTemplates: NoteTemplate[] = [
   },
 ];
 
+export const mockWellnessNoteTemplates: NoteTemplate[] = [
+  {
+    id: 'tpl-psy-1',
+    name: 'Historia Clínica Psicológica Inicial',
+    type: 'psychology-interrogation',
+    content: `<h1>Historia Clínica Psicológica Inicial</h1>
+ 
+<h2>Motivo de Consulta</h2>
+<br />
+ 
+<h2>Historia del Problema Actual</h2>
+<br />
+ 
+<h2>Antecedentes Psicológicos y Psiquiátricos</h2>
+<ul>
+<li><strong>Atención psicológica previa:</strong></li>
+<li><strong>Atención psiquiátrica previa:</strong></li>
+<li><strong>Diagnósticos anteriores:</strong></li>
+<li><strong>Medicación actual:</strong></li>
+<li><strong>Hospitalizaciones psiquiátricas:</strong></li>
+</ul>
+ 
+<h2>Historia Personal Relevante</h2>
+<br />
+ 
+<h2>Estado Mental Actual</h2>
+<ul>
+<li><strong>Apariencia y actitud:</strong></li>
+<li><strong>Estado de ánimo / Afecto:</strong></li>
+<li><strong>Pensamiento:</strong></li>
+<li><strong>Percepción:</strong></li>
+<li><strong>Cognición / Orientación:</strong></li>
+<li><strong>Juicio e introspección:</strong></li>
+<li><strong>Ideación:</strong></li>
+</ul>
+ 
+<h2>Objetivos Terapéuticos y Plan de Intervención</h2>
+<ul>
+<li><strong>Enfoque terapéutico:</strong></li>
+<li><strong>Frecuencia de sesiones:</strong></li>
+<li><strong>Objetivos:</strong></li>
+</ul>`,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    isDefault: true,
+  },
+  {
+    id: 'tpl-psy-2',
+    name: 'Nota de Sesión Psicológica',
+    type: 'psychology-evolution',
+    content: `<h1>Nota de Sesión Psicológica</h1>
+ 
+<h2>Presentación del Paciente</h2>
+<br />
+ 
+<h2>Contenido de la Sesión</h2>
+<br />
+ 
+<h2>Intervenciones Terapéuticas</h2>
+<br />
+ 
+<h2>Respuesta del Paciente</h2>
+<br />
+ 
+<h2>Evaluación y Progreso</h2>
+<br />
+ 
+<h2>Plan y Acuerdos</h2>
+<br />`,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    isDefault: true,
+  },
+];
+
 // Mock Attachments
 export const mockAttachments: Attachment[] = [
   {
