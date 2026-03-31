@@ -17,7 +17,7 @@ class ApiService {
       'Content-Type': 'application/json',
     };
 
-    // API requiere (api.md): X-Clineo-Api-Key, X-Clineo-Id (login.id), Authorization: Bearer login.access
+    // API requiere: X-Clineo-Api-Key, X-Clineo-Identity (token), Authorization: Bearer login.access
     if (API_KEY) {
       headers['X-Clineo-Api-Key'] = API_KEY;
     }
@@ -29,7 +29,6 @@ class ApiService {
 
     const idFromLogin = localStorage.getItem('id_token');
     if (idFromLogin) {
-      headers['X-Clineo-Id'] = idFromLogin;
       headers['X-Clineo-Identity'] = idFromLogin;
     }
 
