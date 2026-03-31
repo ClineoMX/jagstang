@@ -82,11 +82,14 @@ import { Spinner, Alert, AlertIcon, AlertTitle, AlertDescription } from '@chakra
 import FormNoteViewer, { type FormNoteViewerHandle } from '../components/FormNoteViewer';
 import type { FormFieldValue } from '../components/FormNoteFiller';
 import PhoneNumberField, { phoneNumberFieldUtils } from '../components/PhoneNumberField';
+import { useAuth } from '../contexts/AuthContext';
 
 const PatientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
+  const { doctor } = useAuth();
+  const isWellness = (doctor?.role ?? '').toUpperCase() === 'WELLNESS';
   const cardBg = useColorModeValue('card.light', 'card.dark');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const consentGrantedBg = useColorModeValue('green.50', 'green.900');
@@ -528,7 +531,12 @@ const PatientDetail: React.FC = () => {
         >
           {/* Columna izquierda: Ficha de Identidad e Interrogatorio (colapsables) */}
           <Box>
-            <Accordion allowMultiple defaultIndex={[0, 1]} borderWidth="0" reduceMotion>
+            <Accordion
+              allowMultiple
+              defaultIndex={isWellness ? [0] : [0, 1]}
+              borderWidth="0"
+              reduceMotion
+            >
               <AccordionItem bg={cardBg} borderRadius="2xl" borderWidth="1px" borderColor={borderColor} mb={4} overflow="hidden">
                 <AccordionButton _expanded={{ borderBottom: '1px', borderColor }} px={5} py={4}>
                   <HStack spacing={3} flex={1} textAlign="left">
@@ -600,6 +608,7 @@ const PatientDetail: React.FC = () => {
                 </AccordionPanel>
               </AccordionItem>
 
+              {!isWellness && (
               <AccordionItem bg={cardBg} borderRadius="2xl" borderWidth="1px" borderColor={borderColor} overflow="hidden">
                 <AccordionButton _expanded={{ borderBottom: '1px', borderColor }} px={5} py={4}>
                   <HStack spacing={3} flex={1} textAlign="left">
@@ -700,6 +709,7 @@ const PatientDetail: React.FC = () => {
                   )}
                 </AccordionPanel>
               </AccordionItem>
+              )}
             </Accordion>
           </Box>
 
