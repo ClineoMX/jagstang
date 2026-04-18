@@ -1,9 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
+import type { Editor } from '@tiptap/core';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { Box, Button, HStack, IconButton, useColorModeValue } from '@chakra-ui/react';
-import { FiBold, FiItalic, FiList } from 'react-icons/fi';
-import { MdFormatListNumbered, MdFormatQuote } from 'react-icons/md';
+import {
+  Box,
+  Button,
+  HStack,
+  IconButton,
+  useColorModeValue,
+} from '@chakra-ui/react';
+import { FiBold, FiItalic, FiList, FiPaperclip } from 'react-icons/fi';
+import { MdFormatListNumbered, MdRedo, MdUndo } from 'react-icons/md';
+import { PRESCRIPTION_TEMPLATE_HTML } from '../constants/prescriptionTemplate';
 
 interface RichTextEditorProps {
   value: string;
@@ -11,30 +19,80 @@ interface RichTextEditorProps {
   placeholder?: string;
   readOnly?: boolean;
   minHeight?: string;
+  /** Adds paperclip control; selected files are passed to the parent (same flow as note attachments). */
+  onAttachFiles?: (files: File[]) => void;
 }
 
-const MenuBar = ({ editor }: any) => {
-  const activeBg = useColorModeValue('gray.200', 'gray.600');
-  const hoverBg = useColorModeValue('gray.100', 'gray.700');
-  const iconColor = useColorModeValue('gray.700', 'gray.200');
+const MenuBar = ({
+  editor,
+  onAttachFiles,
+}: {
+  editor: Editor | null;
+  onAttachFiles?: (files: File[]) => void;
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeBg = useColorModeValue('paper.200', 'whiteAlpha.200');
+  const hoverBg = useColorModeValue('paper.100', 'whiteAlpha.100');
+  const barBg = useColorModeValue('paper.50', 'paper.900');
+  const borderCol = useColorModeValue('line.light', 'whiteAlpha.200');
+  const dividerCol = useColorModeValue('line.strong', 'whiteAlpha.300');
+  const iconColor = useColorModeValue('paper.800', 'paper.100');
+  const mutedColor = useColorModeValue('paper.600', 'paper.400');
 
   if (!editor) {
     return null;
   }
 
+  const groupDivider = (
+    <Box
+      as="span"
+      w="1px"
+      alignSelf="stretch"
+      minH="28px"
+      bg={dividerCol}
+      mx={1}
+      flexShrink={0}
+    />
+  );
+
   return (
     <HStack
-      spacing={1}
-      p={2}
-      borderBottom="1px"
-      borderColor={useColorModeValue('gray.200', 'gray.600')}
-      bg={useColorModeValue('white', 'gray.800')}
+      spacing={0}
+      px={2}
+      py={1.5}
+      borderBottom="1px solid"
+      borderColor={borderCol}
+      bg={barBg}
       borderTopRadius="md"
       flexWrap="wrap"
+      align="center"
       color={iconColor}
     >
       <IconButton
-        aria-label="Bold"
+        aria-label="Deshacer"
+        icon={<MdUndo size={18} />}
+        size="sm"
+        variant="ghost"
+        color={iconColor}
+        onClick={() => editor.chain().focus().undo().run()}
+        isDisabled={!editor.can().undo()}
+        _hover={{ bg: hoverBg }}
+      />
+      <IconButton
+        aria-label="Rehacer"
+        icon={<MdRedo size={18} />}
+        size="sm"
+        variant="ghost"
+        color={iconColor}
+        onClick={() => editor.chain().focus().redo().run()}
+        isDisabled={!editor.can().redo()}
+        _hover={{ bg: hoverBg }}
+      />
+
+      {groupDivider}
+
+      <IconButton
+        aria-label="Negrita"
         icon={<FiBold />}
         size="sm"
         variant="ghost"
@@ -44,7 +102,7 @@ const MenuBar = ({ editor }: any) => {
         _hover={{ bg: hoverBg }}
       />
       <IconButton
-        aria-label="Italic"
+        aria-label="Cursiva"
         icon={<FiItalic />}
         size="sm"
         variant="ghost"
@@ -54,7 +112,43 @@ const MenuBar = ({ editor }: any) => {
         _hover={{ bg: hoverBg }}
       />
       <IconButton
-        aria-label="Bullet List"
+        aria-label="Subrayado"
+        icon={
+          <Box as="span" fontWeight="700" fontSize="13px" textDecor="underline">
+            U
+          </Box>
+        }
+        size="sm"
+        variant="ghost"
+        color={iconColor}
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        bg={editor.isActive('underline') ? activeBg : 'transparent'}
+        _hover={{ bg: hoverBg }}
+      />
+
+      {groupDivider}
+
+      <Button
+        aria-label="Encabezado 2"
+        size="sm"
+        variant="ghost"
+        color={iconColor}
+        fontWeight={700}
+        fontSize="12px"
+        h="32px"
+        minW="36px"
+        px={2}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        bg={editor.isActive('heading', { level: 2 }) ? activeBg : 'transparent'}
+        _hover={{ bg: hoverBg }}
+      >
+        H2
+      </Button>
+
+      {groupDivider}
+
+      <IconButton
+        aria-label="Lista con viñetas"
         icon={<FiList />}
         size="sm"
         variant="ghost"
@@ -64,7 +158,7 @@ const MenuBar = ({ editor }: any) => {
         _hover={{ bg: hoverBg }}
       />
       <IconButton
-        aria-label="Ordered List"
+        aria-label="Lista numerada"
         icon={<MdFormatListNumbered />}
         size="sm"
         variant="ghost"
@@ -73,55 +167,53 @@ const MenuBar = ({ editor }: any) => {
         bg={editor.isActive('orderedList') ? activeBg : 'transparent'}
         _hover={{ bg: hoverBg }}
       />
+
+      {groupDivider}
+
+      {onAttachFiles && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.dcm,.hl7,.xml"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const list = e.target.files;
+              if (list?.length) onAttachFiles(Array.from(list));
+              e.target.value = '';
+            }}
+          />
+          <IconButton
+            aria-label="Adjuntar archivos"
+            icon={<FiPaperclip />}
+            size="sm"
+            variant="ghost"
+            color={iconColor}
+            onClick={() => fileInputRef.current?.click()}
+            _hover={{ bg: hoverBg }}
+          />
+        </>
+      )}
+
       <Button
-        aria-label="Heading 1"
+        aria-label="Insertar plantilla de receta"
         size="sm"
         variant="ghost"
-        color={iconColor}
-        fontWeight="bold"
-        fontSize="xs"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-        bg={editor.isActive('heading', { level: 1 }) ? activeBg : 'transparent'}
-        _hover={{ bg: hoverBg }}
+        color={mutedColor}
+        fontWeight={700}
+        fontSize="12px"
+        fontFamily="mono"
+        letterSpacing="0.06em"
+        h="32px"
+        px={2}
+        onClick={() =>
+          editor.chain().focus().insertContent(PRESCRIPTION_TEMPLATE_HTML).run()
+        }
+        _hover={{ bg: hoverBg, color: iconColor }}
       >
-        H1
+        Rx
       </Button>
-      <Button
-        aria-label="Heading 2"
-        size="sm"
-        variant="ghost"
-        color={iconColor}
-        fontWeight="bold"
-        fontSize="xs"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-        bg={editor.isActive('heading', { level: 2 }) ? activeBg : 'transparent'}
-        _hover={{ bg: hoverBg }}
-      >
-        H2
-      </Button>
-      <Button
-        aria-label="Heading 3"
-        size="sm"
-        variant="ghost"
-        color={iconColor}
-        fontWeight="bold"
-        fontSize="xs"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-        bg={editor.isActive('heading', { level: 3 }) ? activeBg : 'transparent'}
-        _hover={{ bg: hoverBg }}
-      >
-        H3
-      </Button>
-      <IconButton
-        aria-label="Blockquote"
-        icon={<MdFormatQuote />}
-        size="sm"
-        variant="ghost"
-        color={iconColor}
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        bg={editor.isActive('blockquote') ? activeBg : 'transparent'}
-        _hover={{ bg: hoverBg }}
-      />
     </HStack>
   );
 };
@@ -132,24 +224,25 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   placeholder = 'Escribe aquí...',
   readOnly = false,
   minHeight = '200px',
+  onAttachFiles,
 }) => {
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const bgColor = useColorModeValue('white', 'gray.800');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const bgColor = useColorModeValue('white', 'paper.800');
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         link: { openOnClick: false },
+        heading: { levels: [1, 2, 3] },
       }),
     ],
     content: value,
     editable: !readOnly,
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
+    onUpdate: ({ editor: ed }) => {
+      onChange(ed.getHTML());
     },
   });
 
-  // Update editor content when value prop changes (for initial load)
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
       editor.commands.setContent(value);
@@ -164,7 +257,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       borderRadius="md"
       overflow="hidden"
     >
-      {!readOnly && <MenuBar editor={editor} />}
+      {!readOnly && <MenuBar editor={editor} onAttachFiles={onAttachFiles} />}
       <Box
         bg={bgColor}
         sx={{
@@ -177,22 +270,22 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             '&:focus': {
               outline: 'none',
             },
-            'p': {
+            p: {
               marginBottom: '0.5rem',
             },
-            'h1': {
+            h1: {
               fontSize: '2xl',
               fontWeight: 'bold',
               marginTop: '1rem',
               marginBottom: '0.5rem',
             },
-            'h2': {
+            h2: {
               fontSize: 'xl',
               fontWeight: 'bold',
               marginTop: '1rem',
               marginBottom: '0.5rem',
             },
-            'h3': {
+            h3: {
               fontSize: 'lg',
               fontWeight: 'semibold',
               marginTop: '0.75rem',
@@ -202,10 +295,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               paddingLeft: '1.5rem',
               marginBottom: '0.5rem',
             },
-            'li': {
+            li: {
               marginBottom: '0.25rem',
             },
-            'blockquote': {
+            hr: {
+              borderColor: 'line.light',
+              marginY: '1rem',
+            },
+            blockquote: {
               borderLeft: '3px solid',
               borderColor: 'gray.300',
               paddingLeft: '1rem',
@@ -213,14 +310,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               marginBottom: '0.5rem',
               fontStyle: 'italic',
             },
-            'code': {
+            code: {
               backgroundColor: 'gray.100',
               padding: '0.125rem 0.25rem',
               borderRadius: '0.25rem',
               fontSize: 'sm',
               fontFamily: 'monospace',
             },
-            'pre': {
+            pre: {
               backgroundColor: 'gray.100',
               padding: '0.75rem',
               borderRadius: '0.375rem',
@@ -231,14 +328,14 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 padding: 0,
               },
             },
-            'a': {
+            a: {
               color: 'brand.500',
               textDecoration: 'underline',
             },
-            'strong': {
+            strong: {
               fontWeight: 'bold',
             },
-            'em': {
+            em: {
               fontStyle: 'italic',
             },
           },

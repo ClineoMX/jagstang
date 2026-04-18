@@ -2,7 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/assets/svg/clineo-icono-blanco.svg" />
+    <link id="clineo-favicon" rel="icon" type="image/svg+xml" href="" />
+    <script>
+      (function () {
+        var ICON_DARK_OS = '/assets/svg/clineo-icono-blanco.svg';
+        var ICON_LIGHT_OS = '/assets/svg/clineo-icono-negro.svg';
+        function apply() {
+          var link = document.getElementById('clineo-favicon');
+          if (!link) return;
+          var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          link.href = dark ? ICON_DARK_OS : ICON_LIGHT_OS;
+        }
+        apply();
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        if (mq.addEventListener) mq.addEventListener('change', apply);
+        else if (mq.addListener) mq.addListener(apply);
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Clineo</title>
   </head>

@@ -43,9 +43,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
 };
 
 // Public Route Component
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {

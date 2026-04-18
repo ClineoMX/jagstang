@@ -670,6 +670,7 @@ class ApiService {
         signed_by?: string;
         created_at: string;
         updated_at?: string;
+        attachments?: unknown[];
       }>;
     }>(`/patients/${patientId}/notes/${query ? `?${query}` : ''}`);
   }
@@ -688,6 +689,7 @@ class ApiService {
       signed_by?: string;
       created_at: string;
       updated_at: string;
+      attachments?: unknown[];
     }>(`/patients/${patientId}/notes/${noteId}/`);
   }
 

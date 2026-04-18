@@ -83,7 +83,10 @@ import VitalsBar from '../components/VitalsBar';
 import Timeline, { type TimelineItem } from '../components/Timeline';
 import FormDrawer from '../components/FormDrawer';
 import StatusBadge from '../components/StatusBadge';
+import NoteAttachmentsList from '../components/NoteAttachmentsList';
+import { mergeNoteBodyForEditor } from '../utils/noteReceta';
 import { getMockTimelineForPatient } from '../data/timelineMockData';
+import InterrogationFormDrawer from '../components/InterrogationFormDrawer';
 
 const PatientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -114,7 +117,7 @@ const PatientDetail: React.FC = () => {
     loading: patientLoading,
     error: patientError,
   } = usePatient(id);
-  const { notes, loading: notesLoading } = useNotes(id);
+  const { notes, loading: notesLoading, createNote } = useNotes(id);
   const { appointments } = useAppointments();
   const {
     consents: patientConsents,
@@ -147,6 +150,12 @@ const PatientDetail: React.FC = () => {
     isOpen: isIdentityModalOpen,
     onOpen: onIdentityModalOpen,
     onClose: onIdentityModalClose,
+  } = useDisclosure();
+
+  const {
+    isOpen: isInterrogationDrawerOpen,
+    onOpen: onInterrogationDrawerOpen,
+    onClose: onInterrogationDrawerClose,
   } = useDisclosure();
 
   const [identityForm, setIdentityForm] = useState<Record<string, string>>({});
@@ -644,11 +653,7 @@ const PatientDetail: React.FC = () => {
                       leftIcon={<FiPlus />}
                       colorScheme="brand"
                       variant="outline"
-                      onClick={() =>
-                        navigate(`/patients/${patient.id}/notes/new`, {
-                          state: { type: 'interrogation' },
-                        })
-                      }
+                      onClick={onInterrogationDrawerOpen}
                     >
                       Crear interrogatorio
                     </Button>
@@ -696,8 +701,13 @@ const PatientDetail: React.FC = () => {
                         '& li': { mb: 1 },
                       }}
                       dangerouslySetInnerHTML={{
-                        __html: interrogatoryNote.content,
+                        __html: mergeNoteBodyForEditor(
+                          interrogatoryNote.content || ''
+                        ),
                       }}
+                    />
+                    <NoteAttachmentsList
+                      attachments={interrogatoryNote.attachments}
                     />
                     {!interrogatoryNote.isSigned && (
                       <Button
@@ -867,21 +877,31 @@ const PatientDetail: React.FC = () => {
                     const fields: FormFieldValue[] = parsed?.fields ?? [];
                     if (formId && Array.isArray(fields)) {
                       return (
-                        <FormNoteViewer
-                          ref={formNoteViewerRef}
-                          formId={formId}
-                          values={fields}
-                          title={selectedNote?.title}
-                        />
+                        <>
+                          <FormNoteViewer
+                            ref={formNoteViewerRef}
+                            formId={formId}
+                            values={fields}
+                            title={selectedNote?.title}
+                          />
+                          <NoteAttachmentsList
+                            attachments={selectedNote?.attachments}
+                          />
+                        </>
                       );
                     }
                   } catch {
                     /* invalid JSON */
                   }
                   return (
-                    <Text color={subColor} py={4} fontSize="sm">
-                      Documento firmado. No se pudo cargar la vista previa.
-                    </Text>
+                    <Box>
+                      <Text color={subColor} py={4} fontSize="sm">
+                        Documento firmado. No se pudo cargar la vista previa.
+                      </Text>
+                      <NoteAttachmentsList
+                        attachments={selectedNote?.attachments}
+                      />
+                    </Box>
                   );
                 })()}
               </Box>
@@ -947,9 +967,10 @@ const PatientDetail: React.FC = () => {
                     },
                   }}
                   dangerouslySetInnerHTML={{
-                    __html: selectedNote?.content || '',
+                    __html: mergeNoteBodyForEditor(selectedNote?.content || ''),
                   }}
                 />
+                <NoteAttachmentsList attachments={selectedNote?.attachments} />
               </Box>
             )}
           </ModalBody>
@@ -1370,6 +1391,46 @@ const PatientDetail: React.FC = () => {
           })}
         </SimpleGrid>
       </FormDrawer>
+
+      {!isWellness && patient && (
+        <InterrogationFormDrawer
+          isOpen={isInterrogationDrawerOpen}
+          onClose={onInterrogationDrawerClose}
+          patient={patient}
+          identity={identity}
+          noteTitle={`Interrogatorio inicial – ${patient.firstName} ${patient.lastName}`}
+          onSave={async ({ content, title }) => {
+            try {
+              await createNote({
+                content,
+                type: 'interrogation',
+                title,
+              });
+              toast({
+                title: 'Borrador guardado',
+                description:
+                  'El interrogatorio se guardó como borrador. Puedes editarlo o firmarlo desde la nota.',
+                status: 'success',
+                duration: 4000,
+                isClosable: true,
+              });
+            } catch (err: unknown) {
+              const message =
+                err && typeof err === 'object' && 'message' in err
+                  ? String((err as { message: string }).message)
+                  : 'No se pudo guardar el interrogatorio';
+              toast({
+                title: 'Error',
+                description: message,
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+              });
+              throw err;
+            }
+          }}
+        />
+      )}
     </Container>
   );
 };

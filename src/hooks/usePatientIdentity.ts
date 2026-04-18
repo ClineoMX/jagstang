@@ -45,6 +45,7 @@ export const GENDER_LABELS: Record<string, string> = {
   male: 'Masculino',
   female: 'Femenino',
   other: 'Otro',
+  prefer_not_to_say: 'Prefiere no decir',
 };
 
 export const MARITAL_STATUS_LABELS: Record<string, string> = {

@@ -30,7 +30,6 @@ import {
   Link as ChakraLink,
 } from '@chakra-ui/react';
 import {
-  FiUpload,
   FiX,
   FiCheckCircle,
   FiAlertCircle,
@@ -50,8 +49,11 @@ import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import PageHead from '../components/PageHead';
 import StatusBadge from '../components/StatusBadge';
-
-const RECETA_DELIMITER = '<!-- ___RECETA___ -->';
+import {
+  mergeNoteBodyForEditor,
+  serializeNoteBodyForApi,
+  hasRecetaSection,
+} from '../utils/noteReceta';
 
 const NoteForm: React.FC = () => {
   const { patientId, noteId } = useParams<{
@@ -83,7 +85,6 @@ const NoteForm: React.FC = () => {
   const [title, setTitle] = useState('');
   const [noteType, setNoteType] = useState<NoteType>('evolution');
   const [content, setContent] = useState('');
-  const [receta, setReceta] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingNote, setIsLoadingNote] = useState(false);
@@ -102,7 +103,6 @@ const NoteForm: React.FC = () => {
 
   const [savedTitle, setSavedTitle] = useState('');
   const [savedContent, setSavedContent] = useState('');
-  const [, setSavedReceta] = useState('');
   const [savedType, setSavedType] = useState<NoteType>('evolution');
   const [currentNoteId, setCurrentNoteId] = useState<string | null>(
     noteId || null
@@ -191,37 +191,14 @@ const NoteForm: React.FC = () => {
         setFormFieldValues(parsedFormValues);
         if (restoredFormId) setSelectedFormId(restoredFormId);
       } else {
-        const recetaIdx = rawContent.indexOf(RECETA_DELIMITER);
-        const mainContent =
-          recetaIdx >= 0 ? rawContent.slice(0, recetaIdx).trim() : rawContent;
-        const recetaContent =
-          recetaIdx >= 0
-            ? rawContent.slice(recetaIdx + RECETA_DELIMITER.length).trim()
-            : '';
-        setContent(mainContent);
-        setReceta(recetaContent);
+        setContent(mergeNoteBodyForEditor(rawContent));
       }
 
       setTitle(note.title);
       setNoteType(isFormNote ? 'document' : note.type);
       setSavedTitle(note.title);
       setSavedContent(
-        isFormNote
-          ? rawContent
-          : rawContent.indexOf(RECETA_DELIMITER) >= 0
-            ? rawContent.slice(0, rawContent.indexOf(RECETA_DELIMITER)).trim()
-            : rawContent
-      );
-      setSavedReceta(
-        isFormNote
-          ? ''
-          : rawContent.indexOf(RECETA_DELIMITER) >= 0
-            ? rawContent
-                .slice(
-                  rawContent.indexOf(RECETA_DELIMITER) + RECETA_DELIMITER.length
-                )
-                .trim()
-            : ''
+        isFormNote ? rawContent : mergeNoteBodyForEditor(rawContent)
       );
       setSavedType(isFormNote ? 'document' : note.type);
       setCurrentNoteId(note.id);
@@ -289,16 +266,8 @@ const NoteForm: React.FC = () => {
           setFormFieldValues(parsedFormValues);
           if (restoredFormId) setSelectedFormId(restoredFormId);
         } else {
-          const recetaIdx = rawContent.indexOf(RECETA_DELIMITER);
-          const mainContent =
-            recetaIdx >= 0 ? rawContent.slice(0, recetaIdx).trim() : rawContent;
-          const recetaContent =
-            recetaIdx >= 0
-              ? rawContent.slice(recetaIdx + RECETA_DELIMITER.length).trim()
-              : '';
           const noteTypeVal = (note.type || 'evolution') as NoteType;
-          setContent(mainContent);
-          setReceta(recetaContent);
+          setContent(mergeNoteBodyForEditor(rawContent));
           setNoteType(noteTypeVal);
         }
 
@@ -420,7 +389,6 @@ const NoteForm: React.FC = () => {
       setUseFormMode(true);
       setNoteType('document');
       setContent('');
-      setReceta('');
       setSelectedFormId(null);
       setFormFieldValues([]);
     } else {
@@ -470,11 +438,6 @@ const NoteForm: React.FC = () => {
     );
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files)
-      setAttachments([...attachments, ...Array.from(e.target.files)]);
-  };
-
   const handleRemoveFile = (index: number) => {
     setAttachments(attachments.filter((_, i) => i !== index));
   };
@@ -519,7 +482,9 @@ const NoteForm: React.FC = () => {
       setIsLoadingAnalysis(true);
       setCompletenessAnalysis(null);
     }
-    const contentToSave = content;
+    const contentToSave = useFormMode
+      ? content
+      : serializeNoteBodyForApi(content);
     try {
       if (currentNoteId) {
         await updateNote(currentNoteId, {
@@ -529,7 +494,6 @@ const NoteForm: React.FC = () => {
         });
         setSavedTitle(title);
         setSavedContent(content);
-        setSavedReceta(receta);
         setSavedType(noteType);
         setNoteStatus('draft');
         setLastSavedAt(new Date());
@@ -553,7 +517,6 @@ const NoteForm: React.FC = () => {
         setCurrentNoteId(newNote.id);
         setSavedTitle(newNote.title ?? title);
         setSavedContent(content);
-        setSavedReceta(receta);
         if (newNote.title) setTitle(newNote.title);
         setSavedType(noteType);
         setNoteStatus('draft');
@@ -643,8 +606,7 @@ const NoteForm: React.FC = () => {
 
   const isDraft = noteStatus === 'draft';
   /** Borrador guardado y sin cambios locales → acción principal es Firmar; si no, Guardar borrador. */
-  const canSignPrimary =
-    isDraft && currentNoteId !== null && !hasChanges();
+  const canSignPrimary = isDraft && currentNoteId !== null && !hasChanges();
   const showAnalysisPanel = isDraft && currentNoteId !== null && !useFormMode;
 
   const saveStateLabel = (() => {
@@ -854,6 +816,9 @@ const NoteForm: React.FC = () => {
                 onChange={setContent}
                 placeholder="Escribe el contenido de la nota médica..."
                 minHeight="440px"
+                onAttachFiles={(files) =>
+                  setAttachments((prev) => [...prev, ...files])
+                }
               />
             ) : (
               <Box p={6}>
@@ -864,7 +829,7 @@ const NoteForm: React.FC = () => {
             )}
           </Box>
 
-          {!useFormMode && (
+          {!useFormMode && attachments.length > 0 && (
             <Box
               px="18px"
               pt="10px"
@@ -881,62 +846,41 @@ const NoteForm: React.FC = () => {
                 color={labelColor}
                 mb={2}
               >
-                Archivos adjuntos
+                Pendientes de guardar
               </Text>
-              <VStack spacing={2} align="stretch">
-                <Button
-                  as="label"
-                  leftIcon={<FiUpload />}
-                  size="xs"
-                  variant="outline"
-                  cursor="pointer"
-                  htmlFor="file-upload"
-                  borderColor={softBorder}
-                  bg={cardBg}
-                  alignSelf="flex-start"
-                >
-                  Seleccionar archivos
-                  <input
-                    id="file-upload"
-                    type="file"
-                    multiple
-                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.dcm,.hl7,.xml"
-                    onChange={handleFileChange}
-                    style={{ display: 'none' }}
-                  />
-                </Button>
-                {attachments.length > 0 && (
-                  <VStack spacing={1} align="stretch">
-                    {attachments.map((file, index) => (
-                      <HStack
-                        key={index}
-                        p={2}
-                        borderWidth="1px"
-                        borderColor={borderColor}
-                        borderRadius="6px"
-                        bg={cardBg}
-                        justify="space-between"
-                      >
-                        <VStack align="start" spacing={0}>
-                          <Text fontSize="sm" fontWeight={500}>
-                            {file.name}
-                          </Text>
-                          <Text fontSize="xs" color={subColor}>
-                            {(file.size / 1024 / 1024).toFixed(2)} MB
-                          </Text>
-                        </VStack>
-                        <IconButton
-                          aria-label="Eliminar archivo"
-                          icon={<FiX />}
-                          size="sm"
-                          variant="ghost"
-                          colorScheme="red"
-                          onClick={() => handleRemoveFile(index)}
-                        />
-                      </HStack>
-                    ))}
-                  </VStack>
-                )}
+              <Text fontSize="11.5px" color={subColor} mb={2}>
+                Se subirán al guardar el borrador por primera vez. Añade más con
+                el clip del editor.
+              </Text>
+              <VStack spacing={1} align="stretch">
+                {attachments.map((file, index) => (
+                  <HStack
+                    key={`${file.name}-${index}`}
+                    p={2}
+                    borderWidth="1px"
+                    borderColor={borderColor}
+                    borderRadius="6px"
+                    bg={cardBg}
+                    justify="space-between"
+                  >
+                    <VStack align="start" spacing={0}>
+                      <Text fontSize="sm" fontWeight={500}>
+                        {file.name}
+                      </Text>
+                      <Text fontSize="xs" color={subColor}>
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </Text>
+                    </VStack>
+                    <IconButton
+                      aria-label="Eliminar archivo"
+                      icon={<FiX />}
+                      size="sm"
+                      variant="ghost"
+                      colorScheme="red"
+                      onClick={() => handleRemoveFile(index)}
+                    />
+                  </HStack>
+                ))}
               </VStack>
             </Box>
           )}
@@ -1059,7 +1003,9 @@ const NoteForm: React.FC = () => {
               </HStack>
               <HStack justify="space-between">
                 <Text color={subColor}>Receta adjunta</Text>
-                <Text fontWeight={500}>{receta ? 'Sí' : 'No'}</Text>
+                <Text fontWeight={500}>
+                  {hasRecetaSection(content) ? 'Sí' : 'No'}
+                </Text>
               </HStack>
             </VStack>
           </SideCard>
