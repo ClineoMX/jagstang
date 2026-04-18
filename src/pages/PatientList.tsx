@@ -2,50 +2,88 @@ import React, { useState, useMemo } from 'react';
 import {
   Box,
   Container,
-  Heading,
-  HStack,
-  VStack,
   Text,
   Button,
   Input,
   InputGroup,
   InputLeftElement,
-  SimpleGrid,
-  Card,
-  CardBody,
   Avatar,
-  Badge,
   useColorModeValue,
   Icon,
   useDisclosure,
   Spinner,
   Alert,
   AlertIcon,
+  VStack,
+  HStack,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Tooltip,
 } from '@chakra-ui/react';
-import { FiPlus, FiMail, FiSearch } from 'react-icons/fi';
+import {
+  FiPlus,
+  FiSearch,
+  FiMail,
+  FiPhone,
+  FiMoreVertical,
+  FiEdit,
+  FiExternalLink,
+} from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PatientFormModal from '../components/PatientFormModal';
+import PageHead from '../components/PageHead';
+import StatusBadge from '../components/StatusBadge';
 import { usePatients } from '../hooks/usePatients';
+import type { Patient } from '../types';
+
+const calcAge = (dob?: string): number | null => {
+  if (!dob) return null;
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return Math.max(0, age);
+};
+
+const genderInitial = (g?: string): string => {
+  if (g === 'male') return 'M';
+  if (g === 'female') return 'F';
+  if (g) return 'O';
+  return '';
+};
 
 const PatientList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const rowHoverBg = useColorModeValue('paper.100', 'whiteAlpha.50');
+  const headerBg = useColorModeValue('paper.100', 'whiteAlpha.50');
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  const subColor = useColorModeValue('paper.700', 'paper.400');
+  const inkStrong = useColorModeValue('paper.900', 'paper.50');
+
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [editingPatientId, setEditingPatientId] = useState<string | undefined>();
 
-  // Usar hook de API
   const { patients, loading, error, refetch } = usePatients();
 
-  // Filtrar pacientes localmente (hasta que haya endpoint de búsqueda)
   const filteredPatients = useMemo(() => {
-    if (searchQuery.trim() === '') {
-      return patients;
-    }
-    // Búsqueda local mientras no hay endpoint
+    if (searchQuery.trim() === '') return patients;
     const query = searchQuery.toLowerCase();
     return patients.filter(
       (p) =>
@@ -56,271 +94,456 @@ const PatientList: React.FC = () => {
     );
   }, [patients, searchQuery]);
 
-  const getBloodTypeColor = (bloodType?: string) => {
-    if (!bloodType) return 'gray';
-    return 'red';
+  const handleEdit = (e: React.MouseEvent, patient: Patient) => {
+    e.stopPropagation();
+    setEditingPatientId(patient.id);
+    onOpen();
   };
 
   return (
-    <Box>
-      {/* Header with Gradient */}
-      <Box
-        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
-        color="white"
-        px={8}
-        py={8}
-      >
-        <Container maxW="container.xl">
-          <VStack spacing={6} align="stretch">
-            <HStack justify="space-between" flexWrap="wrap" gap={4}>
-              <VStack align="start" spacing={2}>
-                <Heading size="xl">Pacientes</Heading>
-                <Text fontSize="md" opacity={0.9}>
-                  Gestiona tu lista de pacientes
-                </Text>
-              </VStack>
-              <Button
-                leftIcon={<FiPlus />}
-                size="lg"
-                colorScheme="whiteAlpha"
-                bg="whiteAlpha.300"
-                backdropFilter="blur(10px)"
-                _hover={{
-                  bg: 'whiteAlpha.400',
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'xl',
-                }}
-                _active={{
-                  bg: 'whiteAlpha.500',
-                  transform: 'translateY(0)',
-                }}
-                onClick={onOpen}
-                transition="all 0.2s"
-              >
-                Nuevo Paciente
-              </Button>
-            </HStack>
-
-            <InputGroup maxW="600px" size="lg">
-              <InputLeftElement pointerEvents="none">
-                <Icon as={FiSearch} color="whiteAlpha.700" boxSize={5} />
+    <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
+      <PageHead
+        crumbs={<>Pacientes</>}
+        title="Pacientes"
+        sub={
+          loading
+            ? 'Cargando…'
+            : `${filteredPatients.length} ${
+                filteredPatients.length === 1 ? 'paciente' : 'pacientes'
+              }${searchQuery ? ' encontrados' : ' en tu lista'}`
+        }
+        actions={
+          <>
+            <InputGroup size="sm" w={{ base: 'full', md: '260px' }}>
+              <InputLeftElement pointerEvents="none" h="36px">
+                <Icon as={FiSearch} color={labelColor} boxSize={4} />
               </InputLeftElement>
               <Input
-                placeholder="Buscar por nombre, email o teléfono..."
+                h="36px"
+                placeholder="Buscar paciente…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                bg="whiteAlpha.300"
-                backdropFilter="blur(10px)"
-                border="1px solid"
-                borderColor="whiteAlpha.400"
-                color="white"
-                _placeholder={{ color: 'whiteAlpha.700' }}
-                _hover={{
-                  bg: 'whiteAlpha.400',
-                  borderColor: 'whiteAlpha.500',
-                }}
+                bg={cardBg}
+                borderColor="line.strong"
+                color={inkStrong}
+                _placeholder={{ color: labelColor }}
+                _hover={{ borderColor: 'paper.600' }}
                 _focus={{
-                  bg: 'whiteAlpha.400',
-                  borderColor: 'white',
-                  boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.1)',
+                  borderColor: 'brand.500',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
                 }}
-                fontSize="md"
-                borderRadius="xl"
+                fontSize="13px"
+                borderRadius="6px"
               />
             </InputGroup>
+            <Button
+              leftIcon={<FiPlus />}
+              size="sm"
+              h="36px"
+              colorScheme="brand"
+              bg="brand.600"
+              color="white"
+              _hover={{ bg: 'brand.700' }}
+              onClick={() => {
+                setEditingPatientId(undefined);
+                onOpen();
+              }}
+            >
+              Nuevo paciente
+            </Button>
+          </>
+        }
+      />
 
-            <HStack justify="space-between">
-              <Text fontSize="sm" opacity={0.9}>
-                {filteredPatients.length}{' '}
-                {filteredPatients.length === 1 ? 'paciente' : 'pacientes'}{' '}
-                {searchQuery && 'encontrados'}
-              </Text>
-            </HStack>
+      {loading ? (
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          py={12}
+        >
+          <VStack spacing={4}>
+            <Spinner size="lg" color="brand.500" />
+            <Text color={subColor} fontSize="sm">
+              Cargando pacientes…
+            </Text>
           </VStack>
-        </Container>
-      </Box>
-
-      {/* Content */}
-      <Container maxW="container.xl" py={8}>
-        <VStack spacing={6} align="stretch">
-          {loading ? (
-            <Card bg={cardBg} borderRadius="2xl">
-              <CardBody>
-                <VStack spacing={4} py={12}>
-                  <Spinner size="xl" color="brand.500" />
-                  <Text color="gray.500">Cargando pacientes...</Text>
-                </VStack>
-              </CardBody>
-            </Card>
-          ) : error ? (
-            <Alert status="error" borderRadius="lg">
-              <AlertIcon />
-              <VStack align="start" spacing={1}>
-                <Text fontWeight="semibold">Error al cargar pacientes</Text>
-                <Text fontSize="sm">{error}</Text>
-              </VStack>
-            </Alert>
-          ) : filteredPatients.length === 0 ? (
-            <Card bg={cardBg} borderRadius="2xl">
-              <CardBody>
-                <VStack spacing={4} py={12}>
-                  <Box fontSize="4xl">🔍</Box>
-                  <Text fontSize="xl" fontWeight="semibold" color="gray.500">
-                    No se encontraron pacientes
-                  </Text>
-                  {searchQuery && (
-                    <Text fontSize="md" color="gray.400">
-                      Intenta con otro término de búsqueda
-                    </Text>
-                  )}
-                </VStack>
-              </CardBody>
-            </Card>
-          ) : (
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-              {filteredPatients.map((patient) => (
-                <Card
-                  key={patient.id}
-                  bg={cardBg}
-                  cursor="pointer"
-                  transition="all 0.3s"
-                  borderRadius="2xl"
-                  borderWidth="1px"
-                  borderColor={borderColor}
-                  position="relative"
-                  overflow="hidden"
-                  _hover={{
-                    transform: 'translateY(-8px)',
-                    shadow: '2xl',
-                    borderColor: 'purple.300',
-                  }}
-                  onClick={() => navigate(`/patients/${patient.id}`)}
-                >
-                  {/* Decorative gradient circle */}
-                  <Box
-                    position="absolute"
-                    top="-40px"
-                    right="-40px"
-                    w="120px"
-                    h="120px"
-                    bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
-                    borderRadius="full"
-                    opacity={0.1}
-                    pointerEvents="none"
+        </Box>
+      ) : error ? (
+        <Alert status="error" borderRadius="md">
+          <AlertIcon />
+          <VStack align="start" spacing={1}>
+            <Text fontWeight="semibold">Error al cargar pacientes</Text>
+            <Text fontSize="sm">{error}</Text>
+          </VStack>
+        </Alert>
+      ) : filteredPatients.length === 0 ? (
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          py={16}
+          px={6}
+        >
+          <VStack spacing={3}>
+            <Text fontSize="md" fontWeight={600} color={inkStrong}>
+              No se encontraron pacientes
+            </Text>
+            <Text fontSize="sm" color={subColor} textAlign="center">
+              {searchQuery
+                ? 'Intenta con otro término de búsqueda.'
+                : 'Agrega tu primer paciente para comenzar.'}
+            </Text>
+            {!searchQuery && (
+              <Button
+                leftIcon={<FiPlus />}
+                size="sm"
+                mt={2}
+                colorScheme="brand"
+                bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
+                onClick={() => {
+                  setEditingPatientId(undefined);
+                  onOpen();
+                }}
+              >
+                Nuevo paciente
+              </Button>
+            )}
+          </VStack>
+        </Box>
+      ) : (
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          overflow="hidden"
+        >
+          <Box overflowX="auto">
+            <Table variant="unstyled" size="sm">
+              <Thead bg={headerBg}>
+                <Tr>
+                  <Th
+                    py={2.5}
+                    px={4}
+                    fontFamily="mono"
+                    fontSize="10.5px"
+                    letterSpacing="0.08em"
+                    textTransform="uppercase"
+                    color={labelColor}
+                    fontWeight={500}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                  >
+                    Paciente
+                  </Th>
+                  <Th
+                    py={2.5}
+                    px={4}
+                    fontFamily="mono"
+                    fontSize="10.5px"
+                    letterSpacing="0.08em"
+                    textTransform="uppercase"
+                    color={labelColor}
+                    fontWeight={500}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    display={{ base: 'none', md: 'table-cell' }}
+                  >
+                    Edad · Género
+                  </Th>
+                  <Th
+                    py={2.5}
+                    px={4}
+                    fontFamily="mono"
+                    fontSize="10.5px"
+                    letterSpacing="0.08em"
+                    textTransform="uppercase"
+                    color={labelColor}
+                    fontWeight={500}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    display={{ base: 'none', lg: 'table-cell' }}
+                  >
+                    Contacto
+                  </Th>
+                  <Th
+                    py={2.5}
+                    px={4}
+                    fontFamily="mono"
+                    fontSize="10.5px"
+                    letterSpacing="0.08em"
+                    textTransform="uppercase"
+                    color={labelColor}
+                    fontWeight={500}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    display={{ base: 'none', md: 'table-cell' }}
+                    textAlign="center"
+                  >
+                    Sangre
+                  </Th>
+                  <Th
+                    py={2.5}
+                    px={4}
+                    fontFamily="mono"
+                    fontSize="10.5px"
+                    letterSpacing="0.08em"
+                    textTransform="uppercase"
+                    color={labelColor}
+                    fontWeight={500}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    display={{ base: 'none', md: 'table-cell' }}
+                  >
+                    Estado
+                  </Th>
+                  <Th
+                    py={2.5}
+                    px={4}
+                    fontFamily="mono"
+                    fontSize="10.5px"
+                    letterSpacing="0.08em"
+                    textTransform="uppercase"
+                    color={labelColor}
+                    fontWeight={500}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    display={{ base: 'none', lg: 'table-cell' }}
+                  >
+                    Última visita
+                  </Th>
+                  <Th
+                    py={2.5}
+                    px={2}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    w="48px"
                   />
-
-                  <CardBody p={6}>
-                    <VStack spacing={5} align="stretch">
-                      {/* Header */}
-                      <HStack spacing={4}>
-                        <Avatar
-                          size="xl"
-                          name={`${patient.firstName} ${patient.lastName}`}
-                          src={patient.avatar}
-                          bg="purple.500"
-                          color="white"
-                          sx={{
-                            '& span': {
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '100%',
-                              height: '100%',
-                            },
-                          }}
-                        />
-                        <VStack align="start" spacing={1} flex={1}>
-                          <Text fontWeight="bold" fontSize="lg" noOfLines={1}>
-                            {patient.firstName} {patient.lastName}
-                          </Text>
-                          <HStack spacing={2} flexWrap="wrap">
-                            <Badge
-                              colorScheme={patient.isRecurrent ? 'green' : 'gray'}
-                              fontSize="xs"
-                              px={2}
-                              py={1}
-                              borderRadius="full"
+                </Tr>
+              </Thead>
+              <Tbody>
+                {filteredPatients.map((patient) => {
+                  const age = calcAge(patient.dateOfBirth);
+                  const gi = genderInitial(patient.gender);
+                  const primaryContact = patient.email || patient.phone;
+                  return (
+                    <Tr
+                      key={patient.id}
+                      cursor="pointer"
+                      onClick={() => navigate(`/patients/${patient.id}`)}
+                      _hover={{ bg: rowHoverBg }}
+                      transition="background .1s"
+                      borderBottom="1px solid"
+                      borderColor={borderColor}
+                      _last={{ borderBottom: 'none' }}
+                    >
+                      <Td py={2.5} px={4} borderBottom="none">
+                        <HStack spacing={3} minW={0}>
+                          <Avatar
+                            size="sm"
+                            name={`${patient.firstName} ${patient.lastName}`}
+                            src={patient.avatar}
+                            bg="statusSoft.infoBg"
+                            color="brand.700"
+                            fontWeight={600}
+                            flexShrink={0}
+                          />
+                          <Box minW={0}>
+                            <Text
+                              fontSize="13.5px"
+                              fontWeight={600}
+                              color={inkStrong}
+                              noOfLines={1}
                             >
-                              {patient.isRecurrent ? 'Recurrente' : 'Primera vez'}
-                            </Badge>
-                            {patient.gender && (
-                              <Badge
-                                colorScheme={
-                                  patient.gender === 'male' ? 'blue' : 'pink'
-                                }
-                                fontSize="xs"
-                                px={2}
-                                py={1}
-                                borderRadius="full"
-                              >
-                                {patient.gender === 'male'
-                                  ? 'M'
-                                  : patient.gender === 'female'
-                                    ? 'F'
-                                    : 'Otro'}
-                              </Badge>
-                            )}
-                            {patient.bloodType && (
-                              <Badge
-                                colorScheme={getBloodTypeColor(
-                                  patient.bloodType
-                                )}
-                                fontSize="xs"
-                                px={2}
-                                py={1}
-                                borderRadius="full"
-                              >
-                                {patient.bloodType}
-                              </Badge>
-                            )}
-                          </HStack>
-                        </VStack>
-                      </HStack>
-
-                      {/* Contact Info */}
-                      {patient.email && (
-                        <HStack
-                          spacing={3}
-                          fontSize="sm"
-                          color="gray.600"
-                          bg={useColorModeValue('gray.50', 'gray.700')}
-                          px={3}
-                          py={2}
-                          borderRadius="lg"
-                        >
-                          <Icon as={FiMail} color="purple.500" boxSize={4} />
-                          <Text noOfLines={1}>{patient.email}</Text>
+                              {patient.firstName} {patient.lastName}
+                              {patient.lastNameMaternal
+                                ? ` ${patient.lastNameMaternal}`
+                                : ''}
+                            </Text>
+                            <Text
+                              fontFamily="mono"
+                              fontSize="10.5px"
+                              color={labelColor}
+                              letterSpacing="0.04em"
+                            >
+                              #{patient.id.slice(0, 8).toUpperCase()}
+                            </Text>
+                          </Box>
                         </HStack>
-                      )}
-
-                      {/* Last Visit */}
-                      {patient.lastVisit && (
-                        <Box
-                          pt={3}
-                          borderTop="1px"
-                          borderColor={borderColor}
-                          fontSize="sm"
-                        >
-                          <Text color="gray.500" fontSize="xs" mb={1}>
-                            Última visita
+                      </Td>
+                      <Td
+                        py={2.5}
+                        px={4}
+                        borderBottom="none"
+                        display={{ base: 'none', md: 'table-cell' }}
+                      >
+                        <Text fontSize="13px" color={inkStrong}>
+                          {age !== null ? `${age} años` : '—'}
+                          {gi && (
+                            <Text
+                              as="span"
+                              color={labelColor}
+                              ml={2}
+                              fontFamily="mono"
+                              fontSize="11.5px"
+                              letterSpacing="0.04em"
+                            >
+                              · {gi}
+                            </Text>
+                          )}
+                        </Text>
+                      </Td>
+                      <Td
+                        py={2.5}
+                        px={4}
+                        borderBottom="none"
+                        display={{ base: 'none', lg: 'table-cell' }}
+                      >
+                        {primaryContact ? (
+                          <VStack align="start" spacing={0}>
+                            {patient.email && (
+                              <HStack spacing={1.5} color={inkStrong}>
+                                <Icon as={FiMail} boxSize={3} color={labelColor} />
+                                <Text fontSize="12.5px" noOfLines={1}>
+                                  {patient.email}
+                                </Text>
+                              </HStack>
+                            )}
+                            {patient.phone && (
+                              <HStack spacing={1.5} color={subColor}>
+                                <Icon as={FiPhone} boxSize={3} color={labelColor} />
+                                <Text
+                                  fontFamily="mono"
+                                  fontSize="11.5px"
+                                  noOfLines={1}
+                                >
+                                  {patient.phone}
+                                </Text>
+                              </HStack>
+                            )}
+                          </VStack>
+                        ) : (
+                          <Text fontSize="12.5px" color={labelColor}>
+                            —
                           </Text>
-                          <Text fontWeight="semibold" color="purple.600">
+                        )}
+                      </Td>
+                      <Td
+                        py={2.5}
+                        px={4}
+                        borderBottom="none"
+                        display={{ base: 'none', md: 'table-cell' }}
+                        textAlign="center"
+                      >
+                        {patient.bloodType ? (
+                          <Text
+                            fontFamily="mono"
+                            fontSize="12px"
+                            fontWeight={600}
+                            color="statusSoft.critFg"
+                            display="inline-block"
+                            px={2}
+                            py="1px"
+                            borderRadius="3px"
+                            bg="statusSoft.critBg"
+                            border="1px solid"
+                            borderColor="statusSoft.critBorder"
+                            letterSpacing="0.04em"
+                          >
+                            {patient.bloodType}
+                          </Text>
+                        ) : (
+                          <Text fontSize="12.5px" color={labelColor}>
+                            —
+                          </Text>
+                        )}
+                      </Td>
+                      <Td
+                        py={2.5}
+                        px={4}
+                        borderBottom="none"
+                        display={{ base: 'none', md: 'table-cell' }}
+                      >
+                        <StatusBadge
+                          tone={patient.isRecurrent ? 'signed' : 'neutral'}
+                        >
+                          {patient.isRecurrent ? 'Recurrente' : 'Primera vez'}
+                        </StatusBadge>
+                      </Td>
+                      <Td
+                        py={2.5}
+                        px={4}
+                        borderBottom="none"
+                        display={{ base: 'none', lg: 'table-cell' }}
+                      >
+                        {patient.lastVisit ? (
+                          <Text
+                            fontFamily="mono"
+                            fontSize="11.5px"
+                            color={inkStrong}
+                            letterSpacing="0.02em"
+                          >
                             {format(
                               new Date(patient.lastVisit),
-                              "d 'de' MMMM, yyyy",
+                              "d MMM yyyy",
                               { locale: es }
                             )}
                           </Text>
-                        </Box>
-                      )}
-                    </VStack>
-                  </CardBody>
-                </Card>
-              ))}
-            </SimpleGrid>
-          )}
-        </VStack>
-      </Container>
+                        ) : (
+                          <Text fontSize="12.5px" color={labelColor}>
+                            Sin visitas
+                          </Text>
+                        )}
+                      </Td>
+                      <Td
+                        py={2}
+                        px={2}
+                        borderBottom="none"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Menu isLazy>
+                          <Tooltip label="Opciones" placement="left" hasArrow>
+                            <MenuButton
+                              as={IconButton}
+                              aria-label="Opciones"
+                              icon={<FiMoreVertical />}
+                              variant="ghost"
+                              size="sm"
+                              color={labelColor}
+                              _hover={{ bg: rowHoverBg, color: inkStrong }}
+                            />
+                          </Tooltip>
+                          <MenuList>
+                            <MenuItem
+                              icon={<FiExternalLink />}
+                              onClick={() =>
+                                navigate(`/patients/${patient.id}`)
+                              }
+                            >
+                              Abrir expediente
+                            </MenuItem>
+                            <MenuItem
+                              icon={<FiEdit />}
+                              onClick={(e) => handleEdit(e, patient)}
+                            >
+                              Editar paciente
+                            </MenuItem>
+                          </MenuList>
+                        </Menu>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          </Box>
+        </Box>
+      )}
 
       <PatientFormModal
         isOpen={isOpen}
@@ -331,7 +554,7 @@ const PatientList: React.FC = () => {
         patientId={editingPatientId}
         onSuccess={refetch}
       />
-    </Box>
+    </Container>
   );
 };
 

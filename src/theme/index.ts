@@ -98,6 +98,57 @@ const colors = {
     light: '#FFFFFF',
     dark: '#2C2C2E',
   },
+  // Prototype UX — neutral palette for flat layouts ("paper" base, ink text, line borders).
+  paper: {
+    50: '#fbfaf6',
+    100: '#f6f5f1',
+    200: '#eeece5',
+    300: '#e4e1d8',
+    400: '#d3cfc2',
+    500: '#b8bec9',
+    600: '#8890a0',
+    700: '#535867',
+    800: '#2b2f3a',
+    900: '#14161b',
+  },
+  line: {
+    light: '#e4e1d8',
+    strong: '#d3cfc2',
+  },
+  ink: {
+    50: '#f6f5f1',
+    100: '#eeece5',
+    200: '#d3cfc2',
+    300: '#b8bec9',
+    400: '#8890a0',
+    500: '#535867',
+    600: '#2b2f3a',
+    700: '#14161b',
+    900: '#14161b',
+  },
+  sidebar: {
+    bg: '#231f20',
+    fg: '#f6f5f1',
+    muted: '#a09c94',
+  },
+  // Soft status backgrounds used by prototype badges (.badge.signed / .draft / .crit / .info)
+  statusSoft: {
+    okBg: '#e3efe6',
+    okFg: '#2f6b4a',
+    okBorder: '#cfe0d3',
+    warnBg: '#f6efdf',
+    warnFg: '#9a6a17',
+    warnBorder: '#ecddb4',
+    critBg: '#f6e9e6',
+    critFg: '#a6392e',
+    critBorder: '#e9c7c1',
+    infoBg: '#eaf4f7',
+    infoFg: '#2e7f99',
+    infoBorder: '#c9dee5',
+    neutralBg: '#eeece5',
+    neutralFg: '#535867',
+    neutralBorder: '#e4e1d8',
+  },
 };
 
 const theme = extendTheme({
@@ -106,6 +157,7 @@ const theme = extendTheme({
   fonts: {
     heading: `'Utendo Bold', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif`,
     body: `'Utendo Regular', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif`,
+    mono: `ui-monospace, SFMono-Regular, Menlo, Monaco, 'Courier New', monospace`,
   },
   fontSizes: {
     xs: '0.75rem',

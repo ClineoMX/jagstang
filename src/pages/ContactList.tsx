@@ -2,34 +2,85 @@ import React, { useMemo, useState } from 'react';
 import {
   Box,
   Container,
-  Heading,
-  HStack,
-  VStack,
   Text,
   Button,
   Input,
   InputGroup,
   InputLeftElement,
-  SimpleGrid,
-  Card,
-  CardBody,
-  Badge,
+  Avatar,
   useColorModeValue,
   Icon,
-  IconButton,
   useDisclosure,
   Spinner,
   Alert,
   AlertIcon,
+  VStack,
+  HStack,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Tooltip,
 } from '@chakra-ui/react';
-import { FiPlus, FiPhone, FiMail, FiSearch, FiEdit } from 'react-icons/fi';
+import {
+  FiPlus,
+  FiSearch,
+  FiMail,
+  FiPhone,
+  FiMoreVertical,
+  FiEdit,
+} from 'react-icons/fi';
 import ContactFormModal from '../components/ContactFormModal';
+import PageHead from '../components/PageHead';
+import StatusBadge from '../components/StatusBadge';
+import type { StatusBadgeTone } from '../components/StatusBadge';
 import { useContacts } from '../hooks/useContacts';
+import type { Contact } from '../types';
+
+const getContactTypeLabel = (type: string): string => {
+  switch (type) {
+    case 'colleague':
+      return 'Colega';
+    case 'provider':
+      return 'Proveedor';
+    case 'supplier':
+      return 'Distribuidor';
+    default:
+      return 'Otro';
+  }
+};
+
+const getContactTypeTone = (type: string): StatusBadgeTone => {
+  switch (type) {
+    case 'colleague':
+      return 'info';
+    case 'provider':
+      return 'signed';
+    case 'supplier':
+      return 'pending';
+    default:
+      return 'neutral';
+  }
+};
 
 const ContactList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const rowHoverBg = useColorModeValue('paper.100', 'whiteAlpha.50');
+  const headerBg = useColorModeValue('paper.100', 'whiteAlpha.50');
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  const subColor = useColorModeValue('paper.700', 'paper.400');
+  const inkStrong = useColorModeValue('paper.900', 'paper.50');
+
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [editingContactId, setEditingContactId] = useState<string | undefined>();
 
@@ -44,294 +95,371 @@ const ContactList: React.FC = () => {
         c.lastName.toLowerCase().includes(q) ||
         (c.alias?.toLowerCase().includes(q) ?? false) ||
         (c.email?.toLowerCase().includes(q) ?? false) ||
-        (c.phone?.includes(searchQuery) ?? false)
+        (c.phone?.includes(searchQuery) ?? false) ||
+        (c.company?.toLowerCase().includes(q) ?? false)
       );
     });
   }, [contacts, searchQuery]);
 
-  const getContactTypeColor = (type: string) => {
-    switch (type) {
-      case 'colleague':
-        return 'blue';
-      case 'provider':
-        return 'green';
-      case 'supplier':
-        return 'orange';
-      default:
-        return 'gray';
-    }
+  const handleEdit = (e: React.MouseEvent, contact: Contact) => {
+    e.stopPropagation();
+    setEditingContactId(contact.id);
+    onOpen();
   };
 
-  const getContactTypeLabel = (type: string) => {
-    switch (type) {
-      case 'colleague':
-        return 'Colega';
-      case 'provider':
-        return 'Proveedor';
-      case 'supplier':
-        return 'Distribuidor';
-      default:
-        return 'Otro';
-    }
+  const handleOpenContact = (contact: Contact) => {
+    setEditingContactId(contact.id);
+    onOpen();
+  };
+
+  const headerCellProps = {
+    py: 2.5,
+    px: 4,
+    fontFamily: 'mono' as const,
+    fontSize: '10.5px',
+    letterSpacing: '0.08em' as const,
+    textTransform: 'uppercase' as const,
+    color: labelColor,
+    fontWeight: 500 as const,
+    borderBottom: '1px solid',
+    borderColor,
   };
 
   return (
-    <Box>
-      {/* Header with Gradient */}
-      <Box
-        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
-        color="white"
-        px={8}
-        py={8}
-      >
-        <Container maxW="container.xl">
-          <VStack spacing={6} align="stretch">
-            <HStack justify="space-between" flexWrap="wrap" gap={4}>
-              <VStack align="start" spacing={2}>
-                <Heading size="xl">Contactos</Heading>
-                <Text fontSize="md" opacity={0.9}>
-                  Gestiona tus contactos profesionales
-                </Text>
-              </VStack>
-              <Button
-                leftIcon={<FiPlus />}
-                size="lg"
-                colorScheme="whiteAlpha"
-                bg="whiteAlpha.300"
-                backdropFilter="blur(10px)"
-                _hover={{
-                  bg: 'whiteAlpha.400',
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'xl',
-                }}
-                _active={{
-                  bg: 'whiteAlpha.500',
-                  transform: 'translateY(0)',
-                }}
-                onClick={onOpen}
-                transition="all 0.2s"
-              >
-                Nuevo Contacto
-              </Button>
-            </HStack>
-
-            <InputGroup maxW="600px" size="lg">
-              <InputLeftElement pointerEvents="none">
-                <Icon as={FiSearch} color="whiteAlpha.700" boxSize={5} />
+    <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
+      <PageHead
+        crumbs={<>Contactos</>}
+        title="Contactos"
+        sub={
+          loading
+            ? 'Cargando…'
+            : `${filteredContacts.length} ${
+                filteredContacts.length === 1 ? 'contacto' : 'contactos'
+              }${searchQuery ? ' encontrados' : ' profesionales'}`
+        }
+        actions={
+          <>
+            <InputGroup size="sm" w={{ base: 'full', md: '260px' }}>
+              <InputLeftElement pointerEvents="none" h="36px">
+                <Icon as={FiSearch} color={labelColor} boxSize={4} />
               </InputLeftElement>
               <Input
-                placeholder="Buscar por nombre, alias, teléfono o email..."
+                h="36px"
+                placeholder="Buscar contacto…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                bg="whiteAlpha.300"
-                backdropFilter="blur(10px)"
-                border="1px solid"
-                borderColor="whiteAlpha.400"
-                color="white"
-                _placeholder={{ color: 'whiteAlpha.700' }}
-                _hover={{
-                  bg: 'whiteAlpha.400',
-                  borderColor: 'whiteAlpha.500',
-                }}
+                bg={cardBg}
+                borderColor="line.strong"
+                color={inkStrong}
+                _placeholder={{ color: labelColor }}
+                _hover={{ borderColor: 'paper.600' }}
                 _focus={{
-                  bg: 'whiteAlpha.400',
-                  borderColor: 'white',
-                  boxShadow: '0 0 0 3px rgba(255, 255, 255, 0.1)',
+                  borderColor: 'brand.500',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
                 }}
-                fontSize="md"
-                borderRadius="xl"
+                fontSize="13px"
+                borderRadius="6px"
               />
             </InputGroup>
+            <Button
+              leftIcon={<FiPlus />}
+              size="sm"
+              h="36px"
+              colorScheme="brand"
+              bg="brand.600"
+              color="white"
+              _hover={{ bg: 'brand.700' }}
+              onClick={() => {
+                setEditingContactId(undefined);
+                onOpen();
+              }}
+            >
+              Nuevo contacto
+            </Button>
+          </>
+        }
+      />
 
-            <HStack justify="space-between">
-              <Text fontSize="sm" opacity={0.9}>
-                {filteredContacts.length}{' '}
-                {filteredContacts.length === 1 ? 'contacto' : 'contactos'}{' '}
-                {searchQuery && 'encontrados'}
-              </Text>
-            </HStack>
+      {loading ? (
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          py={12}
+        >
+          <VStack spacing={4}>
+            <Spinner size="lg" color="brand.500" />
+            <Text color={subColor} fontSize="sm">
+              Cargando contactos…
+            </Text>
           </VStack>
-        </Container>
-      </Box>
-
-      {/* Content */}
-      <Container maxW="container.xl" py={8}>
-        <VStack spacing={6} align="stretch">
-          {loading ? (
-            <Card bg={cardBg} borderRadius="2xl">
-              <CardBody>
-                <VStack spacing={4} py={12}>
-                  <Spinner size="xl" color="teal.500" />
-                  <Text color="gray.500">Cargando contactos...</Text>
-                </VStack>
-              </CardBody>
-            </Card>
-          ) : error ? (
-            <Alert status="error" borderRadius="lg">
-              <AlertIcon />
-              <VStack align="start" spacing={1}>
-                <Text fontWeight="semibold">Error al cargar contactos</Text>
-                <Text fontSize="sm">{error}</Text>
-              </VStack>
-            </Alert>
-          ) : filteredContacts.length === 0 ? (
-            <Card bg={cardBg} borderRadius="2xl">
-              <CardBody>
-                <VStack spacing={4} py={12}>
-                  <Box fontSize="4xl">🔍</Box>
-                  <Text fontSize="xl" fontWeight="semibold" color="gray.500">
-                    No se encontraron contactos
-                  </Text>
-                  {searchQuery && (
-                    <Text fontSize="md" color="gray.400">
-                      Intenta con otro término de búsqueda
-                    </Text>
-                  )}
-                </VStack>
-              </CardBody>
-            </Card>
-          ) : (
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-              {filteredContacts.map((contact) => (
-                <Card
-                  key={contact.id}
-                  bg={cardBg}
-                  transition="all 0.3s"
-                  borderRadius="2xl"
-                  borderWidth="1px"
-                  borderColor={borderColor}
-                  position="relative"
-                  overflow="hidden"
-                  _hover={{
-                    transform: 'translateY(-8px)',
-                    shadow: '2xl',
-                    borderColor: 'teal.300',
-                  }}
-                >
-                  {/* Decorative gradient circle */}
-                  <Box
-                    position="absolute"
-                    top="-40px"
-                    right="-40px"
-                    w="120px"
-                    h="120px"
-                    bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
-                    borderRadius="full"
-                    opacity={0.1}
-                    pointerEvents="none"
+        </Box>
+      ) : error ? (
+        <Alert status="error" borderRadius="md">
+          <AlertIcon />
+          <VStack align="start" spacing={1}>
+            <Text fontWeight="semibold">Error al cargar contactos</Text>
+            <Text fontSize="sm">{error}</Text>
+          </VStack>
+        </Alert>
+      ) : filteredContacts.length === 0 ? (
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          py={16}
+          px={6}
+        >
+          <VStack spacing={3}>
+            <Text fontSize="md" fontWeight={600} color={inkStrong}>
+              No se encontraron contactos
+            </Text>
+            <Text fontSize="sm" color={subColor} textAlign="center">
+              {searchQuery
+                ? 'Intenta con otro término de búsqueda.'
+                : 'Agrega tu primer contacto profesional para comenzar.'}
+            </Text>
+            {!searchQuery && (
+              <Button
+                leftIcon={<FiPlus />}
+                size="sm"
+                mt={2}
+                colorScheme="brand"
+                bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
+                onClick={() => {
+                  setEditingContactId(undefined);
+                  onOpen();
+                }}
+              >
+                Nuevo contacto
+              </Button>
+            )}
+          </VStack>
+        </Box>
+      ) : (
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          overflow="hidden"
+        >
+          <Box overflowX="auto">
+            <Table variant="unstyled" size="sm">
+              <Thead bg={headerBg}>
+                <Tr>
+                  <Th {...headerCellProps}>Contacto</Th>
+                  <Th {...headerCellProps} display={{ base: 'none', md: 'table-cell' }}>
+                    Tipo
+                  </Th>
+                  <Th {...headerCellProps} display={{ base: 'none', lg: 'table-cell' }}>
+                    Organización
+                  </Th>
+                  <Th {...headerCellProps} display={{ base: 'none', lg: 'table-cell' }}>
+                    Contacto
+                  </Th>
+                  <Th
+                    py={2.5}
+                    px={2}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    w="48px"
                   />
+                </Tr>
+              </Thead>
+              <Tbody>
+                {filteredContacts.map((contact) => {
+                  return (
+                    <Tr
+                      key={contact.id}
+                      cursor="pointer"
+                      onClick={() => handleOpenContact(contact)}
+                      _hover={{ bg: rowHoverBg }}
+                      transition="background .1s"
+                      borderBottom="1px solid"
+                      borderColor={borderColor}
+                      _last={{ borderBottom: 'none' }}
+                    >
+                      <Td py={2.5} px={4} borderBottom="none">
+                        <HStack spacing={3} minW={0}>
+                          <Avatar
+                            size="sm"
+                            name={`${contact.firstName} ${contact.lastName}`}
+                            bg="statusSoft.infoBg"
+                            color="brand.700"
+                            fontWeight={600}
+                            flexShrink={0}
+                          />
+                          <Box minW={0}>
+                            <Text
+                              fontSize="13.5px"
+                              fontWeight={600}
+                              color={inkStrong}
+                              noOfLines={1}
+                            >
+                              {contact.firstName} {contact.lastName}
+                            </Text>
+                            {contact.alias ? (
+                              <Text
+                                fontFamily="mono"
+                                fontSize="11px"
+                                color={labelColor}
+                                letterSpacing="0.04em"
+                                noOfLines={1}
+                              >
+                                {contact.alias}
+                              </Text>
+                            ) : contact.position ? (
+                              <Text fontSize="11.5px" color={subColor} noOfLines={1}>
+                                {contact.position}
+                              </Text>
+                            ) : null}
+                          </Box>
+                        </HStack>
+                      </Td>
 
-                  <CardBody p={6}>
-                    <VStack spacing={5} align="stretch">
-                      {/* Header */}
-                      <HStack spacing={4} justify="space-between">
-                        <VStack align="start" spacing={1} flex={1}>
-                          <Text fontWeight="bold" fontSize="lg" noOfLines={1}>
-                            {contact.firstName} {contact.lastName}
+                      <Td
+                        py={2.5}
+                        px={4}
+                        borderBottom="none"
+                        display={{ base: 'none', md: 'table-cell' }}
+                      >
+                        <StatusBadge tone={getContactTypeTone(contact.type)}>
+                          {getContactTypeLabel(contact.type)}
+                        </StatusBadge>
+                      </Td>
+
+                      <Td
+                        py={2.5}
+                        px={4}
+                        borderBottom="none"
+                        display={{ base: 'none', lg: 'table-cell' }}
+                      >
+                        {contact.company || contact.position ? (
+                          <VStack align="start" spacing={0}>
+                            {contact.company && (
+                              <Text
+                                fontSize="13px"
+                                color={inkStrong}
+                                noOfLines={1}
+                                fontWeight={500}
+                              >
+                                {contact.company}
+                              </Text>
+                            )}
+                            {contact.position && (
+                              <Text
+                                fontSize="11.5px"
+                                color={subColor}
+                                noOfLines={1}
+                              >
+                                {contact.position}
+                              </Text>
+                            )}
+                          </VStack>
+                        ) : (
+                          <Text fontSize="12.5px" color={labelColor}>
+                            —
                           </Text>
-                          {contact.alias && (
-                            <Text fontSize="sm" color="gray.500" noOfLines={1}>
-                              {contact.alias}
-                            </Text>
-                          )}
-                          <Badge
-                            colorScheme={getContactTypeColor(contact.type)}
-                            fontSize="xs"
-                            px={2}
-                            py={1}
-                            borderRadius="full"
-                          >
-                            {getContactTypeLabel(contact.type)}
-                          </Badge>
-                        </VStack>
-                        <IconButton
-                          aria-label="Editar contacto"
-                          icon={<FiEdit />}
-                          size="sm"
-                          variant="ghost"
-                          colorScheme="teal"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingContactId(contact.id);
-                            onOpen();
-                          }}
-                        />
-                      </HStack>
-
-                      {/* Company/Position */}
-                      {(contact.company || contact.position) && (
-                        <VStack align="start" spacing={1}>
-                          {contact.company && (
-                            <Text fontSize="sm" fontWeight="medium" color="gray.700">
-                              {contact.company}
-                            </Text>
-                          )}
-                          {contact.position && (
-                            <Text fontSize="xs" color="gray.500">
-                              {contact.position}
-                            </Text>
-                          )}
-                        </VStack>
-                      )}
-
-                      {/* Contact Info */}
-                      <VStack align="stretch" spacing={3}>
-                        {contact.email && (
-                          <HStack
-                            spacing={3}
-                            fontSize="sm"
-                            color="gray.600"
-                            bg={useColorModeValue('gray.50', 'gray.700')}
-                            px={3}
-                            py={2}
-                            borderRadius="lg"
-                          >
-                            <Icon as={FiMail} color="teal.500" boxSize={4} />
-                            <Text noOfLines={1} flex={1}>
-                              {contact.email}
-                            </Text>
-                          </HStack>
                         )}
-                        {contact.phone && (
-                          <HStack
-                            spacing={3}
-                            fontSize="sm"
-                            color="gray.600"
-                            bg={useColorModeValue('gray.50', 'gray.700')}
-                            px={3}
-                            py={2}
-                            borderRadius="lg"
-                          >
-                            <Icon as={FiPhone} color="teal.500" boxSize={4} />
-                            <Text>{contact.phone}</Text>
-                          </HStack>
-                        )}
-                      </VStack>
+                      </Td>
 
-                      {/* Notes */}
-                      {contact.notes && (
-                        <Box
-                          pt={3}
-                          borderTop="1px"
-                          borderColor={borderColor}
-                          fontSize="sm"
-                        >
-                          <Text color="gray.500" fontSize="xs" mb={1}>
-                            Notas
+                      <Td
+                        py={2.5}
+                        px={4}
+                        borderBottom="none"
+                        display={{ base: 'none', lg: 'table-cell' }}
+                      >
+                        {contact.email || contact.phone ? (
+                          <VStack align="start" spacing={0}>
+                            {contact.email && (
+                              <HStack spacing={1.5} color={inkStrong}>
+                                <Icon as={FiMail} boxSize={3} color={labelColor} />
+                                <Text fontSize="12.5px" noOfLines={1}>
+                                  {contact.email}
+                                </Text>
+                              </HStack>
+                            )}
+                            {contact.phone && (
+                              <HStack spacing={1.5} color={subColor}>
+                                <Icon as={FiPhone} boxSize={3} color={labelColor} />
+                                <Text
+                                  fontFamily="mono"
+                                  fontSize="11.5px"
+                                  noOfLines={1}
+                                >
+                                  {contact.phone}
+                                </Text>
+                              </HStack>
+                            )}
+                          </VStack>
+                        ) : (
+                          <Text fontSize="12.5px" color={labelColor}>
+                            —
                           </Text>
-                          <Text noOfLines={2} color="gray.600">
-                            {contact.notes}
-                          </Text>
-                        </Box>
-                      )}
-                    </VStack>
-                  </CardBody>
-                </Card>
-              ))}
-            </SimpleGrid>
-          )}
-        </VStack>
-      </Container>
+                        )}
+                      </Td>
+
+                      <Td
+                        py={2}
+                        px={2}
+                        borderBottom="none"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Menu isLazy>
+                          <Tooltip label="Opciones" placement="left" hasArrow>
+                            <MenuButton
+                              as={IconButton}
+                              aria-label="Opciones"
+                              icon={<FiMoreVertical />}
+                              variant="ghost"
+                              size="sm"
+                              color={labelColor}
+                              _hover={{ bg: rowHoverBg, color: inkStrong }}
+                            />
+                          </Tooltip>
+                          <MenuList>
+                            <MenuItem
+                              icon={<FiEdit />}
+                              onClick={(e) => handleEdit(e, contact)}
+                            >
+                              Editar contacto
+                            </MenuItem>
+                            {contact.email && (
+                              <MenuItem
+                                icon={<FiMail />}
+                                as="a"
+                                href={`mailto:${contact.email}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Enviar correo
+                              </MenuItem>
+                            )}
+                            {contact.phone && (
+                              <MenuItem
+                                icon={<FiPhone />}
+                                as="a"
+                                href={`tel:${contact.phone}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Llamar
+                              </MenuItem>
+                            )}
+                          </MenuList>
+                        </Menu>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          </Box>
+        </Box>
+      )}
 
       <ContactFormModal
         isOpen={isOpen}
@@ -344,9 +472,8 @@ const ContactList: React.FC = () => {
           refetch();
         }}
       />
-    </Box>
+    </Container>
   );
 };
 
 export default ContactList;
-

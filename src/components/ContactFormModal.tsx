@@ -1,30 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
-  Button,
   VStack,
   FormControl,
   FormLabel,
   Input,
   Select,
   useToast,
-  Card,
-  CardBody,
   SimpleGrid,
   useColorModeValue,
-  HStack,
-  Heading,
   Textarea,
+  Text,
+  Box,
+  HStack,
 } from '@chakra-ui/react';
 import type { ContactType } from '../types';
 import { apiService } from '../services/api';
 import PhoneNumberField, { phoneNumberFieldUtils } from './PhoneNumberField';
+import FormDrawer from './FormDrawer';
 
 interface ContactFormModalProps {
   isOpen: boolean;
@@ -33,6 +25,31 @@ interface ContactFormModalProps {
   onSuccess?: () => void;
 }
 
+const FIELD_LABEL_STYLES = {
+  fontSize: '11px' as const,
+  fontFamily: 'mono' as const,
+  letterSpacing: '0.08em' as const,
+  textTransform: 'uppercase' as const,
+  fontWeight: 500 as const,
+  mb: 1.5,
+};
+
+const INPUT_STYLES = {
+  size: 'sm' as const,
+  h: '36px',
+  borderColor: 'line.strong',
+  _hover: { borderColor: 'paper.600' },
+  _focus: {
+    borderColor: 'brand.500',
+    boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+  },
+};
+
+/**
+ * Drawer-based contact form. Name/props preserved for API compatibility; the
+ * previous 4xl centered modal has been replaced by a right-side drawer per
+ * the redesign guidelines.
+ */
 const ContactFormModal: React.FC<ContactFormModalProps> = ({
   isOpen,
   onClose,
@@ -40,10 +57,12 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
   onSuccess,
 }) => {
   const toast = useToast();
-  const cardBg = useColorModeValue('card.light', 'card.dark');
   const isEditing = !!contactId;
 
-  // Form states
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  const sectionBg = useColorModeValue('white', 'paper.800');
+  const sectionBorder = useColorModeValue('line.light', 'whiteAlpha.200');
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [alias, setAlias] = useState('');
@@ -56,7 +75,6 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadedPhoneE164, setLoadedPhoneE164] = useState<string | null>(null);
 
-  // Load contact data if editing
   useEffect(() => {
     const load = async () => {
       if (isEditing && contactId) {
@@ -72,7 +90,7 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
           setCompany(contact.organization || '');
           setPosition(contact.role || '');
           setNotes('');
-        } catch (err) {
+        } catch {
           toast({
             title: 'Error',
             description: 'No se pudo cargar el contacto',
@@ -82,7 +100,6 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
           });
         }
       } else {
-        // Reset form when opening for new contact
         setFirstName('');
         setLastName('');
         setAlias('');
@@ -127,7 +144,10 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      const phoneE164 = phoneNumberFieldUtils.toE164(phone.countryIso2, phone.nationalNumber);
+      const phoneE164 = phoneNumberFieldUtils.toE164(
+        phone.countryIso2,
+        phone.nationalNumber
+      );
       const payload = {
         name: firstName.trim(),
         lastname: lastName.trim(),
@@ -155,10 +175,8 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
         isClosable: true,
       });
       onClose();
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (err) {
+      if (onSuccess) onSuccess();
+    } catch {
       toast({
         title: 'Error',
         description: 'No se pudo guardar el contacto',
@@ -171,162 +189,188 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
     }
   };
 
+  const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
+    title,
+    children,
+  }) => (
+    <Box
+      bg={sectionBg}
+      border="1px solid"
+      borderColor={sectionBorder}
+      borderRadius="8px"
+      p={4}
+    >
+      <HStack
+        spacing={2}
+        mb={3}
+        pb={2}
+        borderBottom="1px solid"
+        borderColor={sectionBorder}
+      >
+        <Text
+          fontFamily="mono"
+          fontSize="10.5px"
+          letterSpacing="0.1em"
+          textTransform="uppercase"
+          color={labelColor}
+          fontWeight={500}
+        >
+          {title}
+        </Text>
+      </HStack>
+      {children}
+    </Box>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="4xl" scrollBehavior="inside">
-      <ModalOverlay />
-      <ModalContent maxH="90vh" display="flex" flexDirection="column">
-        <ModalHeader>
-          {isEditing ? 'Editar Contacto' : 'Nuevo Contacto'}
-        </ModalHeader>
-        <ModalCloseButton />
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <ModalBody pb={6} flex={1} overflowY="auto">
-            <VStack spacing={6} align="stretch">
-              {/* Basic Information */}
-              <Card bg={cardBg}>
-                <CardBody>
-                  <VStack spacing={6} align="stretch">
-                    <Heading size="md">Información Básica</Heading>
+    <FormDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      crumb="Contactos"
+      title={isEditing ? 'Editar contacto' : 'Nuevo contacto'}
+      sub={
+        isEditing
+          ? 'Actualiza la información del contacto.'
+          : 'Registra un nuevo contacto profesional.'
+      }
+      size="lg"
+      onSubmit={handleSubmit}
+      submitLabel={isEditing ? 'Guardar cambios' : 'Crear contacto'}
+      submitLoadingText="Guardando…"
+      isSubmitting={isSubmitting}
+    >
+      <VStack spacing={4} align="stretch">
+        <Section title="Información básica">
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <FormControl isRequired>
+              <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+                Nombre(s)
+              </FormLabel>
+              <Input
+                {...INPUT_STYLES}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Ej: Dr. Carlos"
+              />
+            </FormControl>
 
-                    <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                      <FormControl isRequired>
-                        <FormLabel>Nombre(s)</FormLabel>
-                        <Input
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          placeholder="Ej: Dr. Carlos"
-                        />
-                      </FormControl>
+            <FormControl isRequired>
+              <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+                Apellidos
+              </FormLabel>
+              <Input
+                {...INPUT_STYLES}
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Ej: Méndez"
+              />
+            </FormControl>
 
-                      <FormControl isRequired>
-                        <FormLabel>Apellidos</FormLabel>
-                        <Input
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                          placeholder="Ej: Méndez"
-                        />
-                      </FormControl>
+            <FormControl>
+              <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+                Alias (opcional)
+              </FormLabel>
+              <Input
+                {...INPUT_STYLES}
+                value={alias}
+                onChange={(e) => setAlias(e.target.value)}
+                placeholder="Ej: Cardiólogo Carlos"
+              />
+            </FormControl>
 
-                      <FormControl>
-                        <FormLabel>Alias (opcional)</FormLabel>
-                        <Input
-                          value={alias}
-                          onChange={(e) => setAlias(e.target.value)}
-                          placeholder="Ej: Cardiólogo Carlos"
-                        />
-                      </FormControl>
-
-                      <FormControl isRequired>
-                        <FormLabel>Tipo de Contacto</FormLabel>
-                        <Select
-                          value={type}
-                          onChange={(e) => setType(e.target.value as ContactType)}
-                          placeholder="Seleccionar tipo"
-                        >
-                          <option value="colleague">Colega</option>
-                          <option value="provider">Proveedor</option>
-                          <option value="supplier">Distribuidor</option>
-                          <option value="other">Otro</option>
-                        </Select>
-                      </FormControl>
-                    </SimpleGrid>
-                  </VStack>
-                </CardBody>
-              </Card>
-
-              {/* Contact Information */}
-              <Card bg={cardBg}>
-                <CardBody>
-                  <VStack spacing={6} align="stretch">
-                    <Heading size="md">Información de Contacto</Heading>
-
-                    <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                      <FormControl>
-                        <FormLabel>Email</FormLabel>
-                        <Input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="ejemplo@email.com"
-                        />
-                      </FormControl>
-
-                      <PhoneNumberField value={phone} onChange={setPhone} e164Value={loadedPhoneE164} />
-                    </SimpleGrid>
-                  </VStack>
-                </CardBody>
-              </Card>
-
-              {/* Professional Information */}
-              <Card bg={cardBg}>
-                <CardBody>
-                  <VStack spacing={6} align="stretch">
-                    <Heading size="md">Información Profesional</Heading>
-
-                    <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                      <FormControl>
-                        <FormLabel>Empresa/Organización</FormLabel>
-                        <Input
-                          value={company}
-                          onChange={(e) => setCompany(e.target.value)}
-                          placeholder="Ej: Hospital General"
-                        />
-                      </FormControl>
-
-                      <FormControl>
-                        <FormLabel>Posición/Cargo</FormLabel>
-                        <Input
-                          value={position}
-                          onChange={(e) => setPosition(e.target.value)}
-                          placeholder="Ej: Cardiólogo"
-                        />
-                      </FormControl>
-                    </SimpleGrid>
-                  </VStack>
-                </CardBody>
-              </Card>
-
-              {/* Notes */}
-              <Card bg={cardBg}>
-                <CardBody>
-                  <VStack spacing={6} align="stretch">
-                    <Heading size="md">Notas</Heading>
-
-                    <FormControl>
-                      <FormLabel>Notas adicionales</FormLabel>
-                      <Textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Información adicional sobre el contacto..."
-                        rows={4}
-                      />
-                    </FormControl>
-                  </VStack>
-                </CardBody>
-              </Card>
-            </VStack>
-          </ModalBody>
-          <ModalFooter>
-            <HStack spacing={3}>
-              <Button variant="ghost" onClick={onClose} isDisabled={isSubmitting}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                colorScheme="teal"
-                size="lg"
-                isLoading={isSubmitting}
-                loadingText="Guardando..."
+            <FormControl isRequired>
+              <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+                Tipo de contacto
+              </FormLabel>
+              <Select
+                {...INPUT_STYLES}
+                value={type}
+                onChange={(e) => setType(e.target.value as ContactType)}
+                placeholder="Seleccionar tipo"
               >
-                {isEditing ? 'Guardar Cambios' : 'Crear Contacto'}
-              </Button>
-            </HStack>
-          </ModalFooter>
-        </form>
-      </ModalContent>
-    </Modal>
+                <option value="colleague">Colega</option>
+                <option value="provider">Proveedor</option>
+                <option value="supplier">Distribuidor</option>
+                <option value="other">Otro</option>
+              </Select>
+            </FormControl>
+          </SimpleGrid>
+        </Section>
+
+        <Section title="Información de contacto">
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <FormControl>
+              <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+                Email
+              </FormLabel>
+              <Input
+                {...INPUT_STYLES}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ejemplo@email.com"
+              />
+            </FormControl>
+
+            <PhoneNumberField
+              value={phone}
+              onChange={setPhone}
+              e164Value={loadedPhoneE164}
+            />
+          </SimpleGrid>
+        </Section>
+
+        <Section title="Información profesional">
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <FormControl>
+              <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+                Empresa / Organización
+              </FormLabel>
+              <Input
+                {...INPUT_STYLES}
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="Ej: Hospital General"
+              />
+            </FormControl>
+
+            <FormControl>
+              <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+                Posición / Cargo
+              </FormLabel>
+              <Input
+                {...INPUT_STYLES}
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+                placeholder="Ej: Cardiólogo"
+              />
+            </FormControl>
+          </SimpleGrid>
+        </Section>
+
+        <Section title="Notas">
+          <FormControl>
+            <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+              Notas adicionales
+            </FormLabel>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Información adicional sobre el contacto…"
+              rows={4}
+              fontSize="13px"
+              borderColor="line.strong"
+              _hover={{ borderColor: 'paper.600' }}
+              _focus={{
+                borderColor: 'brand.500',
+                boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+              }}
+            />
+          </FormControl>
+        </Section>
+      </VStack>
+    </FormDrawer>
   );
 };
 
 export default ContactFormModal;
-

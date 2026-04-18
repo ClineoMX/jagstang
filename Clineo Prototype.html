@@ -1,0 +1,1492 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Clineo — Prototipo UX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand: #2e7f99;
+    --brand-400: #4cb7d7;
+    --brand-600: #235f73;
+    --brand-soft: #eaf4f7;
+    --brand-soft-2: #d9ebf0;
+
+    --ink: #14161b;
+    --ink-2: #2b2f3a;
+    --ink-3: #535867;
+    --ink-4: #8890a0;
+    --ink-5: #b8bec9;
+
+    --paper: #f6f5f1;
+    --paper-2: #eeece5;
+    --card: #ffffff;
+    --line: #e4e1d8;
+    --line-2: #d3cfc2;
+
+    --ok:   #2f6b4a;
+    --ok-soft: #e3efe6;
+    --warn: #9a6a17;
+    --warn-soft: #f6efdf;
+    --crit: #a6392e;
+    --crit-soft: #f6e9e6;
+    --info: var(--brand);
+    --info-soft: var(--brand-soft);
+
+    --sidebar: #231f20;
+    --sidebar-ink: #f6f5f1;
+    --sidebar-ink-dim: #a09c94;
+
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --shadow-sm: 0 1px 2px rgba(20,22,27,.04);
+    --shadow-md: 0 2px 8px rgba(20,22,27,.06), 0 1px 2px rgba(20,22,27,.04);
+    --shadow-lg: 0 16px 40px rgba(20,22,27,.12), 0 2px 6px rgba(20,22,27,.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  button { font-family: inherit; font-size: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+  kbd {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 1px 6px;
+    border: 1px solid var(--line-2);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--card);
+    color: var(--ink-2);
+  }
+
+  /* ───── app shell ───── */
+  .app { display: grid; grid-template-columns: 92px 1fr; height: 100vh; overflow: hidden; }
+
+  /* ───── sidebar ───── */
+  .sidebar {
+    background: var(--sidebar);
+    color: var(--sidebar-ink);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 18px 0 20px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 64px;
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--brand-400);
+    letter-spacing: -.02em;
+  }
+  .logo-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--brand-400);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sidebar);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 10px; flex: 1; }
+  .nav-item {
+    padding: 12px 8px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: var(--sidebar-ink-dim);
+    border-radius: 8px;
+    position: relative;
+    transition: color .12s, background .12s;
+  }
+  .nav-item:hover { color: var(--sidebar-ink); background: rgba(255,255,255,.04); }
+  .nav-item.active { color: var(--sidebar-ink); background: rgba(76,183,215,.12); }
+  .nav-item.active::before {
+    content: ''; position: absolute; left: -10px; top: 14px; bottom: 14px;
+    width: 3px; background: var(--brand-400); border-radius: 0 2px 2px 0;
+  }
+  .nav-item svg { width: 20px; height: 20px; stroke-width: 1.75; }
+  .nav-label { font-size: 10.5px; font-weight: 500; letter-spacing: .01em; }
+  .sidebar-foot { padding: 10px; border-top: 1px solid rgba(255,255,255,.06); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--brand-400), var(--brand-600));
+    color: #fff; font-weight: 600; font-size: 13px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ───── main ───── */
+  .main { overflow: auto; background: var(--paper); }
+  .container { max-width: 1280px; margin: 0 auto; padding: 28px 40px 56px; }
+
+  /* flat page header */
+  .page-head {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+    padding: 4px 0 20px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 28px;
+  }
+  .page-head h1 {
+    font-size: 26px; font-weight: 600; letter-spacing: -.015em; margin: 0 0 4px;
+  }
+  .page-head .sub { font-size: 13px; color: var(--ink-3); margin: 0; }
+  .page-head .crumbs {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-4);
+    letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .page-head .actions { display: flex; gap: 8px; align-items: center; }
+
+  /* buttons */
+  .btn {
+    height: 36px; padding: 0 14px;
+    border-radius: 6px; border: 1px solid transparent;
+    font-size: 13px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: background .12s, border-color .12s, color .12s;
+    white-space: nowrap;
+  }
+  .btn svg { width: 15px; height: 15px; stroke-width: 1.75; }
+  .btn.primary { background: var(--brand); color: #fff; }
+  .btn.primary:hover { background: var(--brand-600); }
+  .btn.ghost { color: var(--ink-2); border-color: var(--line-2); background: var(--card); }
+  .btn.ghost:hover { border-color: var(--ink-4); }
+  .btn.subtle { color: var(--ink-3); }
+  .btn.subtle:hover { color: var(--ink); background: var(--paper-2); }
+  .btn.danger { color: var(--crit); border-color: var(--line-2); background: var(--card); }
+  .btn.danger:hover { border-color: var(--crit); }
+
+  /* badges (status, text-forward) */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .badge.signed  { color: var(--ok);   background: var(--ok-soft);   border-color: #cfe0d3; }
+  .badge.draft   { color: var(--warn); background: var(--warn-soft); border-color: #ecddb4; }
+  .badge.cancel  { color: var(--crit); background: var(--crit-soft); border-color: #e9c7c1; }
+  .badge.pending { color: var(--warn); background: var(--warn-soft); border-color: #ecddb4; }
+  .badge.confirm { color: var(--ok);   background: var(--ok-soft);   border-color: #cfe0d3; }
+  .badge.info    { color: var(--brand); background: var(--brand-soft); border-color: #c9dee5; }
+  .badge.neutral { color: var(--ink-3); background: var(--paper-2); border-color: var(--line); }
+
+  /* cards */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .card-h {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .card-h h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -.005em; }
+  .card-h .meta { font-family: var(--mono); font-size: 11px; color: var(--ink-4); letter-spacing: .06em; }
+  .card-b { padding: 16px 18px; }
+  .card-b.flush { padding: 0; }
+
+  /* ───── TODAY STRIP (Dashboard) ───── */
+  .today-strip {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1.3fr 1fr 1fr 1fr auto;
+    gap: 0;
+    align-items: stretch;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-sm);
+  }
+  .today-cell {
+    padding: 4px 20px;
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .today-cell:first-child { border-left: 0; padding-left: 4px; }
+  .today-cell:last-child { border-left: 0; padding: 0 0 0 20px; display: flex; align-items: center; }
+  .today-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    margin-bottom: 6px;
+  }
+  .today-value { font-size: 18px; font-weight: 600; color: var(--ink); letter-spacing: -.005em; }
+  .today-value .sub { font-size: 12px; color: var(--ink-3); font-weight: 400; margin-left: 6px; }
+  .today-value.warn { color: var(--warn); }
+  .today-link { color: var(--brand); text-decoration: none; font-weight: 500; }
+  .today-link:hover { text-decoration: underline; }
+
+  /* dashboard 2-col layout */
+  .dash-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+
+  /* agenda list (dashboard & calendar) */
+  .agenda { display: flex; flex-direction: column; }
+  .agenda-row {
+    display: grid;
+    grid-template-columns: 68px 1fr auto;
+    gap: 16px;
+    padding: 12px 18px;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    transition: background .1s;
+  }
+  .agenda-row:last-child { border-bottom: 0; }
+  .agenda-row:hover { background: var(--paper); }
+  .agenda-row.now { background: var(--brand-soft); }
+  .agenda-row.now:hover { background: var(--brand-soft-2); }
+  .agenda-time {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-2);
+    text-align: right;
+  }
+  .agenda-time .dur { display: block; font-size: 10.5px; color: var(--ink-4); font-weight: 400; margin-top: 1px; }
+  .agenda-main { min-width: 0; }
+  .agenda-name { font-weight: 500; font-size: 14px; color: var(--ink); }
+  .agenda-reason { font-size: 12.5px; color: var(--ink-3); margin-top: 1px; }
+
+  /* notes list (dashboard) */
+  .note-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px 16px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    align-items: center;
+  }
+  .note-row:last-child { border-bottom: 0; }
+  .note-row:hover { background: var(--paper); }
+  .note-title { font-weight: 500; font-size: 13.5px; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+  .note-meta { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+
+  /* drafts warning card */
+  .nudge {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--warn-soft);
+    border: 1px solid #ecddb4;
+    color: #5f4109;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .nudge svg { flex-shrink: 0; color: var(--warn); }
+  .nudge a { color: #5f4109; font-weight: 600; text-decoration: underline; }
+
+  /* ───── CALENDAR ───── */
+  .cal-grid {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .cal-side .card-b { padding: 14px; }
+  .mini-cal {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+    font-family: var(--mono); font-size: 11px;
+  }
+  .mini-cal .dow { color: var(--ink-4); text-align: center; padding: 6px 0 8px; font-size: 10px; }
+  .mini-cal .d {
+    height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    color: var(--ink-2);
+    cursor: pointer;
+  }
+  .mini-cal .d:hover { background: var(--paper-2); }
+  .mini-cal .d.off { color: var(--ink-5); }
+  .mini-cal .d.today { background: var(--brand); color: #fff; font-weight: 600; }
+  .mini-cal .d.has::after {
+    content: ''; position: absolute; transform: translate(0, 10px);
+    width: 3px; height: 3px; border-radius: 50%; background: var(--brand-400);
+  }
+  .mini-cal .d { position: relative; }
+
+  .view-switch {
+    display: inline-flex;
+    border: 1px solid var(--line-2);
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--card);
+  }
+  .view-switch button {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-3);
+    border-right: 1px solid var(--line-2);
+  }
+  .view-switch button:last-child { border-right: 0; }
+  .view-switch button.on { background: var(--brand); color: #fff; }
+  .view-switch button:not(.on):hover { background: var(--paper-2); color: var(--ink); }
+
+  .cal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .cal-head .nav-btns { display: flex; gap: 4px; }
+  .cal-head .nav-btns button {
+    width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--line-2);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink-3); background: var(--card);
+  }
+  .cal-head .nav-btns button:hover { background: var(--paper-2); }
+  .cal-head .date-label { font-size: 15px; font-weight: 600; }
+
+  /* day view */
+  .day-view {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    position: relative;
+  }
+  .day-hours { border-right: 1px solid var(--line); }
+  .day-hour-label {
+    height: 56px;
+    padding: 4px 8px 0;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-4);
+    text-align: right;
+  }
+  .day-col { position: relative; }
+  .day-hour-row { height: 56px; border-bottom: 1px solid var(--line); }
+  .day-hour-row:nth-child(even) { background: rgba(0,0,0,0.012); }
+  .now-line {
+    position: absolute; left: 0; right: 0;
+    height: 0; border-top: 2px solid var(--crit);
+    z-index: 4;
+  }
+  .now-line::before {
+    content: ''; position: absolute; left: -6px; top: -6px;
+    width: 10px; height: 10px; border-radius: 50%; background: var(--crit);
+  }
+  .event {
+    position: absolute; left: 8px; right: 16px;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    line-height: 1.35;
+    border: 1px solid;
+    cursor: pointer;
+    overflow: hidden;
+    z-index: 3;
+  }
+  .event .ev-name { font-weight: 600; color: var(--ink); }
+  .event .ev-meta { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; font-family: var(--mono); letter-spacing: .02em; }
+  .event.confirm { background: var(--ok-soft); border-color: #cfe0d3; }
+  .event.pending { background: var(--warn-soft); border-color: #ecddb4; }
+  .event.cancel  { background: var(--crit-soft); border-color: #e9c7c1; opacity: .8; }
+  .event.cancel .ev-name { text-decoration: line-through; color: var(--ink-3); }
+  .event.confirm::before, .event.pending::before, .event.cancel::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  }
+  .event.confirm::before { background: var(--ok); }
+  .event.pending::before { background: var(--warn); }
+  .event.cancel::before  { background: var(--crit); }
+
+  .legend { display: flex; gap: 16px; padding: 12px 18px; border-top: 1px solid var(--line); }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+
+  /* agenda view (calendar) */
+  .agenda-groups .day-group-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 14px 18px 8px;
+    border-top: 1px solid var(--line);
+  }
+  .agenda-groups .day-group-head:first-child { border-top: 0; }
+  .agenda-groups .day-group-head .ttl { font-size: 13px; font-weight: 600; }
+  .agenda-groups .day-group-head .cnt { font-family: var(--mono); font-size: 11px; color: var(--ink-4); }
+
+  /* ───── NOTE EDITOR (editor-first) ───── */
+  .editor-wrap {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    align-items: start;
+  }
+  .editor-card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .editor-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+  }
+  .editor-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-3); }
+  .editor-meta .sep { width: 1px; height: 14px; background: var(--line-2); }
+  .save-state { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--ok); font-family: var(--mono); }
+  .save-state .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+  .title-input {
+    display: block; width: 100%;
+    border: 0; outline: 0;
+    padding: 18px 24px 4px;
+    font-size: 22px; font-weight: 600;
+    color: var(--ink);
+    background: transparent;
+    letter-spacing: -.01em;
+  }
+  .title-input::placeholder { color: var(--ink-5); }
+  .tb {
+    display: flex; align-items: center; gap: 2px;
+    padding: 6px 18px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+  }
+  .tb button {
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px;
+    color: var(--ink-3);
+    font-size: 13px;
+  }
+  .tb button:hover { background: var(--paper-2); color: var(--ink); }
+  .tb button.on { background: var(--paper-2); color: var(--ink); }
+  .tb .sep { width: 1px; height: 18px; background: var(--line); margin: 0 6px; }
+  .editor-body {
+    padding: 24px 28px 40px;
+    min-height: 480px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--ink-2);
+  }
+  .editor-body h2 { font-size: 17px; font-weight: 600; color: var(--ink); margin: 22px 0 8px; letter-spacing: -.005em; }
+  .editor-body h2:first-child { margin-top: 0; }
+  .editor-body p { margin: 0 0 10px; }
+  .editor-body ul { margin: 0 0 10px; padding-left: 22px; }
+  .editor-body .caret {
+    display: inline-block; width: 2px; height: 18px; background: var(--brand); vertical-align: middle;
+    animation: blink 1.1s steps(2) infinite; margin-left: 1px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .editor-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 18px;
+    border-top: 1px solid var(--line);
+    background: var(--paper);
+  }
+  .editor-foot .hint { font-size: 12px; color: var(--ink-4); font-family: var(--mono); }
+
+  /* side panel (note form) */
+  .side-panel { display: flex; flex-direction: column; gap: 14px; }
+  .side-card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+  .side-card h4 {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-4); margin: 0 0 10px; font-weight: 600;
+    font-family: var(--mono);
+  }
+  .patient-mini { display: flex; gap: 10px; align-items: center; }
+  .patient-mini .av {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--brand-soft-2); color: var(--brand-600);
+    font-weight: 600; font-size: 13px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .patient-mini .nm { font-size: 13.5px; font-weight: 500; }
+  .patient-mini .mt { font-size: 12px; color: var(--ink-3); }
+
+  .kv-list { display: flex; flex-direction: column; gap: 8px; }
+  .kv-row { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; }
+  .kv-row .k { color: var(--ink-3); }
+  .kv-row .v { color: var(--ink); font-weight: 500; }
+  .kv-row select, .kv-row input {
+    border: 1px solid var(--line); border-radius: 4px; padding: 3px 6px;
+    background: var(--card); font-size: 12px;
+  }
+
+  .complete-later {
+    font-size: 12px; color: var(--ink-3); margin: 0;
+  }
+  .complete-later button { color: var(--brand); font-weight: 500; text-decoration: underline; }
+
+  /* ───── PATIENT DETAIL sticky vitals (briefly included — bonus) ───── */
+  .vitals-bar {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 16px;
+    display: flex; gap: 18px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-sm);
+    font-size: 13px;
+  }
+  .vitals-bar .vi { display: flex; flex-direction: column; gap: 2px; }
+  .vitals-bar .vi .k { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-4); }
+  .vitals-bar .vi .v { color: var(--ink); font-weight: 500; }
+  .vitals-bar .vi .v.crit { color: var(--crit); }
+
+  /* page visibility */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ───── TIMELINE (Patient detail) ───── */
+  .timeline { padding: 8px 0 18px; }
+  .tl-month {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 18px 22px 10px;
+    position: sticky; top: 0;
+    background: linear-gradient(var(--card) 80%, rgba(255,255,255,0));
+    z-index: 2;
+  }
+  .tl-month .m {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+  }
+  .tl-month .cnt { font-family: var(--mono); font-size: 11px; color: var(--ink-4); }
+  .tl-month .rule {
+    flex: 1; height: 1px; background: var(--line);
+  }
+  .tl-items { position: relative; padding: 4px 22px 8px 22px; }
+  .tl-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 72px 1fr auto;
+    gap: 20px;
+    padding: 10px 0 14px;
+    align-items: flex-start;
+    cursor: pointer;
+    border-left: 1px solid var(--line);
+    margin-left: 56px;
+    padding-left: 20px;
+  }
+  .tl-item:hover .tl-card { border-color: var(--ink-4); background: var(--paper); }
+  .tl-date {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+    padding-top: 10px;
+    line-height: 1.3;
+    margin-left: -76px;
+    width: 72px;
+  }
+  .tl-date .day { display: block; font-size: 15px; color: var(--ink); font-weight: 600; }
+  .tl-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px 14px;
+    transition: background .12s, border-color .12s;
+  }
+  .tl-kind {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    margin-bottom: 2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tl-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 3px; letter-spacing: -.005em; }
+  .tl-body { font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+  .tl-body .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--paper-2);
+    color: var(--ink-2);
+    margin-right: 4px;
+  }
+  .tl-actions { padding-top: 10px; }
+  .tl-gap {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0 8px 62px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-4);
+    letter-spacing: .04em;
+  }
+  .tl-gap::before {
+    content: ''; display: inline-block;
+    width: 24px; height: 1px; background: var(--line-2);
+  }
+
+  /* timeline filter pills */
+  .tl-filters {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .tl-pill {
+    padding: 4px 10px;
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink-3);
+    background: var(--card);
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .tl-pill:hover { color: var(--ink); border-color: var(--ink-4); }
+  .tl-pill.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .tl-pill .d { width: 6px; height: 6px; border-radius: 50%; }
+  .tl-pill .d.signed { background: var(--ok); }
+  .tl-pill .d.draft { background: var(--warn); }
+  .tl-pill .d.event { background: var(--brand); }
+  .tl-pill .d.lab   { background: var(--brand-600); }
+  .tl-pill .d.rx    { background: var(--ink-2); }
+
+  /* scrollbar polish */
+  .main::-webkit-scrollbar { width: 10px; }
+  .main::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 10px; }
+  .main::-webkit-scrollbar-track { background: transparent; }
+
+  /* narrow helpers */
+  .row { display: flex; align-items: center; gap: 8px; }
+  .gap-6 { gap: 6px; }
+  .muted { color: var(--ink-3); }
+  .small { font-size: 12px; }
+  .mono { font-family: var(--mono); }
+
+  /* legend-annotation showing the recommendation being demonstrated */
+  .anno {
+    position: fixed;
+    bottom: 16px; right: 16px;
+    background: var(--ink);
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: var(--shadow-lg);
+    max-width: 520px;
+    line-height: 1.5;
+    z-index: 20;
+  }
+  .anno .rec {
+    background: var(--brand-400);
+    color: var(--ink);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+  }
+  .anno button {
+    color: var(--ink-5); font-size: 14px; margin-left: 4px;
+  }
+  .anno button:hover { color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo"><span class="logo-dot">c</span></div>
+    <nav class="nav">
+      <button class="nav-item active" data-page="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg>
+        <span class="nav-label">Home</span>
+      </button>
+      <button class="nav-item" data-page="patients">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="7" r="2.5"/><path d="M15 20c0-2.8 2-5 4-5"/></svg>
+        <span class="nav-label">Pacientes</span>
+      </button>
+      <button class="nav-item" data-page="calendar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+        <span class="nav-label">Calendario</span>
+      </button>
+      <button class="nav-item" data-page="note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3h9l5 5v13H6z"/><path d="M15 3v5h5"/><path d="M9 13h7M9 17h5"/></svg>
+        <span class="nav-label">Nota</span>
+      </button>
+      <button class="nav-item" data-page="detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.8 3.1-7 7-7s7 3.2 7 7"/></svg>
+        <span class="nav-label">Ficha</span>
+      </button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="avatar">DR</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main" id="main">
+
+    <!-- ───────── DASHBOARD ───────── -->
+    <section class="page active container" id="page-dashboard">
+
+      <!-- flat page header (rec 01) -->
+      <header class="page-head">
+        <div>
+          <p class="crumbs">Lunes · 17 Abr 2026</p>
+          <h1>Buenos días, Dra. Vargas</h1>
+          <p class="sub">4 citas en agenda · 2 notas sin firmar desde ayer</p>
+        </div>
+        <div class="actions">
+          <button class="btn ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Buscar <kbd>⌘K</kbd></button>
+          <button class="btn ghost">Nuevo paciente</button>
+          <button class="btn primary" data-goto="note">＋ Nueva nota</button>
+        </div>
+      </header>
+
+      <!-- TODAY strip (rec 02) -->
+      <div class="today-strip">
+        <div class="today-cell">
+          <div class="today-label">Siguiente cita</div>
+          <div class="today-value">09:30 <span class="sub">· Paciente C — Control</span></div>
+        </div>
+        <div class="today-cell">
+          <div class="today-label">Hoy</div>
+          <div class="today-value">4 <span class="sub">restantes · 1 atendido</span></div>
+        </div>
+        <div class="today-cell">
+          <div class="today-label">Borradores</div>
+          <div class="today-value warn"><a href="#" class="today-link">2 sin firmar</a></div>
+        </div>
+        <div class="today-cell">
+          <div class="today-label">Cumplimiento NOM</div>
+          <div class="today-value">94% <span class="sub">· 1 alerta</span></div>
+        </div>
+        <div class="today-cell">
+          <button class="btn primary" data-goto="note">＋ Nueva nota</button>
+        </div>
+      </div>
+
+      <!-- proactive nudge (rec 07) -->
+      <div class="nudge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <div>Tienes <b>2 notas en borrador de ayer</b>. Las notas sin firmar no cuentan para NOM-004. <a href="#">Revisar y firmar →</a></div>
+      </div>
+
+      <!-- two-col -->
+      <div class="dash-grid">
+
+        <!-- today's agenda -->
+        <div class="card">
+          <div class="card-h">
+            <h3>Agenda de hoy</h3>
+            <span class="meta">17 ABR · 5 CITAS</span>
+          </div>
+          <div class="agenda">
+            <div class="agenda-row">
+              <div class="agenda-time">08:30<span class="dur">30 min</span></div>
+              <div class="agenda-main">
+                <div class="agenda-name">Paciente A</div>
+                <div class="agenda-reason">Consulta general</div>
+              </div>
+              <span class="badge confirm"><span class="dot"></span>Atendido</span>
+            </div>
+            <div class="agenda-row now">
+              <div class="agenda-time">09:30<span class="dur">45 min</span></div>
+              <div class="agenda-main">
+                <div class="agenda-name">Paciente C <span class="mono muted small" style="margin-left:6px;">· ahora</span></div>
+                <div class="agenda-reason">Control hipertensión · Recurrente</div>
+              </div>
+              <span class="badge confirm"><span class="dot"></span>Confirmada</span>
+            </div>
+            <div class="agenda-row">
+              <div class="agenda-time">11:00<span class="dur">30 min</span></div>
+              <div class="agenda-main">
+                <div class="agenda-name">Paciente D</div>
+                <div class="agenda-reason">Primera vez</div>
+              </div>
+              <span class="badge pending"><span class="dot"></span>Pendiente</span>
+            </div>
+            <div class="agenda-row">
+              <div class="agenda-time">13:30<span class="dur">30 min</span></div>
+              <div class="agenda-main">
+                <div class="agenda-name">Paciente E</div>
+                <div class="agenda-reason">Revisión postoperatoria</div>
+              </div>
+              <span class="badge confirm"><span class="dot"></span>Confirmada</span>
+            </div>
+            <div class="agenda-row">
+              <div class="agenda-time">15:00<span class="dur">45 min</span></div>
+              <div class="agenda-main">
+                <div class="agenda-name">Paciente F</div>
+                <div class="agenda-reason">Seguimiento diabetes</div>
+              </div>
+              <span class="badge pending"><span class="dot"></span>Pendiente</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- recent notes with text badges -->
+        <div class="card">
+          <div class="card-h">
+            <h3>Notas recientes</h3>
+            <span class="meta">5 ÚLTIMAS</span>
+          </div>
+          <div>
+            <div class="note-row">
+              <div>
+                <div class="note-title">Nota de evolución · Paciente C <span class="badge draft"><span class="dot"></span>Borrador</span></div>
+                <div class="note-meta">Creada ayer, 16:20 · hace 1 día</div>
+              </div>
+              <button class="btn subtle">Abrir →</button>
+            </div>
+            <div class="note-row">
+              <div>
+                <div class="note-title">Exploración física · Paciente B <span class="badge draft"><span class="dot"></span>Borrador</span></div>
+                <div class="note-meta">Creada ayer, 11:04 · hace 1 día</div>
+              </div>
+              <button class="btn subtle">Abrir →</button>
+            </div>
+            <div class="note-row">
+              <div>
+                <div class="note-title">Interrogatorio inicial · Paciente H <span class="badge signed"><span class="dot"></span>Firmada · 15 Abr</span></div>
+                <div class="note-meta">Dra. Vargas · hace 2 días</div>
+              </div>
+              <button class="btn subtle">Abrir →</button>
+            </div>
+            <div class="note-row">
+              <div>
+                <div class="note-title">Nota de evolución · Paciente A <span class="badge signed"><span class="dot"></span>Firmada · 14 Abr</span></div>
+                <div class="note-meta">Dra. Vargas · hace 3 días</div>
+              </div>
+              <button class="btn subtle">Abrir →</button>
+            </div>
+            <div class="note-row">
+              <div>
+                <div class="note-title">Nota de evolución · Paciente E <span class="badge signed"><span class="dot"></span>Firmada · 12 Abr</span></div>
+                <div class="note-meta">Dra. Vargas · hace 5 días</div>
+              </div>
+              <button class="btn subtle">Abrir →</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ───────── CALENDAR (Day + Agenda) ───────── -->
+    <section class="page container" id="page-calendar">
+      <header class="page-head">
+        <div>
+          <p class="crumbs">Calendario</p>
+          <h1>Agenda</h1>
+          <p class="sub">Vista diaria — cambia a Agenda para los próximos 7 días</p>
+        </div>
+        <div class="actions">
+          <button class="btn ghost">Importar</button>
+          <button class="btn primary">＋ Nueva cita</button>
+        </div>
+      </header>
+
+      <div class="cal-grid">
+        <!-- left rail -->
+        <aside class="cal-side">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-b">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                <div style="font-weight:600; font-size:13px;">Abril 2026</div>
+                <div style="display:flex; gap:2px;">
+                  <button class="btn subtle" style="width:24px; height:24px; padding:0;">‹</button>
+                  <button class="btn subtle" style="width:24px; height:24px; padding:0;">›</button>
+                </div>
+              </div>
+              <div class="mini-cal" id="mini-cal"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><h3>Filtros</h3></div>
+            <div class="card-b" style="display:flex; flex-direction:column; gap:8px; font-size:13px;">
+              <label class="row"><input type="checkbox" checked> <span class="badge confirm"><span class="dot"></span>Confirmadas</span></label>
+              <label class="row"><input type="checkbox" checked> <span class="badge pending"><span class="dot"></span>Pendientes</span></label>
+              <label class="row"><input type="checkbox"> <span class="badge cancel"><span class="dot"></span>Canceladas</span></label>
+            </div>
+          </div>
+        </aside>
+
+        <!-- right view -->
+        <div class="card">
+          <div class="cal-head">
+            <div class="row gap-6">
+              <div class="nav-btns">
+                <button>‹</button>
+                <button>Hoy</button>
+                <button>›</button>
+              </div>
+              <div class="date-label" style="margin-left:8px;">Lunes, 17 de abril de 2026</div>
+            </div>
+            <div class="view-switch" id="view-switch">
+              <button class="on" data-view="day">Día</button>
+              <button data-view="agenda">Agenda</button>
+              <button data-view="week">Semana</button>
+              <button data-view="month">Mes</button>
+            </div>
+          </div>
+
+          <!-- DAY view -->
+          <div id="cal-day">
+            <div class="day-view" id="day-view">
+              <div class="day-hours" id="day-hours"></div>
+              <div class="day-col" id="day-col">
+                <!-- events inserted by JS so we can position absolutely by time -->
+              </div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="badge confirm"><span class="dot"></span>Confirmada</span></span>
+              <span class="legend-item"><span class="badge pending"><span class="dot"></span>Pendiente</span></span>
+              <span class="legend-item"><span class="badge cancel"><span class="dot"></span>Cancelada</span></span>
+              <span class="legend-item muted small mono" style="margin-left:auto;">Las franjas vacías indican huecos libres</span>
+            </div>
+          </div>
+
+          <!-- AGENDA view -->
+          <div id="cal-agenda" style="display:none;">
+            <div class="agenda-groups">
+              <div class="day-group-head"><div class="ttl">Hoy · Lun 17 Abr</div><div class="cnt">5 CITAS</div></div>
+              <div class="agenda-row"><div class="agenda-time">08:30</div><div class="agenda-main"><div class="agenda-name">Paciente A</div><div class="agenda-reason">Consulta general</div></div><span class="badge confirm"><span class="dot"></span>Atendido</span></div>
+              <div class="agenda-row now"><div class="agenda-time">09:30</div><div class="agenda-main"><div class="agenda-name">Paciente C</div><div class="agenda-reason">Control hipertensión</div></div><span class="badge confirm"><span class="dot"></span>Confirmada</span></div>
+              <div class="agenda-row"><div class="agenda-time">11:00</div><div class="agenda-main"><div class="agenda-name">Paciente D</div><div class="agenda-reason">Primera vez</div></div><span class="badge pending"><span class="dot"></span>Pendiente</span></div>
+              <div class="agenda-row"><div class="agenda-time">13:30</div><div class="agenda-main"><div class="agenda-name">Paciente E</div><div class="agenda-reason">Revisión postoperatoria</div></div><span class="badge confirm"><span class="dot"></span>Confirmada</span></div>
+              <div class="agenda-row"><div class="agenda-time">15:00</div><div class="agenda-main"><div class="agenda-name">Paciente F</div><div class="agenda-reason">Seguimiento diabetes</div></div><span class="badge pending"><span class="dot"></span>Pendiente</span></div>
+
+              <div class="day-group-head"><div class="ttl">Mañana · Mar 18 Abr</div><div class="cnt">3 CITAS</div></div>
+              <div class="agenda-row"><div class="agenda-time">09:00</div><div class="agenda-main"><div class="agenda-name">Paciente G</div><div class="agenda-reason">Primera vez</div></div><span class="badge pending"><span class="dot"></span>Pendiente</span></div>
+              <div class="agenda-row"><div class="agenda-time">10:30</div><div class="agenda-main"><div class="agenda-name">Paciente B</div><div class="agenda-reason">Control diabetes</div></div><span class="badge confirm"><span class="dot"></span>Confirmada</span></div>
+              <div class="agenda-row"><div class="agenda-time">12:00</div><div class="agenda-main"><div class="agenda-name">Paciente I</div><div class="agenda-reason">Revisión</div></div><span class="badge confirm"><span class="dot"></span>Confirmada</span></div>
+
+              <div class="day-group-head"><div class="ttl">Mié 19 Abr</div><div class="cnt">2 CITAS</div></div>
+              <div class="agenda-row"><div class="agenda-time">11:00</div><div class="agenda-main"><div class="agenda-name">Paciente J</div><div class="agenda-reason">Consulta</div></div><span class="badge pending"><span class="dot"></span>Pendiente</span></div>
+              <div class="agenda-row"><div class="agenda-time">16:00</div><div class="agenda-main"><div class="agenda-name">Paciente K</div><div class="agenda-reason">Seguimiento</div></div><span class="badge confirm"><span class="dot"></span>Confirmada</span></div>
+            </div>
+          </div>
+
+          <!-- WEEK / MONTH stub -->
+          <div id="cal-week" style="display:none; padding: 40px; text-align:center; color:var(--ink-4);">
+            <p style="font-family:var(--mono); font-size:12px;">VISTA SEMANAL</p>
+            <p class="muted small" style="margin-top:8px;">En esta versión del prototipo sólo están detalladas las vistas Día y Agenda.</p>
+          </div>
+          <div id="cal-month" style="display:none; padding: 40px; text-align:center; color:var(--ink-4);">
+            <p style="font-family:var(--mono); font-size:12px;">VISTA MENSUAL</p>
+            <p class="muted small" style="margin-top:8px;">En esta versión del prototipo sólo están detalladas las vistas Día y Agenda.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── NOTE (editor-first) ───────── -->
+    <section class="page container" id="page-note">
+      <header class="page-head">
+        <div>
+          <p class="crumbs">Ficha · Paciente C · Nueva nota</p>
+          <h1>Nueva nota clínica</h1>
+          <p class="sub">Empieza a escribir — el título, tipo y plantilla se configuran a un clic.</p>
+        </div>
+        <div class="actions">
+          <span class="save-state"><span class="dot"></span>Guardado hace 4 s</span>
+          <button class="btn ghost">Guardar borrador</button>
+          <button class="btn primary">Firmar nota</button>
+        </div>
+      </header>
+
+      <div class="editor-wrap">
+
+        <!-- editor -->
+        <div class="editor-card">
+          <div class="editor-head">
+            <div class="editor-meta">
+              <span class="badge draft"><span class="dot"></span>Borrador</span>
+              <span class="sep"></span>
+              <span>Paciente C</span>
+              <span class="sep"></span>
+              <span>Consulta 17 Abr, 09:30</span>
+            </div>
+            <div class="editor-meta">
+              <button class="btn subtle">Opciones</button>
+            </div>
+          </div>
+
+          <input class="title-input" placeholder="Título de la nota…" value="Control hipertensión — 17 Abr" />
+
+          <div class="tb">
+            <button title="Deshacer">↶</button>
+            <button title="Rehacer">↷</button>
+            <div class="sep"></div>
+            <button class="on" title="Negrita"><b>B</b></button>
+            <button title="Cursiva"><i>I</i></button>
+            <button title="Subrayado"><u>U</u></button>
+            <div class="sep"></div>
+            <button title="Encabezado">H2</button>
+            <button title="Lista">• ≡</button>
+            <button title="Lista numerada">1. ≡</button>
+            <div class="sep"></div>
+            <button title="Adjuntar">📎</button>
+            <button title="Receta">Rx</button>
+            <div class="sep"></div>
+            <button class="btn subtle" style="height:24px; margin-left:auto; padding: 0 8px;">Plantilla: Seguimiento HTA ▾</button>
+          </div>
+
+          <div class="editor-body" contenteditable="true" spellcheck="false">
+            <h2>Motivo de consulta</h2>
+            <p>Paciente acude a control mensual de hipertensión arterial. Refiere buen apego al tratamiento, sin efectos secundarios.</p>
+
+            <h2>Exploración física</h2>
+            <p>TA: 128/82 · FC: 72 · Peso: 74 kg · IMC: 26.1</p>
+            <p>Ruidos cardiacos rítmicos, sin soplos. Campos pulmonares limpios.</p>
+
+            <h2>Plan</h2>
+            <ul>
+              <li>Continuar losartán 50 mg/día</li>
+              <li>Control en 4 semanas<span class="caret"></span></li>
+            </ul>
+          </div>
+
+          <div class="editor-foot">
+            <div class="hint"><kbd>⌘S</kbd> guardar · <kbd>⌘↵</kbd> firmar · <kbd>⌘B</kbd> negrita</div>
+            <div>
+              <button class="btn ghost">Cancelar</button>
+              <button class="btn primary">Firmar nota</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- side panel -->
+        <aside class="side-panel">
+          <div class="side-card">
+            <h4>Paciente</h4>
+            <div class="patient-mini">
+              <div class="av">PC</div>
+              <div>
+                <div class="nm">Paciente C</div>
+                <div class="mt">42 años · Recurrente · HTA</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <h4>Configuración</h4>
+            <div class="kv-list">
+              <div class="kv-row">
+                <span class="k">Tipo</span>
+                <select><option>Nota de evolución</option><option>Interrogatorio</option><option>Exploración</option></select>
+              </div>
+              <div class="kv-row">
+                <span class="k">Plantilla</span>
+                <select><option>Seguimiento HTA</option><option>Consulta general</option><option>— ninguna —</option></select>
+              </div>
+              <div class="kv-row">
+                <span class="k">Receta adjunta</span>
+                <span class="v">Sí · 1 fármaco</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="side-card">
+            <h4>Integridad NOM-004</h4>
+            <p class="complete-later">El análisis se ejecuta después del primer guardado o tras 60 s sin escribir. <button>Analizar ahora</button></p>
+          </div>
+
+          <div class="side-card">
+            <h4>Notas anteriores</h4>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="font-size:12.5px;">
+                <div style="font-weight:500;">Control HTA · 15 Mar</div>
+                <span class="badge signed"><span class="dot"></span>Firmada</span>
+              </div>
+              <div style="font-size:12.5px;">
+                <div style="font-weight:500;">Interrogatorio · 10 Feb</div>
+                <span class="badge signed"><span class="dot"></span>Firmada</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </section>
+
+    <!-- ───────── PATIENT DETAIL (bonus: sticky vitals + timeline with badges) ───────── -->
+    <section class="page container" id="page-detail">
+      <header class="page-head">
+        <div>
+          <p class="crumbs">Pacientes · Paciente C</p>
+          <h1>Paciente C</h1>
+          <p class="sub">42 años · Expediente #EXP-2024-00089</p>
+        </div>
+        <div class="actions">
+          <button class="btn ghost">Llamar</button>
+          <button class="btn ghost">Nueva cita</button>
+          <button class="btn primary" data-goto="note">＋ Nueva nota</button>
+        </div>
+      </header>
+
+      <!-- sticky vitals bar -->
+      <div class="vitals-bar">
+        <div class="vi"><span class="k">Alergias</span><span class="v crit">Penicilina (severa)</span></div>
+        <div class="vi"><span class="k">Crónicas</span><span class="v">HTA · Dislipidemia</span></div>
+        <div class="vi"><span class="k">Medicamentos</span><span class="v">Losartán 50 mg · Atorvastatina 20 mg</span></div>
+        <div class="vi"><span class="k">Tipo sangre</span><span class="v">O+</span></div>
+        <div style="margin-left:auto; align-self:center;"><span class="badge info"><span class="dot"></span>NOM 96%</span></div>
+      </div>
+
+      <div class="dash-grid" style="grid-template-columns: 320px 1fr;">
+
+        <aside>
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-h"><h3>Ficha de identidad</h3><button class="btn subtle">Editar</button></div>
+            <div class="card-b" style="font-size:13px;">
+              <div class="kv-list">
+                <div class="kv-row"><span class="k">Nacimiento</span><span class="v">4 Feb 1983</span></div>
+                <div class="kv-row"><span class="k">Sexo</span><span class="v">Femenino</span></div>
+                <div class="kv-row"><span class="k">Nacionalidad</span><span class="v">Mexicana</span></div>
+                <div class="kv-row"><span class="k">Ocupación</span><span class="v">Contadora</span></div>
+                <div class="kv-row"><span class="k">Contacto emerg.</span><span class="v">Familiar · +52 55 ••••</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3>Interrogatorio inicial</h3></div>
+            <div class="card-b" style="font-size:13px; color:var(--ink-3);">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span class="badge signed"><span class="dot"></span>Firmada · 10 Feb</span>
+              </div>
+              <p>AHF: Madre con HTA y DM2. Padre con cardiopatía isquémica. APP: HTA dx hace 3 años…</p>
+              <button class="btn subtle" style="padding: 0;">Ver completo →</button>
+            </div>
+          </div>
+        </aside>
+
+        <div>
+          <div class="card">
+            <div class="card-h">
+              <h3>Expediente clínico</h3>
+              <div class="tl-filters" id="tl-filters">
+                <button class="tl-pill on" data-f="all">Todo</button>
+                <button class="tl-pill" data-f="note"><span class="d signed"></span>Notas</button>
+                <button class="tl-pill" data-f="event"><span class="d event"></span>Citas</button>
+                <button class="tl-pill" data-f="rx"><span class="d rx"></span>Recetas</button>
+                <button class="tl-pill" data-f="lab"><span class="d lab"></span>Labs</button>
+              </div>
+            </div>
+
+            <div class="timeline" id="timeline">
+
+              <!-- Abril 2026 -->
+              <div class="tl-month">
+                <span class="m">Abril 2026</span>
+                <span class="rule"></span>
+                <span class="cnt">3 eventos</span>
+              </div>
+              <div class="tl-items">
+                <div class="tl-item draft" data-k="note">
+                  <div class="tl-date"><span class="day">17</span>Hoy<br>09:45</div>
+                  <div class="tl-dot"></div>
+                  <div class="tl-card">
+                    <div class="tl-kind">Nota de evolución <span class="badge draft"><span class="dot"></span>Borrador</span></div>
+                    <div class="tl-title">Control hipertensión</div>
+                    <div class="tl-body"><span class="chip">TA 128/82</span><span class="chip">FC 72</span><span class="chip">IMC 26.1</span> Apego al tratamiento referido, sin efectos adversos.</div>
+                  </div>
+                  <div class="tl-actions"><button class="btn subtle">Continuar →</button></div>
+                </div>
+
+                <div class="tl-item event" data-k="event">
+                  <div class="tl-date"><span class="day">17</span>Hoy<br>09:30</div>
+                  <div class="tl-dot"></div>
+                  <div class="tl-card">
+                    <div class="tl-kind">Cita · 45 min <span class="badge confirm"><span class="dot"></span>Atendida</span></div>
+                    <div class="tl-title">Control hipertensión</div>
+                    <div class="tl-body">Dra. Vargas · Consultorio 2</div>
+                  </div>
+                  <div class="tl-actions"><button class="btn subtle">Ver →</button></div>
+                </div>
+
+                <div class="tl-item rx" data-k="rx">
+                  <div class="tl-date"><span class="day">17</span>Hoy<br>09:48</div>
+                  <div class="tl-dot"></div>
+                  <div class="tl-card">
+                    <div class="tl-kind">Receta</div>
+                    <div class="tl-title">Losartán 50 mg · 30 días</div>
+                    <div class="tl-body">Continuación · 1 tableta cada 24 h</div>
+                  </div>
+                  <div class="tl-actions"><button class="btn subtle">Imprimir →</button></div>
+                </div>
+              </div>
+
+              <!-- gap indicator -->
+              <div class="tl-gap">33 días sin contacto</div>
+
+              <!-- Marzo 2026 -->
+              <div class="tl-month">
+                <span class="m">Marzo 2026</span>
+                <span class="rule"></span>
+                <span class="cnt">2 eventos</span>
+              </div>
+              <div class="tl-items">
+                <div class="tl-item signed" data-k="note">
+                  <div class="tl-date"><span class="day">15</span>Mar<br>10:10</div>
+                  <div class="tl-dot"></div>
+                  <div class="tl-card">
+                    <div class="tl-kind">Nota de evolución <span class="badge signed"><span class="dot"></span>Firmada</span></div>
+                    <div class="tl-title">Control HTA</div>
+                    <div class="tl-body"><span class="chip">TA 132/84</span><span class="chip">Losartán 50 mg</span> Ajuste mínimo. Próximo control en 4 sem.</div>
+                  </div>
+                  <div class="tl-actions"><button class="btn subtle">Abrir →</button></div>
+                </div>
+
+                <div class="tl-item lab" data-k="lab">
+                  <div class="tl-date"><span class="day">14</span>Mar</div>
+                  <div class="tl-dot"></div>
+                  <div class="tl-card">
+                    <div class="tl-kind">Laboratorio</div>
+                    <div class="tl-title">Química sanguínea · Perfil de lípidos</div>
+                    <div class="tl-body"><span class="chip">Colesterol 198</span><span class="chip">LDL 118</span><span class="chip">Glucosa 96</span> Dentro de metas.</div>
+                  </div>
+                  <div class="tl-actions"><button class="btn subtle">Ver PDF →</button></div>
+                </div>
+              </div>
+
+              <div class="tl-gap">31 días sin contacto</div>
+
+              <!-- Febrero 2026 -->
+              <div class="tl-month">
+                <span class="m">Febrero 2026</span>
+                <span class="rule"></span>
+                <span class="cnt">3 eventos</span>
+              </div>
+              <div class="tl-items">
+                <div class="tl-item signed" data-k="note">
+                  <div class="tl-date"><span class="day">12</span>Feb<br>11:00</div>
+                  <div class="tl-dot"></div>
+                  <div class="tl-card">
+                    <div class="tl-kind">Exploración física <span class="badge signed"><span class="dot"></span>Firmada</span></div>
+                    <div class="tl-title">Valoración inicial completa</div>
+                    <div class="tl-body"><span class="chip">Peso 75 kg</span><span class="chip">IMC 26.4</span><span class="chip">TA 138/88</span> Sin hallazgos patológicos relevantes.</div>
+                  </div>
+                  <div class="tl-actions"><button class="btn subtle">Abrir →</button></div>
+                </div>
+
+                <div class="tl-item rx" data-k="rx">
+                  <div class="tl-date"><span class="day">10</span>Feb<br>12:20</div>
+                  <div class="tl-dot"></div>
+                  <div class="tl-card">
+                    <div class="tl-kind">Receta</div>
+                    <div class="tl-title">Losartán 50 mg + Atorvastatina 20 mg</div>
+                    <div class="tl-body">Inicio de tratamiento combinado</div>
+                  </div>
+                  <div class="tl-actions"><button class="btn subtle">Imprimir →</button></div>
+                </div>
+
+                <div class="tl-item signed" data-k="note">
+                  <div class="tl-date"><span class="day">10</span>Feb<br>11:40</div>
+                  <div class="tl-dot"></div>
+                  <div class="tl-card">
+                    <div class="tl-kind">Interrogatorio inicial <span class="badge signed"><span class="dot"></span>Firmada</span></div>
+                    <div class="tl-title">Historia clínica completa</div>
+                    <div class="tl-body"><span class="chip">AHF+ cardiopatía</span><span class="chip">APP: HTA 3 años</span> Consulta inicial de seguimiento.</div>
+                  </div>
+                  <div class="tl-actions"><button class="btn subtle">Abrir →</button></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Patients list kept minimal to stay focused -->
+    <section class="page container" id="page-patients">
+      <header class="page-head">
+        <div>
+          <p class="crumbs">Pacientes</p>
+          <h1>Pacientes</h1>
+          <p class="sub">Esta pantalla no está dentro del alcance del prototipo actual.</p>
+        </div>
+        <div class="actions">
+          <button class="btn primary">＋ Nuevo paciente</button>
+        </div>
+      </header>
+      <div class="card"><div class="card-b" style="padding: 40px; text-align:center; color: var(--ink-4);">
+        <p class="mono small">FUERA DE ALCANCE</p>
+        <p class="muted">Este prototipo se enfoca en: Dashboard · Calendario · Nota · Ficha de paciente.</p>
+      </div></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- recommendation annotator -->
+<div class="anno" id="anno">
+  <span class="rec" id="anno-rec">REC 01 + 02</span>
+  <span id="anno-text">Flat page header + “Today” strip con información accionable.</span>
+  <button id="anno-close" aria-label="Cerrar">×</button>
+</div>
+
+<script>
+  // ─── routing
+  const pages = {
+    dashboard: { el: document.getElementById('page-dashboard'), rec: 'REC 01 + 02 + 07', text: 'Flat header · Today strip · Borradores con badge y alerta proactiva.' },
+    calendar:  { el: document.getElementById('page-calendar'),  rec: 'REC 05', text: 'Calendario con Día como default y nueva vista Agenda de 7 días.' },
+    note:      { el: document.getElementById('page-note'),      rec: 'REC 06 + 07', text: 'Editor primero. Guardado visible. Firmar como acción principal.' },
+    detail:    { el: document.getElementById('page-detail'),    rec: 'REC 07 (+ extras)', text: 'Badges de estado + sticky vitals bar como bonus.' },
+    patients:  { el: document.getElementById('page-patients'),  rec: '—', text: 'Fuera del alcance de este prototipo.' },
+  };
+
+  function go(page) {
+    Object.values(pages).forEach(p => p.el.classList.remove('active'));
+    pages[page].el.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+    document.getElementById('anno-rec').textContent = pages[page].rec;
+    document.getElementById('anno-text').textContent = pages[page].text;
+    document.getElementById('main').scrollTop = 0;
+    localStorage.setItem('clineo_page', page);
+  }
+
+  document.querySelectorAll('.nav-item').forEach(b => {
+    b.addEventListener('click', () => go(b.dataset.page));
+  });
+  document.querySelectorAll('[data-goto]').forEach(b => {
+    b.addEventListener('click', () => go(b.dataset.goto));
+  });
+
+  const saved = localStorage.getItem('clineo_page');
+  if (saved && pages[saved]) go(saved);
+
+  // ─── anno close
+  document.getElementById('anno-close').addEventListener('click', () => {
+    document.getElementById('anno').style.display = 'none';
+  });
+
+  // ─── mini calendar (April 2026: 1 = Wed)
+  (function(){
+    const mc = document.getElementById('mini-cal');
+    if (!mc) return;
+    const dows = ['L','M','M','J','V','S','D'];
+    dows.forEach(d => { const e = document.createElement('div'); e.className='dow'; e.textContent=d; mc.appendChild(e); });
+    // April 2026: 1st = Wednesday → offset 2 (Mon=0)
+    const firstOffset = 2;
+    const prevDays = 31; // March
+    for (let i = 0; i < firstOffset; i++) {
+      const e = document.createElement('div'); e.className='d off'; e.textContent = prevDays - (firstOffset - 1 - i); mc.appendChild(e);
+    }
+    const todayDay = 17;
+    const withAppts = new Set([3,6,8,10,13,15,17,18,19,21,24,27,29]);
+    for (let d = 1; d <= 30; d++) {
+      const e = document.createElement('div'); e.className='d';
+      if (d === todayDay) e.classList.add('today');
+      if (withAppts.has(d)) e.classList.add('has');
+      e.textContent = d; mc.appendChild(e);
+    }
+    const total = firstOffset + 30;
+    const rem = (7 - (total % 7)) % 7;
+    for (let i = 1; i <= rem; i++) { const e = document.createElement('div'); e.className='d off'; e.textContent=i; mc.appendChild(e); }
+  })();
+
+  // ─── calendar day view
+  (function(){
+    const hoursEl = document.getElementById('day-hours');
+    const colEl   = document.getElementById('day-col');
+    if (!hoursEl) return;
+    const startHr = 8, endHr = 18;
+    for (let h = startHr; h <= endHr; h++) {
+      const lab = document.createElement('div');
+      lab.className='day-hour-label';
+      lab.textContent = String(h).padStart(2,'0') + ':00';
+      hoursEl.appendChild(lab);
+      const row = document.createElement('div'); row.className='day-hour-row'; colEl.appendChild(row);
+    }
+    // events: [startHr, durMin, name, reason, status]
+    const events = [
+      [8.5, 30, 'Paciente A', 'Consulta general',        'confirm'],
+      [9.5, 45, 'Paciente C', 'Control hipertensión',    'confirm'],
+      [11,  30, 'Paciente D', 'Primera vez',             'pending'],
+      [13.5,30, 'Paciente E', 'Revisión postoperatoria', 'confirm'],
+      [15,  45, 'Paciente F', 'Seguimiento diabetes',    'pending'],
+      [16.5,30, 'Cancelada',  'Paciente G — canceló',    'cancel'],
+    ];
+    const rowH = 56;
+    events.forEach(([start, dur, name, reason, status]) => {
+      const top = (start - startHr) * rowH;
+      const h = Math.max(28, (dur/60) * rowH - 4);
+      const ev = document.createElement('div');
+      ev.className = 'event ' + status;
+      ev.style.top = top + 'px';
+      ev.style.height = h + 'px';
+      const time = toHHMM(start) + '–' + toHHMM(start + dur/60);
+      ev.innerHTML = `<div class="ev-name">${name}</div><div class="ev-meta">${time} · ${reason}</div>`;
+      colEl.appendChild(ev);
+    });
+    // "now" line — fake 09:45
+    const nowTop = (9.75 - startHr) * rowH;
+    const now = document.createElement('div');
+    now.className = 'now-line';
+    now.style.top = nowTop + 'px';
+    colEl.appendChild(now);
+
+    function toHHMM(h){ const hh = Math.floor(h); const mm = Math.round((h-hh)*60); return String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0'); }
+  })();
+
+  // ─── view switch
+  (function(){
+    const vs = document.getElementById('view-switch');
+    if (!vs) return;
+    vs.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b) return;
+      vs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      const view = b.dataset.view;
+      ['day','agenda','week','month'].forEach(v => {
+        document.getElementById('cal-'+v).style.display = (v === view) ? '' : 'none';
+      });
+    });
+  })();
+
+  // ─── keyboard
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      alert('⌘K command bar — next iteration.');
+    }
+    if (e.key === '1') go('dashboard');
+    if (e.key === '2') go('calendar');
+    if (e.key === '3') go('note');
+    if (e.key === '4') go('detail');
+  });
+
+  // ─── timeline filter pills
+  (function(){
+    const group = document.getElementById('tl-filters');
+    if (!group) return;
+    group.addEventListener('click', (e) => {
+      const b = e.target.closest('.tl-pill'); if (!b) return;
+      group.querySelectorAll('.tl-pill').forEach(p => p.classList.toggle('on', p === b));
+      const f = b.dataset.f;
+      document.querySelectorAll('#timeline .tl-item').forEach(it => {
+        const k = it.dataset.k;
+        const show = f === 'all' || k === f || (f === 'note' && (it.classList.contains('signed') || it.classList.contains('draft')));
+        it.style.display = show ? '' : 'none';
+      });
+    });
+  })();
+</script>
+</body>
+</html>
