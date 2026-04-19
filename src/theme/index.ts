@@ -207,6 +207,14 @@ const theme = extendTheme({
         color: props.colorMode === 'dark' ? 'white' : 'dark',
         lineHeight: '1.6',
       },
+      // iOS Safari enlarges the viewport when focusing inputs with computed font-size < 16px.
+      // Keep compact typography on md+; on narrow viewports force 16px on real form controls.
+      '@media screen and (max-width: 767.98px)': {
+        'input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]), textarea, select':
+          {
+            fontSize: '16px !important',
+          },
+      },
     }),
   },
   components: {

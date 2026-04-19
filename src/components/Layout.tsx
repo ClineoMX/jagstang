@@ -14,6 +14,7 @@ import {
   MenuDivider,
   useColorMode,
   useColorModeValue,
+  useBreakpointValue,
   Icon,
 } from '@chakra-ui/react';
 import {
@@ -201,6 +202,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const role = (doctor?.role ?? '').toUpperCase();
 
+  /** Rail: visible desde `md`; un poco más chico en tablet que en escritorio ancho. */
+  const railLogoPx = useBreakpointValue({ md: 10, lg: 12 }) ?? 12;
+  /** Header móvil: barra 56px; 24px se ve pesado en teléfonos estrechos. */
+  const mobileHeaderLogoPx = useBreakpointValue({ base: 18, sm: 20 }) ?? 18;
+
   const userMenu = doctor && (
     <Menu
       placement="bottom-end"
@@ -330,7 +336,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <ClineoLogo
             variant="icon"
             color={colorMode === 'light' ? 'black' : 'white'}
-            size={24}
+            size={mobileHeaderLogoPx}
           />
         </Flex>
         <Flex alignItems="center" gap={1}>
@@ -357,7 +363,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         flexShrink={0}
       >
         <Flex h="64px" alignItems="center" justifyContent="center">
-          <ClineoLogo variant="icon" color="white" size={12} />
+          <ClineoLogo variant="icon" color="white" size={railLogoPx} />
         </Flex>
 
         <VStack
