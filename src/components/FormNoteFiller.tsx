@@ -1,5 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from 'react';
 import {
   Box,
   VStack,
@@ -67,6 +73,7 @@ export interface FormFieldValue {
   tag?: string;
   type: string;
   value: string;
+  required?: boolean;
   position: FormField['position'];
 }
 
@@ -87,35 +94,26 @@ function normalizeType(t: string): FieldType {
   return 'text';
 }
 
+export interface FormNoteFillerHandle {
+  /** Abre el modal de edición del campo cuyo índice (basado en el orden recibido en `onValuesChange`) se pasa. */
+  openField: (index: number) => void;
+}
+
 interface FormNoteFillerProps {
   formId: string;
   initialValues?: FormFieldValue[];
   onValuesChange: (values: FormFieldValue[]) => void;
-  /** Si se pasa (incluso `null` al inicio), la lista «Campos del formulario» se renderiza en este nodo vía portal (p. ej. panel lateral). */
-  fieldsListHost?: HTMLElement | null;
+  /** Si es true, oculta la lista interna «Campos del formulario» (suele renderizarse fuera, en un panel lateral). */
+  hideFieldsList?: boolean;
 }
 
-const FormNoteFiller: React.FC<FormNoteFillerProps> = ({
-  formId,
-  initialValues,
-  onValuesChange,
-  fieldsListHost,
-}) => {
+const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
+  ({ formId, initialValues, onValuesChange, hideFieldsList = false }, ref) => {
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const filledFieldBg = useColorModeValue('green.50', 'green.900');
   const requiredFieldBg = useColorModeValue('yellow.100', 'yellow.900');
   const unfilledFieldBg = useColorModeValue('brand.50', 'whiteAlpha.100');
-
-  const externalList = fieldsListHost !== undefined;
-  const paperListBg = useColorModeValue('white', 'paper.800');
-  const paperListBorder = useColorModeValue('line.light', 'whiteAlpha.200');
-  const paperHeadingColor = useColorModeValue('ink.700', 'paper.50');
-  const paperIconMuted = useColorModeValue('brand.500', 'brand.300');
-  const paperItemHover = useColorModeValue('paper.50', 'whiteAlpha.50');
-  const paperFilledBorder = useColorModeValue('green.200', 'green.700');
-  const reqBadgeBg = useColorModeValue('orange.50', 'whiteAlpha.100');
-  const reqBadgeColor = useColorModeValue('orange.900', 'orange.200');
 
   const [fields, setFields] = useState<FormField[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
@@ -246,6 +244,7 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({
       name: f.name,
       tag: f.tag,
       type: f.type,
+      required: f.required,
       value: values[String(i)] ?? '',
       position: f.position,
     }));
@@ -263,11 +262,25 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({
 
   const pdfReady = Boolean(pdfBlobUrl && pdfContainerWidth > 0 && numPages != null);
 
-  const openFieldModal = (index: number) => {
-    setActiveFieldIndex(index);
-    setModalValue(values[String(index)] ?? '');
-    onOpen();
-  };
+  const openFieldModal = useCallback(
+    (index: number) => {
+      setActiveFieldIndex(index);
+      setModalValue(values[String(index)] ?? '');
+      onOpen();
+    },
+    [values, onOpen]
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      openField: (index: number) => {
+        if (index < 0 || index >= fields.length) return;
+        openFieldModal(index);
+      },
+    }),
+    [openFieldModal, fields.length]
+  );
 
   const saveFieldValue = () => {
     if (activeFieldIndex === null) return;
@@ -302,95 +315,57 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({
     );
   }
 
-  const listItemBorder = externalList ? paperListBorder : borderColor;
-  const listItemRadius = externalList ? '16px' : 'lg';
-  const listItemBg = (filled: boolean) =>
-    externalList
-      ? filled
-        ? filledFieldBg
-        : paperListBg
-      : filled
-        ? filledFieldBg
-        : undefined;
-  const listSpacing = externalList ? 3 : 2;
-
   const fieldsListSection = (
     <Box>
-      {!externalList && (
-        <HStack justify="space-between" flexWrap="wrap" gap={2} mb={4}>
-          <HStack spacing={2}>
-            <Badge colorScheme="brand">
-              {filledCount}/{fields.length} campos
+      <HStack justify="space-between" flexWrap="wrap" gap={2} mb={4}>
+        <HStack spacing={2}>
+          <Badge colorScheme="brand">
+            {filledCount}/{fields.length} campos
+          </Badge>
+          {requiredCount > 0 && (
+            <Badge
+              colorScheme={
+                requiredFilledCount === requiredCount ? 'green' : 'orange'
+              }
+            >
+              {requiredFilledCount}/{requiredCount} requeridos
             </Badge>
-            {requiredCount > 0 && (
-              <Badge
-                colorScheme={
-                  requiredFilledCount === requiredCount ? 'green' : 'orange'
-                }
-              >
-                {requiredFilledCount}/{requiredCount} requeridos
-              </Badge>
-            )}
-          </HStack>
+          )}
         </HStack>
-      )}
-      <Text
-        fontWeight="semibold"
-        mb={3}
-        fontSize={externalList ? '13px' : 'sm'}
-        color={externalList ? paperHeadingColor : 'gray.600'}
-        letterSpacing={externalList ? '0.01em' : undefined}
-      >
+      </HStack>
+      <Text fontWeight="semibold" mb={3} fontSize="sm" color="gray.600">
         Campos del formulario
       </Text>
-      <List spacing={listSpacing}>
+      <List spacing={2}>
         {fields.map((field, index) => {
           const filled = (values[String(index)] ?? '').trim() !== '';
           const FieldIcon = FIELD_TYPE_ICONS[field.type.toUpperCase()] ?? FiType;
           return (
             <ListItem
               key={index}
-              p={externalList ? 3.5 : 3}
+              p={3}
               borderWidth="1px"
-              borderColor={filled ? paperFilledBorder : listItemBorder}
-              borderRadius={listItemRadius}
+              borderColor={filled ? 'green.200' : borderColor}
+              borderRadius="lg"
               cursor="pointer"
-              bg={listItemBg(filled)}
-              _hover={{
-                bg: filled ? filledFieldBg : externalList ? paperItemHover : 'gray.50',
-              }}
+              bg={filled ? filledFieldBg : undefined}
+              _hover={{ bg: filled ? filledFieldBg : 'gray.50' }}
               onClick={() => openFieldModal(index)}
               transition="all 0.15s"
-              boxShadow={externalList ? 'none' : undefined}
             >
               <HStack justify="space-between" align="start">
                 <HStack spacing={3} align="start">
                   <Icon
                     as={FieldIcon}
-                    color={
-                      filled
-                        ? 'green.500'
-                        : externalList
-                          ? paperIconMuted
-                          : 'gray.400'
-                    }
+                    color={filled ? 'green.500' : 'gray.400'}
                     mt={0.5}
-                    boxSize={externalList ? 4 : undefined}
                   />
                   <Box minW={0}>
-                    <Text
-                      fontSize="sm"
-                      fontWeight="medium"
-                      color={externalList ? paperHeadingColor : undefined}
-                    >
+                    <Text fontSize="sm" fontWeight="medium">
                       {field.name}
                     </Text>
                     {filled && (
-                      <Text
-                        fontSize="xs"
-                        color={externalList ? 'green.600' : 'green.600'}
-                        noOfLines={2}
-                      >
+                      <Text fontSize="xs" color="green.600" noOfLines={1}>
                         {values[String(index)]}
                       </Text>
                     )}
@@ -398,26 +373,9 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({
                 </HStack>
                 <HStack spacing={1} flexShrink={0}>
                   {field.required && !filled && (
-                    externalList ? (
-                      <Text
-                        as="span"
-                        fontSize="9px"
-                        fontWeight={700}
-                        letterSpacing="0.06em"
-                        textTransform="uppercase"
-                        px={2}
-                        py={0.5}
-                        borderRadius="full"
-                        bg={reqBadgeBg}
-                        color={reqBadgeColor}
-                      >
-                        Requerido
-                      </Text>
-                    ) : (
-                      <Badge colorScheme="orange" fontSize="2xs">
-                        Requerido
-                      </Badge>
-                    )
+                    <Badge colorScheme="orange" fontSize="2xs">
+                      Requerido
+                    </Badge>
                   )}
                   {filled && <Icon as={FiCheck} color="green.500" />}
                 </HStack>
@@ -434,9 +392,7 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({
       <Box
         display="grid"
         gridTemplateColumns={
-          externalList
-            ? '1fr'
-            : { base: '1fr', lg: '1fr 320px' }
+          hideFieldsList ? '1fr' : { base: '1fr', lg: '1fr 320px' }
         }
         gap={4}
       >
@@ -573,12 +529,8 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({
           </Box>
         )}
 
-        {!externalList && <Box>{fieldsListSection}</Box>}
+        {!hideFieldsList && <Box>{fieldsListSection}</Box>}
       </Box>
-
-      {externalList &&
-        fieldsListHost &&
-        createPortal(fieldsListSection, fieldsListHost)}
 
       <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
         <ModalOverlay />
@@ -636,6 +588,8 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({
       </Modal>
     </VStack>
   );
-};
+});
+
+FormNoteFiller.displayName = 'FormNoteFiller';
 
 export default FormNoteFiller;

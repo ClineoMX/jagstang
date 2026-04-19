@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Avatar,
   Box,
@@ -9,6 +9,8 @@ import {
   Input,
   InputGroup,
   InputLeftElement,
+  List,
+  ListItem,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -27,15 +29,32 @@ import {
 import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import {
   FiArrowLeft,
+  FiCalendar,
+  FiCheck,
+  FiCheckSquare,
+  FiEdit3,
   FiFileText,
+  FiHash,
   FiPlus,
   FiSearch,
+  FiType,
 } from 'react-icons/fi';
 
 import PageHead from '../components/PageHead';
 import StatusBadge from '../components/StatusBadge';
 import FormNoteFiller from '../components/FormNoteFiller';
-import type { FormFieldValue } from '../components/FormNoteFiller';
+import type {
+  FormFieldValue,
+  FormNoteFillerHandle,
+} from '../components/FormNoteFiller';
+
+const FIELD_TYPE_ICONS: Record<string, React.ElementType> = {
+  TEXT: FiType,
+  NUMBER: FiHash,
+  DATE: FiCalendar,
+  CHECKBOX: FiCheckSquare,
+  SIGNATURE: FiEdit3,
+};
 import { usePatient } from '../hooks/usePatients';
 import { useNotes } from '../hooks/useNotes';
 import { apiService } from '../services/api';
@@ -93,9 +112,13 @@ const FormNoteForm: React.FC = () => {
   const [isLoadingNote, setIsLoadingNote] = useState(Boolean(noteId));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  const [fieldsListHost, setFieldsListHost] = useState<HTMLDivElement | null>(
-    null
-  );
+  const fillerRef = useRef<FormNoteFillerHandle | null>(null);
+
+  const fieldHoverBg = useColorModeValue('paper.50', 'whiteAlpha.50');
+  const fieldFilledBg = useColorModeValue('green.50', 'green.900');
+  const fieldFilledBorder = useColorModeValue('green.200', 'green.700');
+  const reqBadgeBg = useColorModeValue('orange.50', 'whiteAlpha.100');
+  const reqBadgeColor = useColorModeValue('orange.900', 'orange.200');
 
   const {
     isOpen: isConfirmSignOpen,
@@ -679,10 +702,11 @@ const FormNoteForm: React.FC = () => {
 
             <Box px="16px" py="12px" minH="480px">
               <FormNoteFiller
+                ref={fillerRef}
                 formId={selectedFormId}
                 initialValues={formFieldValues}
                 onValuesChange={handleFormValuesChange}
-                fieldsListHost={fieldsListHost}
+                hideFieldsList
               />
             </Box>
 
@@ -789,17 +813,111 @@ const FormNoteForm: React.FC = () => {
                     Cambiar formulario
                   </Button>
                 </Box>
+              </VStack>
+            </SideCard>
+
+            {formFieldValues.length > 0 && (
+              <SideCard heading="Campos del formulario">
                 <Box
-                  ref={setFieldsListHost}
                   maxH={{ base: '42vh', lg: 'min(52vh, 440px)' }}
-                  minH="72px"
                   overflowY="auto"
                   mx={-2}
                   px={2}
-                  pb={1}
-                />
-              </VStack>
-            </SideCard>
+                >
+                  <List spacing={2}>
+                    {formFieldValues.map((field, index) => {
+                      const filled = (field.value ?? '').trim() !== '';
+                      const FieldIcon =
+                        FIELD_TYPE_ICONS[(field.type || 'TEXT').toUpperCase()] ??
+                        FiType;
+                      return (
+                        <ListItem
+                          key={`${field.name}-${index}`}
+                          p="10px 12px"
+                          borderWidth="1px"
+                          borderColor={filled ? fieldFilledBorder : borderColor}
+                          borderRadius="8px"
+                          cursor="pointer"
+                          bg={filled ? fieldFilledBg : cardBg}
+                          _hover={{
+                            bg: filled ? fieldFilledBg : fieldHoverBg,
+                            borderColor: filled
+                              ? fieldFilledBorder
+                              : 'paper.400',
+                          }}
+                          transition="all .12s ease"
+                          onClick={() => fillerRef.current?.openField(index)}
+                        >
+                          <HStack
+                            justify="space-between"
+                            align="start"
+                            spacing={2}
+                          >
+                            <HStack
+                              spacing={2.5}
+                              align="start"
+                              minW={0}
+                              flex={1}
+                            >
+                              <Icon
+                                as={FieldIcon}
+                                color={filled ? 'green.500' : 'paper.500'}
+                                boxSize={3.5}
+                                mt="3px"
+                              />
+                              <Box minW={0}>
+                                <Text
+                                  fontSize="13px"
+                                  fontWeight={500}
+                                  color={headingColor}
+                                  noOfLines={1}
+                                >
+                                  {field.name || 'Sin nombre'}
+                                </Text>
+                                {filled && (
+                                  <Text
+                                    fontSize="11.5px"
+                                    color="green.700"
+                                    noOfLines={1}
+                                  >
+                                    {field.value}
+                                  </Text>
+                                )}
+                              </Box>
+                            </HStack>
+                            <HStack spacing={1.5} flexShrink={0}>
+                              {!filled && field.required ? (
+                                <Text
+                                  as="span"
+                                  fontSize="9px"
+                                  fontWeight={700}
+                                  letterSpacing="0.06em"
+                                  textTransform="uppercase"
+                                  px="6px"
+                                  py="1px"
+                                  borderRadius="full"
+                                  bg={reqBadgeBg}
+                                  color={reqBadgeColor}
+                                >
+                                  Requerido
+                                </Text>
+                              ) : null}
+                              {filled && (
+                                <Icon
+                                  as={FiCheck}
+                                  color="green.500"
+                                  boxSize={3.5}
+                                />
+                              )}
+                            </HStack>
+                          </HStack>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Box>
+              </SideCard>
+            )}
           </VStack>
         </Box>
       )}
