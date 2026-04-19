@@ -158,8 +158,6 @@ const NoteForm: React.FC = () => {
     if (note) {
       const rawContent = note.content || '';
       let isFormNote = false;
-      let parsedFormValues: FormFieldValue[] = [];
-      let restoredFormId: string | null = null;
       try {
         const parsed = JSON.parse(rawContent);
         if (
@@ -170,8 +168,6 @@ const NoteForm: React.FC = () => {
           Array.isArray(parsed.fields)
         ) {
           isFormNote = true;
-          parsedFormValues = parsed.fields;
-          restoredFormId = parsed.formId;
         } else if (
           Array.isArray(parsed) &&
           parsed.length > 0 &&
@@ -179,7 +175,6 @@ const NoteForm: React.FC = () => {
           parsed[0].type
         ) {
           isFormNote = true;
-          parsedFormValues = parsed;
         }
       } catch {
         /* not JSON */
@@ -197,12 +192,10 @@ const NoteForm: React.FC = () => {
       setContent(mergeNoteBodyForEditor(rawContent));
 
       setTitle(note.title);
-      setNoteType(isFormNote ? 'document' : note.type);
+      setNoteType(note.type);
       setSavedTitle(note.title);
-      setSavedContent(
-        isFormNote ? rawContent : mergeNoteBodyForEditor(rawContent)
-      );
-      setSavedType(isFormNote ? 'document' : note.type);
+      setSavedContent(mergeNoteBodyForEditor(rawContent));
+      setSavedType(note.type);
       setCurrentNoteId(note.id);
       setNoteStatus(note.status);
       if (

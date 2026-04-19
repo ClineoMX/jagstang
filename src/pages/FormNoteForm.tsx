@@ -6,7 +6,6 @@ import {
   Container,
   HStack,
   Icon,
-  IconButton,
   Input,
   InputGroup,
   InputLeftElement,
