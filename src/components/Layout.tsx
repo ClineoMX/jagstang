@@ -109,9 +109,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Tokens del menú flotante (alineados con AuthLayout)
   const menuBg = useColorModeValue('white', 'paper.800');
   const menuBorder = useColorModeValue('line.light', 'whiteAlpha.200');
-  const menuLabelColor = useColorModeValue('paper.600', 'paper.500');
+  /** Texto del menú: debe contrastar con `menuBg` (no heredar `sidebar.fg` del padre). */
+  const menuFg = useColorModeValue('ink.700', 'paper.50');
+  const menuLabelColor = useColorModeValue('paper.600', 'paper.400');
   const menuNameColor = useColorModeValue('ink.700', 'paper.50');
   const menuItemHoverBg = useColorModeValue('paper.100', 'whiteAlpha.100');
+  const menuIconColor = useColorModeValue('paper.600', 'paper.400');
 
   const hideNom = (doctor?.role ?? '').toUpperCase() === 'WELLNESS';
   const navItems = [
@@ -221,12 +224,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </MenuButton>
               <MenuList
                 bg={menuBg}
+                color={menuFg}
                 border="1px solid"
                 borderColor={menuBorder}
                 borderRadius="8px"
                 boxShadow="lg"
                 py={2}
                 minW="240px"
+                sx={{
+                  '& .chakra-menu__icon-wrapper': { color: menuIconColor },
+                }}
               >
                 <Box px={3} py={2}>
                   <Text
@@ -256,9 +263,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   icon={<FiUser />}
                   onClick={() => navigate('/profile')}
                   fontSize="13.5px"
+                  color={menuFg}
                   bg={menuBg}
-                  _hover={{ bg: menuItemHoverBg }}
-                  _focus={{ bg: menuItemHoverBg }}
+                  _hover={{ bg: menuItemHoverBg, color: menuFg }}
+                  _focus={{ bg: menuItemHoverBg, color: menuFg }}
                 >
                   Información personal
                 </MenuItem>
@@ -266,9 +274,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   icon={<FiBookOpen />}
                   onClick={() => navigate('/library')}
                   fontSize="13.5px"
+                  color={menuFg}
                   bg={menuBg}
-                  _hover={{ bg: menuItemHoverBg }}
-                  _focus={{ bg: menuItemHoverBg }}
+                  _hover={{ bg: menuItemHoverBg, color: menuFg }}
+                  _focus={{ bg: menuItemHoverBg, color: menuFg }}
                 >
                   Biblioteca
                 </MenuItem>
@@ -277,9 +286,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   icon={<FiLogOut />}
                   onClick={handleLogout}
                   fontSize="13.5px"
+                  color={menuFg}
                   bg={menuBg}
-                  _hover={{ bg: menuItemHoverBg }}
-                  _focus={{ bg: menuItemHoverBg }}
+                  _hover={{ bg: menuItemHoverBg, color: menuFg }}
+                  _focus={{ bg: menuItemHoverBg, color: menuFg }}
                 >
                   Cerrar sesión
                 </MenuItem>
