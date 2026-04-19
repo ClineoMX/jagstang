@@ -93,6 +93,9 @@ const FormNoteForm: React.FC = () => {
   const [isLoadingNote, setIsLoadingNote] = useState(Boolean(noteId));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [fieldsListHost, setFieldsListHost] = useState<HTMLDivElement | null>(
+    null
+  );
 
   const {
     isOpen: isConfirmSignOpen,
@@ -579,7 +582,7 @@ const FormNoteForm: React.FC = () => {
         // ───── Filler view ────────────────────────────────────────────────
         <Box
           display="grid"
-          gridTemplateColumns={{ base: '1fr', lg: '1fr 300px' }}
+          gridTemplateColumns={{ base: '1fr', lg: '1fr 340px' }}
           gap={5}
           alignItems="start"
         >
@@ -679,20 +682,18 @@ const FormNoteForm: React.FC = () => {
                 formId={selectedFormId}
                 initialValues={formFieldValues}
                 onValuesChange={handleFormValuesChange}
+                fieldsListHost={fieldsListHost}
               />
             </Box>
 
             <HStack
-              justify="space-between"
+              justify="flex-end"
               px="18px"
               py="12px"
               borderTop="1px solid"
               borderColor={borderColor}
               bg={paperBg}
             >
-              <Text fontSize="12px" color={labelColor}>
-                Las notas por formulario no se analizan con NOM‑004.
-              </Text>
               <HStack spacing={2}>
                 <Button
                   variant="ghost"
@@ -756,10 +757,10 @@ const FormNoteForm: React.FC = () => {
             </SideCard>
 
             <SideCard heading="Formulario">
-              <VStack align="stretch" spacing={2} fontSize="12.5px">
+              <VStack align="stretch" spacing={3} fontSize="12.5px">
                 <HStack justify="space-between">
                   <Text color={subColor}>Plantilla</Text>
-                  <Text fontWeight={500} noOfLines={1} maxW="60%">
+                  <Text fontWeight={500} noOfLines={1} maxW="58%">
                     {selectedFormName || '—'}
                   </Text>
                 </HStack>
@@ -774,7 +775,7 @@ const FormNoteForm: React.FC = () => {
                     /{formFieldValues.length || '—'}
                   </Text>
                 </HStack>
-                <Box pt={2}>
+                <Box>
                   <Button
                     variant="link"
                     size="xs"
@@ -782,18 +783,22 @@ const FormNoteForm: React.FC = () => {
                     leftIcon={<FiArrowLeft />}
                     onClick={handleChangeForm}
                     isDisabled={isSubmitting}
+                    px={0}
+                    h="auto"
                   >
                     Cambiar formulario
                   </Button>
                 </Box>
+                <Box
+                  ref={setFieldsListHost}
+                  maxH={{ base: '42vh', lg: 'min(52vh, 440px)' }}
+                  minH="72px"
+                  overflowY="auto"
+                  mx={-2}
+                  px={2}
+                  pb={1}
+                />
               </VStack>
-            </SideCard>
-
-            <SideCard heading="Sobre las notas por formulario">
-              <Text fontSize="12.5px" color={subColor} lineHeight="1.55">
-                Generan una nota documental con el PDF llenado como adjunto. No
-                requieren texto libre ni se analizan con NOM‑004.
-              </Text>
             </SideCard>
           </VStack>
         </Box>
