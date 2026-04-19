@@ -186,13 +186,15 @@ const NoteForm: React.FC = () => {
       }
 
       if (isFormNote) {
-        setUseFormMode(true);
-        setContent(rawContent);
-        setFormFieldValues(parsedFormValues);
-        if (restoredFormId) setSelectedFormId(restoredFormId);
-      } else {
-        setContent(mergeNoteBodyForEditor(rawContent));
+        // Las notas por formulario tienen su propio editor dedicado.
+        // Redirigimos para que el usuario vea siempre la misma UI al editarlas.
+        navigate(`/patients/${patientId}/notes/${note.id}/edit-form`, {
+          replace: true,
+        });
+        return;
       }
+
+      setContent(mergeNoteBodyForEditor(rawContent));
 
       setTitle(note.title);
       setNoteType(isFormNote ? 'document' : note.type);
@@ -256,20 +258,23 @@ const NoteForm: React.FC = () => {
         }
 
         followUpLoadedRef.current = true;
+
+        if (isFormNote) {
+          // Las notas por formulario tienen su propio editor; el seguimiento
+          // simplemente abre el selector de formularios para que el usuario
+          // elija de nuevo (los valores de campos suelen requerir actualizarse).
+          void parsedFormValues;
+          void restoredFormId;
+          navigate(`/patients/${patientId}/notes/new-form`, { replace: true });
+          return;
+        }
+
         setTitle(`Seguimiento - ${note.title || 'Nota anterior'}`);
         setNoteStatus('new');
 
-        if (isFormNote) {
-          setUseFormMode(true);
-          setNoteType('document');
-          setContent(rawContent);
-          setFormFieldValues(parsedFormValues);
-          if (restoredFormId) setSelectedFormId(restoredFormId);
-        } else {
-          const noteTypeVal = (note.type || 'evolution') as NoteType;
-          setContent(mergeNoteBodyForEditor(rawContent));
-          setNoteType(noteTypeVal);
-        }
+        const noteTypeVal = (note.type || 'evolution') as NoteType;
+        setContent(mergeNoteBodyForEditor(rawContent));
+        setNoteType(noteTypeVal);
 
         navigate(`/patients/${patientId}/notes/new`, {
           replace: true,
@@ -770,7 +775,6 @@ const NoteForm: React.FC = () => {
                     <option value="exploration">Exploración Física</option>
                   </>
                 )}
-                <option value="form">Usar formulario</option>
               </Select>
               {useFormMode && (
                 <>

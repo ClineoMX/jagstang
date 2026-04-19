@@ -60,9 +60,9 @@ const Login: React.FC = () => {
 
   return (
     <AuthLayout
-      crumbs="Acceso"
+      crumbs=""
       title="Iniciar sesión"
-      sub="Ingresa tus credenciales para acceder a tu expediente."
+      sub=""
       footer={
         <HStack justify="space-between" px={1}>
           <Text fontSize="12px" color={subColor}>

@@ -11,6 +11,7 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  MenuDivider,
   useColorMode,
   useColorModeValue,
   Icon,
@@ -25,7 +26,7 @@ import {
   FiUser,
   FiActivity,
   FiBook,
-  FiFileText,
+  FiBookOpen,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -103,14 +104,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const bgColor = useColorModeValue('paper.100', 'background.dark');
+  const bgColor = useColorModeValue('paper.50', 'background.dark');
+
+  // Tokens del menú flotante (alineados con AuthLayout)
+  const menuBg = useColorModeValue('white', 'paper.800');
+  const menuBorder = useColorModeValue('line.light', 'whiteAlpha.200');
+  const menuLabelColor = useColorModeValue('paper.600', 'paper.500');
+  const menuNameColor = useColorModeValue('ink.700', 'paper.50');
+  const menuItemHoverBg = useColorModeValue('paper.100', 'whiteAlpha.100');
 
   const hideNom = (doctor?.role ?? '').toUpperCase() === 'WELLNESS';
   const navItems = [
     { icon: FiHome, label: 'Home', path: '/' },
     { icon: FiUsers, label: 'Pacientes', path: '/patients' },
     { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
-    { icon: FiFileText, label: 'Formularios', path: '/formularios' },
     { icon: FiBook, label: 'Contactos', path: '/contacts' },
     ...(hideNom
       ? []
@@ -127,11 +134,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return (
       location.pathname === path ||
       (path === '/contacts' && location.pathname.startsWith('/contacts')) ||
-      (path === '/formularios' &&
-        location.pathname.startsWith('/formularios')) ||
       (path === '/patients' && location.pathname.startsWith('/patients'))
     );
   };
+
+  const role = (doctor?.role ?? '').toUpperCase();
 
   return (
     <Flex h="100vh" overflow="hidden">
@@ -191,7 +198,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Tooltip>
 
           {doctor && (
-            <Menu>
+            <Menu placement="right-end" gutter={12}>
               <MenuButton as={Box} cursor="pointer">
                 <Tooltip
                   label={`${doctor.firstName} ${doctor.lastName}`}
@@ -212,15 +219,69 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   />
                 </Tooltip>
               </MenuButton>
-              <MenuList>
+              <MenuList
+                bg={menuBg}
+                border="1px solid"
+                borderColor={menuBorder}
+                borderRadius="8px"
+                boxShadow="lg"
+                py={2}
+                minW="240px"
+              >
+                <Box px={3} py={2}>
+                  <Text
+                    fontSize="13.5px"
+                    fontWeight={600}
+                    color={menuNameColor}
+                    lineHeight="1.3"
+                    noOfLines={1}
+                  >
+                    {doctor.firstName} {doctor.lastName}
+                  </Text>
+                  {role && (
+                    <Text
+                      fontFamily="mono"
+                      fontSize="10.5px"
+                      letterSpacing="0.08em"
+                      textTransform="uppercase"
+                      color={menuLabelColor}
+                      mt={0.5}
+                    >
+                      {role}
+                    </Text>
+                  )}
+                </Box>
+                <MenuDivider borderColor={menuBorder} my={1} />
                 <MenuItem
                   icon={<FiUser />}
                   onClick={() => navigate('/profile')}
+                  fontSize="13.5px"
+                  bg={menuBg}
+                  _hover={{ bg: menuItemHoverBg }}
+                  _focus={{ bg: menuItemHoverBg }}
                 >
-                  Mi Perfil
+                  Información personal
                 </MenuItem>
-                <MenuItem icon={<FiLogOut />} onClick={handleLogout}>
-                  Cerrar Sesión
+                <MenuItem
+                  icon={<FiBookOpen />}
+                  onClick={() => navigate('/library')}
+                  fontSize="13.5px"
+                  bg={menuBg}
+                  _hover={{ bg: menuItemHoverBg }}
+                  _focus={{ bg: menuItemHoverBg }}
+                >
+                  Biblioteca
+                </MenuItem>
+                <MenuDivider borderColor={menuBorder} my={1} />
+                <MenuItem
+                  icon={<FiLogOut />}
+                  onClick={handleLogout}
+                  fontSize="13.5px"
+                  bg={menuBg}
+                  _hover={{ bg: menuItemHoverBg }}
+                  _focus={{ bg: menuItemHoverBg }}
+                >
+                  Cerrar sesión
                 </MenuItem>
               </MenuList>
             </Menu>

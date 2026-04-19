@@ -15,8 +15,14 @@ import PatientDetail from './pages/PatientDetail';
 import PatientForm from './pages/PatientForm';
 import CalendarPage from './pages/Calendar';
 import NoteForm from './pages/NoteForm';
+import FormNoteForm from './pages/FormNoteForm';
 import DoctorProfile from './pages/DoctorProfile';
-import FormulariosPage from './pages/FormulariosPage';
+import Library from './pages/Library';
+import DocumentsList from './pages/library/DocumentsList';
+import TemplatesList from './pages/library/TemplatesList';
+import TemplateEditor from './pages/library/TemplateEditor';
+import FormsList from './pages/library/FormsList';
+import FormEditor from './pages/library/FormEditor';
 import Compliance from './pages/Compliance';
 import ContactList from './pages/ContactList';
 import ContactForm from './pages/ContactForm';
@@ -149,6 +155,26 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/patients/:patientId/notes/new-form"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormNoteForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patients/:patientId/notes/:noteId/edit-form"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormNoteForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/calendar"
         element={
           <ProtectedRoute>
@@ -179,14 +205,63 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/formularios"
+        path="/library"
         element={
           <ProtectedRoute>
             <Layout>
-              <FormulariosPage />
+              <Library />
             </Layout>
           </ProtectedRoute>
         }
+      >
+        <Route index element={<Navigate to="/library/documents" replace />} />
+        <Route path="documents" element={<DocumentsList />} />
+        <Route path="templates" element={<TemplatesList />} />
+        <Route path="forms" element={<FormsList />} />
+      </Route>
+      <Route
+        path="/library/templates/new"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TemplateEditor />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/library/templates/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TemplateEditor />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/library/forms/new"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormEditor />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/library/forms/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormEditor />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/formularios"
+        element={<Navigate to="/library/forms" replace />}
       />
       <Route
         path="/templates/fill"

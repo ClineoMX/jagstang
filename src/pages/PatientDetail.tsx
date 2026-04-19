@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   Box,
+  ButtonGroup,
   Container,
   Heading,
   HStack,
@@ -43,8 +44,11 @@ import {
 } from '@chakra-ui/react';
 import {
   FiCalendar,
+  FiChevronDown,
   FiEdit,
+  FiEdit3,
   FiDownload,
+  FiFileText,
   FiUser,
   FiClipboard,
   FiPhone,
@@ -465,18 +469,53 @@ const PatientDetail: React.FC = () => {
             >
               Nueva cita
             </Button>
-            <Button
-              leftIcon={<FiPlus />}
-              size="sm"
-              h="36px"
-              colorScheme="brand"
-              bg="brand.600"
-              color="white"
-              _hover={{ bg: 'brand.700' }}
-              onClick={() => navigate(`/patients/${patient.id}/notes/new`)}
-            >
-              Nueva nota
-            </Button>
+            <ButtonGroup isAttached size="sm" variant="solid">
+              <Button
+                leftIcon={<FiPlus />}
+                h="36px"
+                bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
+                borderRightRadius={0}
+                onClick={() => navigate(`/patients/${patient.id}/notes/new`)}
+              >
+                Nueva nota
+              </Button>
+              <Menu placement="bottom-end">
+                <MenuButton
+                  as={IconButton}
+                  aria-label="Tipo de nota"
+                  icon={<FiChevronDown />}
+                  h="36px"
+                  minW="32px"
+                  bg="brand.600"
+                  color="white"
+                  _hover={{ bg: 'brand.700' }}
+                  _active={{ bg: 'brand.700' }}
+                  borderLeft="1px solid"
+                  borderColor="brand.700"
+                  borderLeftRadius={0}
+                />
+                <MenuList>
+                  <MenuItem
+                    icon={<FiEdit3 />}
+                    onClick={() =>
+                      navigate(`/patients/${patient.id}/notes/new`)
+                    }
+                  >
+                    Nota de texto
+                  </MenuItem>
+                  <MenuItem
+                    icon={<FiFileText />}
+                    onClick={() =>
+                      navigate(`/patients/${patient.id}/notes/new-form`)
+                    }
+                  >
+                    Formulario
+                  </MenuItem>
+                </MenuList>
+              </Menu>
+            </ButtonGroup>
             <Menu>
               <MenuButton
                 as={IconButton}
