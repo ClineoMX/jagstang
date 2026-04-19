@@ -205,7 +205,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   /** Rail: visible desde `md`; un poco más chico en tablet que en escritorio ancho. */
   const railLogoPx = useBreakpointValue({ md: 10, lg: 12 }) ?? 12;
   /** Header móvil: barra 56px; 24px se ve pesado en teléfonos estrechos. */
-  const mobileHeaderLogoPx = useBreakpointValue({ base: 18, sm: 20 }) ?? 18;
+  const mobileHeaderLogoPx = useBreakpointValue({ base: 18, sm: 24 }) ?? 18;
 
   const userMenu = doctor && (
     <Menu
@@ -351,7 +351,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Flex>
       </Flex>
 
-      {/* Desktop sidebar rail */}
+      {/* Desktop sidebar rail: no estirar con páginas altas (p. ej. Calendario); el pie queda anclado al viewport */}
       <Box
         display={{ base: 'none', md: 'flex' }}
         w="92px"
@@ -361,6 +361,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         pt="18px"
         pb="20px"
         flexShrink={0}
+        alignSelf="flex-start"
+        minH={{ md: '100vh' }}
+        maxH={{ md: '100vh' }}
+        position={{ md: 'sticky' }}
+        top={{ md: 0 }}
+        overflowY={{ md: 'auto' }}
       >
         <Flex h="64px" alignItems="center" justifyContent="center">
           <ClineoLogo variant="icon" color="white" size={railLogoPx} />
