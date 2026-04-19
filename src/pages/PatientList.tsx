@@ -238,6 +238,7 @@ const PatientList: React.FC = () => {
                     fontWeight={500}
                     borderBottom="1px solid"
                     borderColor={borderColor}
+                    minW="180px"
                   >
                     Paciente
                   </Th>

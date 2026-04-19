@@ -71,7 +71,14 @@ const PageHead: React.FC<PageHeadProps> = ({ crumbs, title, sub, actions }) => {
         )}
       </Box>
       {actions && (
-        <HStack spacing={2} align="center" flexShrink={0}>
+        <HStack
+          spacing={2}
+          align="center"
+          flexShrink={0}
+          flexWrap={{ base: 'wrap', md: 'nowrap' }}
+          w={{ base: 'full', md: 'auto' }}
+          justify={{ base: 'flex-start', md: 'flex-end' }}
+        >
           {actions}
         </HStack>
       )}

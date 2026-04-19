@@ -2,6 +2,7 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Container,
+  Flex,
   HStack,
   VStack,
   Text,
@@ -23,6 +24,7 @@ import {
   Avatar,
   useToast,
   useColorModeValue,
+  useBreakpointValue,
   Icon,
   IconButton,
   Tooltip,
@@ -367,6 +369,28 @@ const CalendarPage: React.FC = () => {
     return format(currentDate, 'MMMM yyyy', { locale: es });
   }, [view, currentDate]);
 
+  const shortDateLabel = useMemo(() => {
+    if (view === 'day') return format(currentDate, 'd MMM', { locale: es });
+    if (view === 'week') {
+      const start = startOfWeek(currentDate, { locale: es, weekStartsOn: 1 });
+      const end = addDays(start, 6);
+      return `${format(start, 'd', { locale: es })}–${format(end, 'd MMM', { locale: es })}`;
+    }
+    if (view === 'agenda') {
+      const end = addDays(currentDate, 6);
+      return `${format(currentDate, 'd', { locale: es })}–${format(end, 'd MMM', { locale: es })}`;
+    }
+    return format(currentDate, 'MMM yyyy', { locale: es });
+  }, [view, currentDate]);
+
+  const isMobile = useBreakpointValue({ base: true, md: false }) ?? false;
+
+  useEffect(() => {
+    if (isMobile && (view === 'week' || view === 'month')) {
+      setView('day');
+    }
+  }, [isMobile, view]);
+
   const viewOptions: Array<{ id: ProtoView; label: string }> = [
     { id: 'day', label: 'Día' },
     { id: 'agenda', label: 'Agenda' },
@@ -519,14 +543,17 @@ const CalendarPage: React.FC = () => {
           borderRadius="8px"
           overflow="hidden"
         >
-          <HStack
+          <Flex
             justify="space-between"
-            px="18px"
+            align="center"
+            flexWrap="wrap"
+            gap={3}
+            px={{ base: 3, md: '18px' }}
             py="12px"
             borderBottom="1px solid"
             borderColor={borderColor}
           >
-            <HStack spacing={3}>
+            <HStack spacing={3} minW={0} flex={{ base: '1 1 auto', md: '0 1 auto' }}>
               <Button
                 size="xs"
                 h="30px"
@@ -560,12 +587,24 @@ const CalendarPage: React.FC = () => {
                 />
               </HStack>
               <Text
-                fontSize="15px"
+                fontSize={{ base: '13px', md: '15px' }}
                 fontWeight={600}
                 textTransform="capitalize"
                 ml={1}
+                noOfLines={1}
+                display={{ base: 'none', sm: 'block' }}
               >
                 {longDateLabel}
+              </Text>
+              <Text
+                fontSize="13px"
+                fontWeight={600}
+                textTransform="capitalize"
+                ml={1}
+                noOfLines={1}
+                display={{ base: 'block', sm: 'none' }}
+              >
+                {shortDateLabel}
               </Text>
             </HStack>
             <HStack
@@ -575,9 +614,11 @@ const CalendarPage: React.FC = () => {
               borderRadius="6px"
               overflow="hidden"
               bg={cardBg}
+              flexShrink={0}
             >
               {viewOptions.map((v, i) => {
                 const on = v.id === view;
+                const hideOnMobile = v.id === 'week' || v.id === 'month';
                 return (
                   <Box
                     key={v.id}
@@ -594,13 +635,18 @@ const CalendarPage: React.FC = () => {
                     }
                     borderColor="line.strong"
                     _hover={!on ? { bg: 'paper.200', color: 'paper.900' } : {}}
+                    display={
+                      hideOnMobile
+                        ? { base: 'none', md: 'block' }
+                        : 'block'
+                    }
                   >
                     {v.label}
                   </Box>
                 );
               })}
             </HStack>
-          </HStack>
+          </Flex>
 
           {view === 'day' && (
             <CalendarDayView

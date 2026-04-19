@@ -230,6 +230,7 @@ const Dashboard: React.FC = () => {
               color="paper.800"
               bg={cardBg}
               _hover={{ borderColor: 'paper.600' }}
+              display={{ base: 'none', sm: 'inline-flex' }}
             >
               Buscar
             </Button>
@@ -357,9 +358,12 @@ const Dashboard: React.FC = () => {
                     as="button"
                     onClick={() => navigate(`/patients/${apt.patient_id}`)}
                     display="grid"
-                    gridTemplateColumns="68px 1fr auto"
-                    gap={4}
-                    px={{ base: 4, md: 5 }}
+                    gridTemplateColumns={{
+                      base: '52px 1fr auto',
+                      md: '68px 1fr auto',
+                    }}
+                    gap={{ base: 3, md: 4 }}
+                    px={{ base: 3, md: 5 }}
                     py={3}
                     borderBottom="1px solid"
                     borderColor={borderColor}
@@ -486,9 +490,9 @@ const Dashboard: React.FC = () => {
                         : navigate(`/patients/${note.patient_id}`)
                     }
                     display="grid"
-                    gridTemplateColumns="1fr auto"
-                    gap={4}
-                    px={{ base: 4, md: 5 }}
+                    gridTemplateColumns={{ base: '1fr', sm: '1fr auto' }}
+                    gap={{ base: 2, md: 4 }}
+                    px={{ base: 3, md: 5 }}
                     py={3}
                     borderBottom="1px solid"
                     borderColor={borderColor}
@@ -521,7 +525,11 @@ const Dashboard: React.FC = () => {
                         </Text>
                       )}
                     </Box>
-                    <Text fontSize="12px" color={metaColor}>
+                    <Text
+                      fontSize="12px"
+                      color={metaColor}
+                      display={{ base: 'none', sm: 'block' }}
+                    >
                       Abrir →
                     </Text>
                   </HStack>

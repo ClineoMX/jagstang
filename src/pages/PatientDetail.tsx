@@ -439,21 +439,53 @@ const PatientDetail: React.FC = () => {
         actions={
           <>
             {phone && (
-              <Button
-                as="a"
-                href={`tel:${phone}`}
-                leftIcon={<FiPhone />}
-                variant="outline"
-                size="sm"
-                h="36px"
-                borderColor="line.strong"
-                color="paper.800"
-                bg={cardBg}
-                _hover={{ borderColor: 'paper.600' }}
-              >
-                Llamar
-              </Button>
+              <>
+                <IconButton
+                  as="a"
+                  href={`tel:${phone}`}
+                  aria-label="Llamar"
+                  icon={<FiPhone />}
+                  variant="outline"
+                  size="sm"
+                  h="36px"
+                  borderColor="line.strong"
+                  color="paper.800"
+                  bg={cardBg}
+                  _hover={{ borderColor: 'paper.600' }}
+                  display={{ base: 'inline-flex', md: 'none' }}
+                />
+                <Button
+                  as="a"
+                  href={`tel:${phone}`}
+                  leftIcon={<FiPhone />}
+                  variant="outline"
+                  size="sm"
+                  h="36px"
+                  borderColor="line.strong"
+                  color="paper.800"
+                  bg={cardBg}
+                  _hover={{ borderColor: 'paper.600' }}
+                  display={{ base: 'none', md: 'inline-flex' }}
+                >
+                  Llamar
+                </Button>
+              </>
             )}
+            <IconButton
+              aria-label="Nueva cita"
+              icon={<FiCalendar />}
+              variant="outline"
+              size="sm"
+              h="36px"
+              borderColor="line.strong"
+              color="paper.800"
+              bg={cardBg}
+              onClick={() =>
+                navigate('/calendar', { state: { patientId: patient.id } })
+              }
+              _hover={{ borderColor: 'paper.600' }}
+              display={{ base: 'inline-flex', md: 'none' }}
+            />
             <Button
               leftIcon={<FiCalendar />}
               variant="outline"
@@ -466,6 +498,7 @@ const PatientDetail: React.FC = () => {
                 navigate('/calendar', { state: { patientId: patient.id } })
               }
               _hover={{ borderColor: 'paper.600' }}
+              display={{ base: 'none', md: 'inline-flex' }}
             >
               Nueva cita
             </Button>
@@ -628,7 +661,7 @@ const PatientDetail: React.FC = () => {
                   </Button>
                 </VStack>
               ) : (
-                <SimpleGrid columns={2} spacing={3}>
+                <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3}>
                   {identityFields.map(({ key, label }) => {
                     const value = identity?.[key as keyof PatientIdentity];
                     if (!value) return null;
