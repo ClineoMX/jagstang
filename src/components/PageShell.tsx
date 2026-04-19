@@ -47,8 +47,8 @@ const PageShell: React.FC<PageShellProps> = ({
   return (
     <Box minH="100%" bg={pageBg}>
       <Box
-        borderBottom="1px solid"
-        borderColor={dividerColor}
+        borderBottom={toolbar ? undefined : '1px solid'}
+        borderColor={toolbar ? undefined : dividerColor}
         px={{ base: 5, md: 8 }}
         py={{ base: 6, md: 8 }}
       >
