@@ -109,10 +109,15 @@ interface FormNoteFillerProps {
 
 const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
   ({ formId, initialValues, onValuesChange, hideFieldsList = false }, ref) => {
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const filledFieldBg = useColorModeValue('green.50', 'green.900');
-  const requiredFieldBg = useColorModeValue('yellow.100', 'yellow.900');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'line.dark');
+  const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
+  const mutedColor = useColorModeValue('paper.600', 'paper.400');
+  const fieldRowHoverBg = useColorModeValue('paper.50', 'whiteAlpha.50');
+  const filledFieldBg = 'statusSoft.okBg';
+  const filledFieldBorder = 'statusSoft.okBorder';
+  const filledFieldFg = 'statusSoft.okFg';
+  const requiredFieldBg = 'statusSoft.warnBg';
   const unfilledFieldBg = useColorModeValue('brand.50', 'whiteAlpha.100');
 
   const [fields, setFields] = useState<FormField[]>([]);
@@ -301,7 +306,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
     return (
       <VStack py={12} spacing={3}>
         <Spinner size="xl" colorScheme="brand" thickness="3px" />
-        <Text fontSize="sm" color="gray.500">Cargando formulario…</Text>
+        <Text fontSize="sm" color={mutedColor}>Cargando formulario…</Text>
       </VStack>
     );
   }
@@ -333,7 +338,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
           )}
         </HStack>
       </HStack>
-      <Text fontWeight="semibold" mb={3} fontSize="sm" color="gray.600">
+      <Text fontWeight="semibold" mb={3} fontSize="sm" color={mutedColor}>
         Campos del formulario
       </Text>
       <List spacing={2}>
@@ -345,11 +350,11 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
               key={index}
               p={3}
               borderWidth="1px"
-              borderColor={filled ? 'green.200' : borderColor}
+              borderColor={filled ? filledFieldBorder : borderColor}
               borderRadius="lg"
               cursor="pointer"
               bg={filled ? filledFieldBg : undefined}
-              _hover={{ bg: filled ? filledFieldBg : 'gray.50' }}
+              _hover={{ bg: filled ? filledFieldBg : fieldRowHoverBg }}
               onClick={() => openFieldModal(index)}
               transition="all 0.15s"
             >
@@ -357,7 +362,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
                 <HStack spacing={3} align="start">
                   <Icon
                     as={FieldIcon}
-                    color={filled ? 'green.500' : 'gray.400'}
+                    color={filled ? filledFieldFg : 'paper.500'}
                     mt={0.5}
                   />
                   <Box minW={0}>
@@ -365,7 +370,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
                       {field.name}
                     </Text>
                     {filled && (
-                      <Text fontSize="xs" color="green.600" noOfLines={1}>
+                      <Text fontSize="xs" color={filledFieldFg} noOfLines={1}>
                         {values[String(index)]}
                       </Text>
                     )}
@@ -377,7 +382,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
                       Requerido
                     </Badge>
                   )}
-                  {filled && <Icon as={FiCheck} color="green.500" />}
+                  {filled && <Icon as={FiCheck} color={filledFieldFg} />}
                 </HStack>
               </HStack>
             </ListItem>
@@ -403,7 +408,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
             borderColor={borderColor}
             borderRadius="lg"
             overflow="auto"
-            bg="gray.100"
+            bg={pdfPanelBg}
             h="65vh"
             minH="320px"
             position="relative"
@@ -421,7 +426,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
               >
                 <VStack spacing={4}>
                   <Spinner size="xl" colorScheme="brand" thickness="3px" />
-                  <Text fontSize="sm" color="gray.500">Cargando PDF…</Text>
+                  <Text fontSize="sm" color={mutedColor}>Cargando PDF…</Text>
                 </VStack>
               </Box>
             )}
@@ -479,7 +484,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
                             w={`${pos.width}%`}
                             h={`${pos.height}%`}
                             borderWidth="2px"
-                            borderColor={filled ? 'green.400' : 'brand.400'}
+                            borderColor={filled ? filledFieldBorder : 'brand.400'}
                             bg={bg}
                             opacity={0.9}
                             borderRadius="sm"
@@ -489,10 +494,10 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
                             alignItems="center"
                             justifyContent="center"
                             fontSize="xs"
-                            color={filled ? 'green.700' : 'brand.700'}
+                            color={filled ? filledFieldFg : 'brand.700'}
                             fontWeight="medium"
                             onClick={() => openFieldModal(index)}
-                            _hover={{ opacity: 1, borderColor: filled ? 'green.500' : 'brand.500' }}
+                            _hover={{ opacity: 1, borderColor: filled ? filledFieldFg : 'brand.500' }}
                             transition="all 0.15s"
                             overflow="hidden"
                           >
@@ -502,7 +507,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
                                 position="absolute"
                                 top="1px"
                                 right="1px"
-                                color="green.500"
+                                color={filledFieldFg}
                                 boxSize={3}
                               />
                             )}
@@ -525,7 +530,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
             p={8}
             textAlign="center"
           >
-            <Text color="gray.500">Este formulario no tiene un PDF asociado.</Text>
+            <Text color={mutedColor}>Este formulario no tiene un PDF asociado.</Text>
           </Box>
         )}
 
@@ -540,7 +545,7 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
           <ModalBody pb={4}>
             {activeField && (
               <FormControl>
-                <FormLabel fontSize="sm" color="gray.500">
+                <FormLabel fontSize="sm" color={mutedColor}>
                   {activeField.type.toUpperCase()} {activeField.required && '(requerido)'}
                 </FormLabel>
                 {activeFieldType === 'checkbox' ? (

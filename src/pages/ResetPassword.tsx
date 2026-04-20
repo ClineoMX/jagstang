@@ -149,7 +149,7 @@ const ResetPassword: React.FC = () => {
         emailFromState ? (
           <>
             Te enviamos un código de 6 dígitos a{' '}
-            <Text as="span" fontWeight={600} color="paper.900">
+            <Text as="span" fontWeight={600} color="text.strong">
               {emailFromState}
             </Text>
             .

@@ -58,8 +58,11 @@ const TemplateFillForm: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'line.dark');
+  const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
+  const mutedColor = useColorModeValue('paper.600', 'paper.400');
+  const labelColor = useColorModeValue('paper.500', 'paper.400');
 
   const state = location.state as {
     template?: TemplateItem;
@@ -251,7 +254,7 @@ const TemplateFillForm: React.FC = () => {
               </Button>
               <Heading size="lg">{template.name}</Heading>
               {patientId && patientName && (
-                <Text fontSize="md" color="gray.600">
+                <Text fontSize="md" color={mutedColor}>
                   Formulario para: {patientName}
                 </Text>
               )}
@@ -275,7 +278,7 @@ const TemplateFillForm: React.FC = () => {
             </HStack>
           </HStack>
 
-          <Text color="gray.600">
+          <Text color={mutedColor}>
             Completa los Formulario. Los datos se guardan al enviar (PoC con mock).
           </Text>
 
@@ -291,7 +294,7 @@ const TemplateFillForm: React.FC = () => {
                     ref={containerRef}
                     overflow="auto"
                     maxH="70vh"
-                    bg="gray.100"
+                    bg={pdfPanelBg}
                     borderRadius="lg"
                   >
                     <Document
@@ -300,7 +303,7 @@ const TemplateFillForm: React.FC = () => {
                       loading={
                         <VStack py={12}>
                           <Spinner size="lg" colorScheme="brand" />
-                          <Text fontSize="sm" color="gray.500">Cargando PDF…</Text>
+                          <Text fontSize="sm" color={labelColor}>Cargando PDF…</Text>
                         </VStack>
                       }
                       error={<Text p={4} color="red.500">No se pudo cargar el PDF.</Text>}
@@ -409,7 +412,7 @@ const TemplateFillForm: React.FC = () => {
                 ref={previewContainerRef}
                 overflow="auto"
                 maxH="75vh"
-                bg="gray.100"
+                bg={pdfPanelBg}
                 borderRadius="lg"
                 p={2}
               >
@@ -437,9 +440,9 @@ const TemplateFillForm: React.FC = () => {
                             alignItems="center"
                             justifyContent="flex-start"
                             px={2}
-                            bg="white"
+                            bg="surface.card"
                             borderWidth="1px"
-                            borderColor="gray.200"
+                            borderColor={borderColor}
                             borderRadius="sm"
                           >
                             <Text fontSize="xs" noOfLines={2} fontWeight="medium">
@@ -454,13 +457,13 @@ const TemplateFillForm: React.FC = () => {
             ) : (
               <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
                 <CardBody>
-                  <Text fontSize="sm" color="gray.600" mb={4}>
+                  <Text fontSize="sm" color={mutedColor} mb={4}>
                     Resumen del formulario llenado:
                   </Text>
                   <VStack align="stretch" spacing={3}>
                     {template.fields.map((f) => (
                       <Box key={f.id} borderBottomWidth="1px" borderColor={borderColor} pb={2}>
-                        <Text fontSize="xs" color="gray.500" fontWeight="medium">
+                        <Text fontSize="xs" color={labelColor} fontWeight="medium">
                           {f.name}
                         </Text>
                         <Text fontSize="md">
@@ -493,7 +496,7 @@ const TemplateFillForm: React.FC = () => {
               {lastSubmitted &&
                 template.fields.map((f) => (
                   <Box key={f.id} fontSize="sm">
-                    <Text as="span" fontWeight="semibold" color="gray.600">
+                    <Text as="span" fontWeight="semibold" color={mutedColor}>
                       {f.name}:
                     </Text>{' '}
                     <Text as="span">

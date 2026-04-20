@@ -21,9 +21,10 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
 }) => {
   const pageBg = useColorModeValue('paper.50', 'background.dark');
   const cardBg = useColorModeValue('white', 'paper.800');
-  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
-  const crumbsColor = useColorModeValue('paper.600', 'paper.500');
-  const subColor = useColorModeValue('paper.700', 'paper.400');
+  const borderColor = useColorModeValue('line.light', 'line.dark');
+  const crumbsColor = useColorModeValue('paper.600', 'paper.400');
+  const subColor = useColorModeValue('paper.700', 'paper.300');
+  const mobileLogoColor = useColorModeValue('black', 'white');
   const sideMuted = 'rgba(246,245,241,0.6)';
 
   return (
@@ -105,7 +106,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
             alignItems="center"
             gap={2}
           >
-            <ClineoLogo variant="icon" color="black" size={26} />
+            <ClineoLogo variant="icon" color={mobileLogoColor} size={26} />
             <Text
               fontFamily="mono"
               fontSize="11px"

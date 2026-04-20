@@ -7,7 +7,6 @@ import {
   HStack,
   Heading,
   Text,
-  useColorModeValue,
   Card,
   CardBody,
   SimpleGrid,
@@ -41,16 +40,13 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
   description,
   color,
 }) => {
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-
   return (
     <Card
-      bg={cardBg}
+      bg="surface.card"
       borderRadius="xl"
       boxShadow="sm"
       borderWidth="1px"
-      borderColor={borderColor}
+      borderColor="border.subtle"
       transition="all 0.2s"
       _hover={{
         transform: 'translateY(-4px)',
@@ -63,6 +59,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
           <Box
             bg={`${color}.50`}
             color={`${color}.500`}
+            _dark={{ bg: 'whiteAlpha.100', color: `${color}.300` }}
             p={3}
             borderRadius="lg"
             display="inline-flex"
@@ -72,7 +69,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
           <Heading size="md" fontWeight="semibold">
             {title}
           </Heading>
-          <Text color="gray.600" fontSize="sm" lineHeight="tall">
+          <Text color="text.muted" fontSize="sm" lineHeight="tall">
             {description}
           </Text>
         </VStack>
@@ -83,9 +80,6 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const bgColor = useColorModeValue('background.light', 'background.dark');
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
   const features = [
     {
@@ -140,7 +134,7 @@ const LandingPage: React.FC = () => {
   ];
 
   return (
-    <Box bg={bgColor} minH="100vh">
+    <Box bg="surface.page" minH="100vh">
       {/* Hero Section with Gradient */}
       <Box
         bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
@@ -231,10 +225,10 @@ const LandingPage: React.FC = () => {
       </Box>
 
       {/* Modules Section */}
-      <Box py={16} bg={useColorModeValue('white', 'gray.900')}>
+      <Box py={16} bg="surface.card">
         <Container maxW="container.xl">
           <VStack spacing={8}>
-            <Heading size="lg" textAlign="center" color="gray.700">
+            <Heading size="lg" textAlign="center" color="text.body">
               Plataforma Integral de Gestión Médica
             </Heading>
             <SimpleGrid columns={{ base: 2, md: 4 }} spacing={8} w="full">
@@ -242,14 +236,15 @@ const LandingPage: React.FC = () => {
                 <VStack key={index} spacing={3}>
                   <Box
                     bg="brand.50"
+                    _dark={{ bg: 'whiteAlpha.100' }}
                     p={4}
                     borderRadius="xl"
                     display="inline-flex"
                   >
-                    <Icon as={module.icon} boxSize={8} color="brand.500" />
+                    <Icon as={module.icon} boxSize={8} color="brand.fg" />
                   </Box>
                   <Text
-                    color="gray.700"
+                    color="text.body"
                     fontSize="md"
                     fontWeight="semibold"
                     textAlign="center"
@@ -271,7 +266,7 @@ const LandingPage: React.FC = () => {
               <Heading size="2xl" fontWeight="bold">
                 Todo lo que necesitas en un solo lugar
               </Heading>
-              <Text fontSize="lg" color="gray.600">
+              <Text fontSize="lg" color="text.muted">
                 Herramientas profesionales diseñadas para optimizar tu práctica
                 médica y mejorar la atención a tus pacientes.
               </Text>
@@ -293,10 +288,11 @@ const LandingPage: React.FC = () => {
       {/* Benefits Section */}
       <Box
         py={20}
-        bg={useColorModeValue('brand.50', 'gray.900')}
+        bg="brand.50"
+        _dark={{ bg: 'paper.900' }}
         borderTop="1px"
         borderBottom="1px"
-        borderColor={borderColor}
+        borderColor="border.subtle"
       >
         <Container maxW="container.xl">
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={16}>
@@ -325,17 +321,17 @@ const LandingPage: React.FC = () => {
             </VStack>
 
             <Card
-              bg={cardBg}
+              bg="surface.card"
               borderRadius="2xl"
               boxShadow="xl"
               borderWidth="1px"
-              borderColor={borderColor}
+              borderColor="border.subtle"
             >
               <CardBody p={8}>
                 <VStack spacing={6} align="stretch">
                   <VStack spacing={2} align="start">
                     <Heading size="lg">Comienza hoy mismo</Heading>
-                    <Text color="gray.600" fontSize="sm">
+                    <Text color="text.muted" fontSize="sm">
                       Descubre la solución completa para tu práctica médica.
                     </Text>
                   </VStack>
@@ -350,7 +346,7 @@ const LandingPage: React.FC = () => {
                     </Button>
                     <Text
                       fontSize="xs"
-                      color="gray.500"
+                      color="text.label"
                       textAlign="center"
                       lineHeight="tall"
                     >
@@ -366,7 +362,7 @@ const LandingPage: React.FC = () => {
       </Box>
 
       {/* Footer */}
-      <Box py={12} borderTop="1px" borderColor={borderColor}>
+      <Box py={12} borderTop="1px" borderColor="border.subtle">
         <Container maxW="container.xl">
           <Flex
             direction={{ base: 'column', md: 'row' }}
@@ -380,7 +376,7 @@ const LandingPage: React.FC = () => {
                 Clineo
               </Text>
             </HStack>
-            <Text fontSize="sm" color="gray.600">
+            <Text fontSize="sm" color="text.muted">
               © 2026 Clineo. Sistema de Gestión Médica Profesional.
             </Text>
           </Flex>

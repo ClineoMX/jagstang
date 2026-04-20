@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Box,
   Flex,
-  IconButton,
   VStack,
   Text,
   Avatar,
@@ -12,7 +11,6 @@ import {
   MenuList,
   MenuItem,
   MenuDivider,
-  useColorMode,
   useColorModeValue,
   useBreakpointValue,
   Icon,
@@ -22,8 +20,6 @@ import {
   FiUsers,
   FiCalendar,
   FiLogOut,
-  FiSun,
-  FiMoon,
   FiUser,
   FiActivity,
   FiBook,
@@ -156,14 +152,11 @@ const BottomNavItem: React.FC<BottomNavItemProps> = ({
 };
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { colorMode, toggleColorMode } = useColorMode();
   const { doctor, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const bgColor = useColorModeValue('paper.50', 'background.dark');
-  const topBarBg = useColorModeValue('white', 'paper.800');
-  const topBarBorder = useColorModeValue('line.light', 'whiteAlpha.200');
 
   // Tokens del menú flotante (alineados con AuthLayout)
   const menuBg = useColorModeValue('white', 'paper.800');
@@ -205,7 +198,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   /** Rail: visible desde `md`; un poco más chico en tablet que en escritorio ancho. */
   const railLogoPx = useBreakpointValue({ md: 10, lg: 12 }) ?? 12;
   /** Header móvil: barra 56px; 24px se ve pesado en teléfonos estrechos. */
-  const mobileHeaderLogoPx = useBreakpointValue({ base: 18, sm: 24 }) ?? 18;
+  const mobileHeaderLogoPx = useBreakpointValue({ base: 8 }) ?? 8;
 
   const userMenu = doctor && (
     <Menu
@@ -320,9 +313,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         zIndex={20}
         h="56px"
         px={4}
-        bg={topBarBg}
+        bg="sidebar.bg"
+        color="sidebar.fg"
         borderBottom="1px solid"
-        borderColor={topBarBorder}
+        borderColor="whiteAlpha.100"
         alignItems="center"
         justifyContent="space-between"
         flexShrink={0}
@@ -333,20 +327,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           gap={2}
           onClick={() => navigate('/')}
         >
-          <ClineoLogo
-            variant="icon"
-            color={colorMode === 'light' ? 'black' : 'white'}
-            size={mobileHeaderLogoPx}
-          />
+          <ClineoLogo variant="icon" color="white" size={mobileHeaderLogoPx} />
         </Flex>
         <Flex alignItems="center" gap={1}>
-          <IconButton
-            aria-label="Cambiar tema"
-            icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
-            onClick={toggleColorMode}
-            variant="ghost"
-            size="sm"
-          />
           {userMenu}
         </Flex>
       </Flex>
@@ -400,19 +383,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           borderColor="whiteAlpha.100"
           align="center"
         >
-          <Tooltip label="Cambiar tema" placement="right">
-            <IconButton
-              aria-label="Toggle color mode"
-              icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
-              onClick={toggleColorMode}
-              variant="ghost"
-              color="sidebar.muted"
-              _hover={{ bg: 'whiteAlpha.100', color: 'sidebar.fg' }}
-              borderRadius="md"
-              size="sm"
-            />
-          </Tooltip>
-
           {userMenu}
         </VStack>
       </Box>

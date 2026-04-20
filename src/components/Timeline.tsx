@@ -29,7 +29,7 @@ const FILTERS: Array<{
   { id: 'signed', label: 'Firmadas', dotColor: 'statusSoft.okFg' },
   { id: 'draft', label: 'Borradores', dotColor: 'statusSoft.warnFg' },
   { id: 'event', label: 'Citas', dotColor: 'brand.600' },
-  { id: 'rx', label: 'Recetas', dotColor: 'paper.800' },
+  { id: 'rx', label: 'Recetas', dotColor: 'text.body' },
   { id: 'lab', label: 'Labs', dotColor: 'brand.700' },
 ];
 
@@ -53,11 +53,11 @@ const kindDotColor = (k: TimelineItemKind): string => {
     case 'event':
       return 'brand.600';
     case 'rx':
-      return 'paper.800';
+      return 'text.body';
     case 'lab':
       return 'brand.700';
     default:
-      return 'paper.600';
+      return 'text.muted';
   }
 };
 
@@ -121,13 +121,13 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
               fontSize="11.5px"
               fontWeight={500}
               border="1px solid"
-              borderColor={on ? 'paper.900' : strongLine}
-              bg={on ? 'paper.900' : cardBg}
-              color={on ? 'white' : bodyColor}
+              borderColor={on ? inkStrong : strongLine}
+              bg={on ? inkStrong : cardBg}
+              color={on ? cardBg : bodyColor}
               display="inline-flex"
               alignItems="center"
               gap="5px"
-              _hover={!on ? { color: inkStrong, borderColor: 'paper.600' } : {}}
+              _hover={!on ? { color: inkStrong, borderColor: 'border.strong' } : {}}
             >
               {f.dotColor && (
                 <Box w="6px" h="6px" borderRadius="full" bg={f.dotColor} />
@@ -333,7 +333,7 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
                               py="1px"
                               borderRadius="3px"
                               bg="paper.200"
-                              color="paper.800"
+                              color="text.strong"
                             >
                               {c}
                             </Box>

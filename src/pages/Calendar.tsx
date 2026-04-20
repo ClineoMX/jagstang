@@ -434,7 +434,7 @@ const CalendarPage: React.FC = () => {
               h="36px"
               leftIcon={<FiDownload />}
               borderColor="line.strong"
-              color="paper.800"
+              color="text.strong"
               bg={cardBg}
               isDisabled
               _hover={{ borderColor: 'paper.600' }}
@@ -628,13 +628,13 @@ const CalendarPage: React.FC = () => {
                     py="6px"
                     fontSize="12px"
                     fontWeight={500}
-                    color={on ? 'white' : 'paper.700'}
+                    color={on ? 'white' : 'text.body'}
                     bg={on ? 'brand.600' : 'transparent'}
                     borderRight={
                       i < viewOptions.length - 1 ? '1px solid' : 'none'
                     }
-                    borderColor="line.strong"
-                    _hover={!on ? { bg: 'paper.200', color: 'paper.900' } : {}}
+                    borderColor="border.default"
+                    _hover={!on ? { bg: 'surface.hover', color: 'text.strong' } : {}}
                     display={
                       hideOnMobile
                         ? { base: 'none', md: 'block' }
@@ -678,13 +678,13 @@ const CalendarPage: React.FC = () => {
                   padding: '10px 4px',
                   fontSize: '12px',
                   fontWeight: 600,
-                  color: 'paper.700',
+                  color: 'text.body',
                   borderBottom: '1px solid',
                   borderColor: borderColor,
                   textTransform: 'capitalize',
                 },
                 '& .rbc-today': { backgroundColor: 'statusSoft.infoBg' },
-                '& .rbc-off-range-bg': { backgroundColor: 'paper.100' },
+                '& .rbc-off-range-bg': { backgroundColor: 'surface.hover' },
                 '& .rbc-date-cell': { padding: '6px 8px', fontSize: '12.5px' },
                 '& .rbc-event': { padding: '3px 6px', borderRadius: '4px' },
                 '& .rbc-month-view, & .rbc-time-view': {
@@ -821,7 +821,7 @@ const CalendarPage: React.FC = () => {
                         ? `${patient.firstName} ${patient.lastName}`
                         : `Paciente (${selectedEvent.resource.patient_id.slice(0, 8)}...)`}
                     </Text>
-                    <Text fontSize="sm" color="paper.700">
+                    <Text fontSize="sm" color="text.body">
                       {patient
                         ? 'Click para ver perfil'
                         : 'Paciente no encontrado'}

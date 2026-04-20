@@ -142,7 +142,7 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                       fontFamily="mono"
                       fontSize="13px"
                       fontWeight={500}
-                      color="paper.800"
+                      color="text.strong"
                     >
                       {format(start, 'HH:mm')}
                       <Text
@@ -157,7 +157,7 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                       </Text>
                     </Box>
                     <Box minW={0}>
-                      <Text fontWeight={500} fontSize="14px" color="paper.900">
+                      <Text fontWeight={500} fontSize="14px" color="text.strong">
                         {patientName(apt.patient_id)}
                       </Text>
                       {patientMeta && (

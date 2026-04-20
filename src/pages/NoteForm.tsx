@@ -913,7 +913,7 @@ const NoteForm: React.FC = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                color="paper.700"
+                color="text.body"
                 onClick={() => navigate(`/patients/${patientId}`)}
                 isDisabled={isSubmitting}
               >
@@ -1096,7 +1096,7 @@ const NoteForm: React.FC = () => {
                   <ChakraLink
                     key={n.id}
                     fontSize="12.5px"
-                    color="paper.800"
+                    color="text.strong"
                     _hover={{ color: 'brand.600', textDecoration: 'underline' }}
                     onClick={() =>
                       navigate(`/patients/${patientId}`, {
@@ -1333,7 +1333,7 @@ const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       borderBottomWidth="2px"
       borderRadius="4px"
       bg={cardBg}
-      color="paper.800"
+      color="text.strong"
     >
       {children}
     </Box>

@@ -47,7 +47,7 @@ const STATUS_STYLES: Record<
     border: 'statusSoft.critBorder',
     bar: 'statusSoft.critFg',
     textDecoration: 'line-through',
-    nameColor: 'paper.700',
+    nameColor: 'text.body',
   },
 };
 
@@ -173,7 +173,7 @@ const CalendarDayView: React.FC<CalendarDayViewProps> = ({
               <Text
                 fontSize="12.5px"
                 fontWeight={600}
-                color={s.nameColor ?? 'paper.900'}
+                color={s.nameColor ?? 'text.strong'}
                 textDecoration={s.textDecoration}
                 noOfLines={1}
               >

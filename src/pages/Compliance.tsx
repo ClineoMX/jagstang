@@ -219,15 +219,15 @@ const Compliance: React.FC = () => {
         py="5px"
         borderRadius="999px"
         border="1px solid"
-        borderColor={active ? 'paper.800' : 'line.strong'}
-        bg={active ? 'paper.800' : 'transparent'}
-        color={active ? 'white' : 'paper.700'}
+        borderColor={active ? 'text.strong' : 'border.default'}
+        bg={active ? 'text.strong' : 'transparent'}
+        color={active ? 'surface.card' : 'text.body'}
         fontFamily="mono"
         fontSize="11px"
         letterSpacing="0.06em"
         textTransform="uppercase"
         transition="all .12s"
-        _hover={{ borderColor: active ? 'paper.800' : 'paper.600' }}
+        _hover={{ borderColor: active ? 'text.strong' : 'border.strong' }}
       >
         {label}
         {typeof count === 'number' && (
@@ -251,7 +251,7 @@ const Compliance: React.FC = () => {
             h="36px"
             variant="outline"
             borderColor="line.strong"
-            color="paper.800"
+            color="text.strong"
             bg={cardBg}
             leftIcon={<FiDownload />}
             _hover={{ borderColor: 'paper.600' }}
@@ -448,14 +448,14 @@ const Compliance: React.FC = () => {
                         size="sm"
                         name={fullName}
                         bg="paper.200"
-                        color="paper.800"
+                        color="text.strong"
                         fontWeight={600}
                       />
                       <Box minW={0} textAlign="left">
                         <Text
                           fontWeight={500}
                           fontSize="14px"
-                          color="paper.900"
+                          color="text.strong"
                           noOfLines={1}
                           cursor="pointer"
                           _hover={{ textDecoration: 'underline' }}
@@ -598,7 +598,7 @@ const StatCell: React.FC<StatCellProps> = ({ label, value, sub }) => {
         fontWeight={600}
         letterSpacing="-0.015em"
         lineHeight="1.1"
-        color="paper.900"
+        color="text.strong"
       >
         {value}
       </Text>

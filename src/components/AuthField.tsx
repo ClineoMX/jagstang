@@ -100,7 +100,7 @@ export const PasswordField: React.FC<PasswordFieldProps> = ({
           onClick={() => setShow((v) => !v)}
           variant="ghost"
           size="sm"
-          color="paper.600"
+          color="text.muted"
         />
       }
       {...inputProps}

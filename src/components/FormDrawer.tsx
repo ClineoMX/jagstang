@@ -111,8 +111,8 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
         <DrawerCloseButton
           top="14px"
           right="14px"
-          color="paper.600"
-          _hover={{ color: 'paper.900', bg: 'paper.200' }}
+          color="text.muted"
+          _hover={{ color: 'text.strong', bg: 'surface.hover' }}
         />
         <DrawerHeader
           px={6}
@@ -175,7 +175,7 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
                     size="sm"
                     h="36px"
                     borderColor="line.strong"
-                    color="paper.800"
+                    color="text.strong"
                     bg={cardBg}
                     _hover={{ borderColor: 'paper.600' }}
                     onClick={onClose}

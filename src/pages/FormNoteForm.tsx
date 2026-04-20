@@ -115,10 +115,10 @@ const FormNoteForm: React.FC = () => {
   const fillerRef = useRef<FormNoteFillerHandle | null>(null);
 
   const fieldHoverBg = useColorModeValue('paper.50', 'whiteAlpha.50');
-  const fieldFilledBg = useColorModeValue('green.50', 'green.900');
-  const fieldFilledBorder = useColorModeValue('green.200', 'green.700');
-  const reqBadgeBg = useColorModeValue('orange.50', 'whiteAlpha.100');
-  const reqBadgeColor = useColorModeValue('orange.900', 'orange.200');
+  const fieldFilledBg = 'statusSoft.okBg';
+  const fieldFilledBorder = 'statusSoft.okBorder';
+  const reqBadgeBg = 'statusSoft.warnBg';
+  const reqBadgeColor = 'statusSoft.warnFg';
 
   const {
     isOpen: isConfirmSignOpen,
@@ -468,7 +468,7 @@ const FormNoteForm: React.FC = () => {
               h="36px"
               variant="outline"
               borderColor={softBorder}
-              color="paper.800"
+              color="text.strong"
               leftIcon={<FiPlus />}
               _hover={{ borderColor: 'paper.600', bg: paperBg }}
             >
@@ -691,7 +691,7 @@ const FormNoteForm: React.FC = () => {
                   variant="ghost"
                   size="xs"
                   leftIcon={<FiArrowLeft />}
-                  color="paper.700"
+                  color="text.body"
                   onClick={handleChangeForm}
                   isDisabled={isSubmitting}
                 >
@@ -722,7 +722,7 @@ const FormNoteForm: React.FC = () => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  color="paper.700"
+                  color="text.body"
                   onClick={handleCancel}
                   isDisabled={isSubmitting}
                 >
@@ -861,7 +861,7 @@ const FormNoteForm: React.FC = () => {
                             >
                               <Icon
                                 as={FieldIcon}
-                                color={filled ? 'green.500' : 'paper.500'}
+                                color={filled ? 'statusSoft.okFg' : 'paper.500'}
                                 boxSize={3.5}
                                 mt="3px"
                               />
@@ -877,7 +877,7 @@ const FormNoteForm: React.FC = () => {
                                 {filled && (
                                   <Text
                                     fontSize="11.5px"
-                                    color="green.700"
+                                    color="statusSoft.okFg"
                                     noOfLines={1}
                                   >
                                     {field.value}
@@ -905,7 +905,7 @@ const FormNoteForm: React.FC = () => {
                               {filled && (
                                 <Icon
                                   as={FiCheck}
-                                  color="green.500"
+                                  color="statusSoft.okFg"
                                   boxSize={3.5}
                                 />
                               )}

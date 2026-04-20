@@ -119,7 +119,7 @@ const MiniCalendar: React.FC<MiniCalendarProps> = ({
                   : isSelected
                     ? 'paper.900'
                     : inMonth
-                      ? 'paper.900'
+                      ? 'text.strong'
                       : offColor
               }
               bg={isToday ? todayBg : isSelected ? 'paper.200' : 'transparent'}

@@ -54,7 +54,7 @@ const VitalsBar: React.FC<VitalsBarProps> = ({ items }) => {
             <Text
               fontSize="13px"
               fontWeight={500}
-              color={item.critical ? 'statusSoft.critFg' : 'paper.900'}
+              color={item.critical ? 'statusSoft.critFg' : 'text.strong'}
             >
               {item.value}
             </Text>

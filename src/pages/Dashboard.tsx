@@ -227,7 +227,7 @@ const Dashboard: React.FC = () => {
               size="sm"
               h="36px"
               borderColor="line.strong"
-              color="paper.800"
+              color="text.strong"
               bg={cardBg}
               _hover={{ borderColor: 'paper.600' }}
               display={{ base: 'none', sm: 'inline-flex' }}
@@ -379,7 +379,7 @@ const Dashboard: React.FC = () => {
                       fontFamily="mono"
                       fontSize="13px"
                       fontWeight={500}
-                      color="paper.800"
+                      color="text.strong"
                     >
                       {format(start, 'HH:mm')}
                       <Text
@@ -394,7 +394,7 @@ const Dashboard: React.FC = () => {
                       </Text>
                     </Box>
                     <Box minW={0}>
-                      <Text fontWeight={500} fontSize="14px" color="paper.900">
+                      <Text fontWeight={500} fontSize="14px" color="text.strong">
                         {p ? `${p.firstName} ${p.lastName}` : 'Paciente'}
                         {isNow && (
                           <Text
@@ -506,7 +506,7 @@ const Dashboard: React.FC = () => {
                         <Text
                           fontWeight={500}
                           fontSize="13.5px"
-                          color="paper.900"
+                          color="text.strong"
                           noOfLines={1}
                         >
                           {note.title}

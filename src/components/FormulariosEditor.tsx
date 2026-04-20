@@ -141,12 +141,15 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
   onBack,
 }) => {
   const toast = useToast();
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const dropZoneBg = useColorModeValue('gray.50', 'gray.900');
-  const listItemHoverBg = useColorModeValue('gray.50', 'gray.700');
-  const listItemPlacingBg = useColorModeValue('brand.50', 'whiteAlpha.200');
-  const requiredFieldBg = useColorModeValue('yellow.100', 'yellow.900');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'line.dark');
+  const dropZoneBg = useColorModeValue('paper.50', 'paper.900');
+  const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
+  const listItemHoverBg = useColorModeValue('paper.100', 'whiteAlpha.50');
+  const listItemPlacingBg = useColorModeValue('brand.50', 'whiteAlpha.100');
+  const mutedColor = useColorModeValue('paper.600', 'paper.400');
+  const labelColor = useColorModeValue('paper.500', 'paper.400');
+  const requiredFieldBg = 'statusSoft.warnBg';
 
   const [template, setTemplate] = useState<TemplateItem>(INITIAL_TEMPLATE);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -684,7 +687,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
       {formLoading && (
         <HStack justify="center" py={4}>
           <Spinner size="lg" colorScheme="brand" />
-          <Text color="gray.500">Cargando formulario…</Text>
+          <Text color={mutedColor}>Cargando formulario…</Text>
         </HStack>
       )}
 
@@ -748,7 +751,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                 borderColor={borderColor}
                 borderRadius="lg"
                 overflow="auto"
-                bg="gray.100"
+                bg={pdfPanelBg}
                 h="70vh"
                 minH="320px"
                 onDragOver={handleDragOver}
@@ -761,6 +764,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                     position="absolute"
                     inset={0}
                     bg="brand.50"
+                    _dark={{ bg: 'whiteAlpha.100' }}
                     opacity={0.9}
                     zIndex={10}
                     display="flex"
@@ -790,7 +794,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                   >
                     <VStack spacing={4}>
                       <Spinner size="xl" colorScheme="brand" thickness="3px" />
-                      <Text fontSize="sm" color="gray.500">Cargando PDF…</Text>
+                      <Text fontSize="sm" color={labelColor}>Cargando PDF…</Text>
                     </VStack>
                   </Box>
                 )}
@@ -850,7 +854,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                               h={`${field.position!.height}%`}
                               borderWidth="2px"
                               borderColor="brand.400"
-                              bg={field.required ? requiredFieldBg : 'brand.50'}
+                              bg={field.required ? requiredFieldBg : 'statusSoft.infoBg'}
                               opacity={0.85}
                               borderRadius="sm"
                               pointerEvents="auto"
@@ -913,20 +917,20 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
-                bg={isDragging ? 'brand.50' : dropZoneBg}
+                bg={isDragging ? 'statusSoft.infoBg' : dropZoneBg}
                 transition="all 0.2s"
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
                 <VStack spacing={4}>
-                  <Icon as={isDragging ? FiUpload : FiFileText} boxSize={12} color={isDragging ? 'brand.400' : 'gray.400'} />
-                  <Text color={isDragging ? 'brand.600' : 'gray.500'} textAlign="center" fontWeight={isDragging ? 'medium' : 'normal'}>
+                  <Icon as={isDragging ? FiUpload : FiFileText} boxSize={12} color={isDragging ? 'brand.400' : 'paper.400'} />
+                  <Text color={isDragging ? 'brand.fg' : labelColor} textAlign="center" fontWeight={isDragging ? 'medium' : 'normal'}>
                     {isDragging ? 'Suelta el PDF aquí' : 'Arrastra un PDF aquí'}
                   </Text>
                   {!isDragging && (
                     <>
-                      <Text fontSize="sm" color="gray.400">o</Text>
+                      <Text fontSize="sm" color="paper.400">o</Text>
                       <Button
                         leftIcon={<Icon as={FiUpload} />}
                         size="sm"
@@ -962,13 +966,13 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                 Agregar campo
               </Button>
               </HStack>
-              <Text fontSize="sm" color="gray.500" mb={3}>
+              <Text fontSize="sm" color={labelColor} mb={3}>
                 Define los campos que se completarán sobre el PDF.
               </Text>
             {fieldsLoading ? (
               <VStack py={8} spacing={2}>
                 <Spinner size="md" colorScheme="brand" />
-                <Text fontSize="sm" color="gray.500">Cargando campos…</Text>
+                <Text fontSize="sm" color={labelColor}>Cargando campos…</Text>
               </VStack>
             ) : template.fields.length === 0 ? (
               <Alert status="info" borderRadius="lg">

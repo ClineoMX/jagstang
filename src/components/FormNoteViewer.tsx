@@ -40,8 +40,12 @@ export interface FormNoteViewerHandle {
 const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
   ({ formId, values, title }, ref) => {
   const toast = useToast();
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const filledFieldBg = useColorModeValue('green.50', 'green.900');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
+  const mutedColor = useColorModeValue('paper.600', 'paper.400');
+  const filledFieldBg = 'statusSoft.okBg';
+  const filledFieldFg = 'statusSoft.okFg';
+  const filledFieldBorder = 'statusSoft.okBorder';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -184,7 +188,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
     return (
       <VStack py={12} spacing={3}>
         <Spinner size="xl" colorScheme="brand" thickness="3px" />
-        <Text fontSize="sm" color="gray.500">Cargando documento…</Text>
+        <Text fontSize="sm" color={mutedColor}>Cargando documento…</Text>
       </VStack>
     );
   }
@@ -200,7 +204,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
 
   if (!pdfBlobUrl) {
     return (
-      <Text color="gray.500" py={4}>
+      <Text color={mutedColor} py={4}>
         Este documento no tiene un PDF asociado.
       </Text>
     );
@@ -211,10 +215,10 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
       <Box
       ref={pdfContainerRef}
       borderWidth="1px"
-      borderColor={useColorModeValue('gray.200', 'gray.600')}
+      borderColor={useColorModeValue('line.light', 'line.dark')}
       borderRadius="lg"
       overflow="auto"
-      bg="gray.100"
+      bg={pdfPanelBg}
       maxH="70vh"
       minH="320px"
       position="relative"
@@ -232,7 +236,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
         >
           <VStack spacing={4}>
             <Spinner size="xl" colorScheme="brand" thickness="3px" />
-            <Text fontSize="sm" color="gray.500">Cargando PDF…</Text>
+            <Text fontSize="sm" color={mutedColor}>Cargando PDF…</Text>
           </VStack>
         </Box>
       )}
@@ -285,7 +289,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
                       w={`${pos.width}%`}
                       h={`${pos.height}%`}
                       borderWidth="1px"
-                      borderColor="gray.300"
+                      borderColor={filledFieldBorder}
                       bg={filledFieldBg}
                       opacity={0.95}
                       borderRadius="sm"
@@ -294,7 +298,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
                       alignItems="center"
                       justifyContent="center"
                       fontSize="xs"
-                      color="gray.700"
+                      color={filledFieldFg}
                       fontWeight="medium"
                       overflow="hidden"
                       pointerEvents="none"

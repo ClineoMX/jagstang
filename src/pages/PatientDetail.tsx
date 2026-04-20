@@ -105,10 +105,10 @@ const PatientDetail: React.FC = () => {
   const subColor = useColorModeValue('paper.700', 'paper.400');
   const inkStrong = useColorModeValue('paper.900', 'paper.50');
   const previewBodyBg = useColorModeValue('paper.50', 'paper.900');
-  const consentGrantedBg = useColorModeValue('green.50', 'green.900');
-  const consentGrantedBorder = useColorModeValue('green.300', 'green.700');
-  const consentGrantedText = useColorModeValue('green.700', 'green.300');
-  const descriptionColor = useColorModeValue('gray.600', 'gray.400');
+  const consentGrantedBg = 'statusSoft.okBg';
+  const consentGrantedBorder = 'statusSoft.okBorder';
+  const consentGrantedText = 'statusSoft.okFg';
+  const descriptionColor = useColorModeValue('paper.600', 'paper.300');
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedNote, setSelectedNote] = useState<any>(null);
@@ -449,7 +449,7 @@ const PatientDetail: React.FC = () => {
                   size="sm"
                   h="36px"
                   borderColor="line.strong"
-                  color="paper.800"
+                  color="text.strong"
                   bg={cardBg}
                   _hover={{ borderColor: 'paper.600' }}
                   display={{ base: 'inline-flex', md: 'none' }}
@@ -462,7 +462,7 @@ const PatientDetail: React.FC = () => {
                   size="sm"
                   h="36px"
                   borderColor="line.strong"
-                  color="paper.800"
+                  color="text.strong"
                   bg={cardBg}
                   _hover={{ borderColor: 'paper.600' }}
                   display={{ base: 'none', md: 'inline-flex' }}
@@ -478,7 +478,7 @@ const PatientDetail: React.FC = () => {
               size="sm"
               h="36px"
               borderColor="line.strong"
-              color="paper.800"
+              color="text.strong"
               bg={cardBg}
               onClick={() =>
                 navigate('/calendar', { state: { patientId: patient.id } })
@@ -492,7 +492,7 @@ const PatientDetail: React.FC = () => {
               size="sm"
               h="36px"
               borderColor="line.strong"
-              color="paper.800"
+              color="text.strong"
               bg={cardBg}
               onClick={() =>
                 navigate('/calendar', { state: { patientId: patient.id } })
@@ -839,8 +839,8 @@ const PatientDetail: React.FC = () => {
           <ModalCloseButton
             top="14px"
             right="14px"
-            color="paper.600"
-            _hover={{ color: 'paper.900', bg: 'paper.200' }}
+            color="text.muted"
+            _hover={{ color: 'text.strong', bg: 'surface.hover' }}
           />
           <ModalHeader
             px={7}
@@ -1059,7 +1059,7 @@ const PatientDetail: React.FC = () => {
                 size="sm"
                 h="36px"
                 borderColor="line.strong"
-                color="paper.800"
+                color="text.strong"
                 bg={cardBg}
                 _hover={{ borderColor: 'paper.600' }}
                 onClick={onClose}
@@ -1074,7 +1074,7 @@ const PatientDetail: React.FC = () => {
                     variant="outline"
                     leftIcon={<FiEdit />}
                     borderColor="line.strong"
-                    color="paper.800"
+                    color="text.strong"
                     bg={cardBg}
                     _hover={{ borderColor: 'paper.600' }}
                     onClick={() => {
@@ -1095,7 +1095,7 @@ const PatientDetail: React.FC = () => {
                       variant="outline"
                       leftIcon={<FiDownload />}
                       borderColor="line.strong"
-                      color="paper.800"
+                      color="text.strong"
                       bg={cardBg}
                       _hover={{ borderColor: 'paper.600' }}
                       onClick={async () => {
