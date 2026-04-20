@@ -204,9 +204,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <Menu
       placement="bottom-end"
       gutter={8}
-      // En desktop el menú se posiciona a la derecha del avatar del sidebar
-      // y en mobile cae desde el header. Chakra no soporta placement responsive
-      // directamente, pero `bottom-end` funciona razonablemente en ambos.
+      // `absolute` (default de Popper) queda dentro del rail con `overflowY: auto`
+      // y el `MenuList` se recorta al ancho del sidebar; `fixed` evita ese clip.
+      strategy="fixed"
     >
       <MenuButton as={Box} cursor="pointer">
         <Tooltip
