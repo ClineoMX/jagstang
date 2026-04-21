@@ -41,6 +41,14 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverHeader,
+  PopoverBody,
+  PopoverArrow,
+  PopoverCloseButton,
+  Portal,
 } from '@chakra-ui/react';
 import {
   FiCalendar,
@@ -83,6 +91,7 @@ import PhoneNumberField, {
 import { useAuth } from '../contexts/AuthContext';
 import PageHead from '../components/PageHead';
 import VitalsBar from '../components/VitalsBar';
+import { usePatientVitals } from '../hooks/usePatientVitals';
 import Timeline, { type TimelineItem } from '../components/Timeline';
 import FormDrawer from '../components/FormDrawer';
 import StatusBadge from '../components/StatusBadge';
@@ -134,6 +143,7 @@ const PatientDetail: React.FC = () => {
     error: identityError,
     saveIdentity,
   } = usePatientIdentity(id);
+  const { vitals } = usePatientVitals(id);
 
   const {
     isOpen: isConsentModalOpen,
@@ -596,11 +606,45 @@ const PatientDetail: React.FC = () => {
 
       <VitalsBar
         items={[
-          { label: 'Alergias', value: 'No registradas' },
-          { label: 'Crónicas', value: '—' },
-          { label: 'Medicamentos', value: '—' },
-          { label: 'Tipo sangre', value: patient.bloodType || '—' },
-          { label: 'NOM %', value: '94%' },
+          {
+            label: 'Alergias',
+            value: (
+              <VitalsPopperValue
+                title="Alergias"
+                emptyLabel="No registradas"
+                items={vitals?.allergies || []}
+              />
+            ),
+          },
+          {
+            label: 'Crónicas',
+            value: (
+              <VitalsPopperValue
+                title="Condiciones crónicas"
+                emptyLabel="—"
+                items={vitals?.chronicConditions || []}
+              />
+            ),
+          },
+          {
+            label: 'Medicamentos',
+            value: (
+              <VitalsPopperValue
+                title="Medicamentos actuales"
+                emptyLabel="—"
+                items={vitals?.medications || []}
+              />
+            ),
+          },
+          {
+            label: 'Tipo sangre',
+            value: vitals?.bloodType || patient.bloodType || '—',
+          },
+          {
+            label: 'NOM %',
+            value:
+              typeof vitals?.nomPercent === 'number' ? `${vitals.nomPercent}%` : '94%',
+          },
         ]}
       />
 
@@ -1501,6 +1545,82 @@ const PatientDetail: React.FC = () => {
         />
       )}
     </Container>
+  );
+};
+
+function summarizeList(items: string[], emptyLabel: string) {
+  if (!items.length) return emptyLabel;
+  const shown = items.slice(0, 2);
+  const rest = items.length - shown.length;
+  return rest > 0 ? `${shown.join(', ')} +${rest}` : shown.join(', ');
+}
+
+const VitalsPopperValue: React.FC<{
+  title: string;
+  items: string[];
+  emptyLabel: string;
+}> = ({ title, items, emptyLabel }) => {
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+
+  const summary = summarizeList(items, emptyLabel);
+  const isEmpty = !items.length;
+
+  return (
+    <Popover placement="bottom-start" strategy="fixed">
+      <PopoverTrigger>
+        <HStack
+          as="button"
+          type="button"
+          spacing={1}
+          align="center"
+          cursor="pointer"
+          _hover={{ textDecoration: 'underline' }}
+          color={isEmpty ? labelColor : 'text.strong'}
+        >
+          <Text as="span" fontSize="13px" fontWeight={500}>
+            {summary}
+          </Text>
+          <Icon as={FiChevronDown} boxSize="14px" opacity={0.85} />
+        </HStack>
+      </PopoverTrigger>
+      <Portal>
+        <PopoverContent
+          bg={cardBg}
+          borderColor={borderColor}
+          borderRadius="10px"
+          boxShadow="0 12px 32px rgba(20,22,27,.16)"
+          w="320px"
+          _focusVisible={{ boxShadow: '0 12px 32px rgba(20,22,27,.16)' }}
+        >
+          <PopoverArrow bg={cardBg} />
+          <PopoverCloseButton />
+          <PopoverHeader
+            fontWeight={600}
+            fontSize="13px"
+            borderColor={borderColor}
+          >
+            {title}
+          </PopoverHeader>
+          <PopoverBody pt={3} pb={4}>
+            {!items.length ? (
+              <Text fontSize="13px" color={labelColor}>
+                {emptyLabel}
+              </Text>
+            ) : (
+              <VStack align="stretch" spacing={2}>
+                {items.map((item, idx) => (
+                  <Text key={`${item}-${idx}`} fontSize="13px" fontWeight={500}>
+                    {item}
+                  </Text>
+                ))}
+              </VStack>
+            )}
+          </PopoverBody>
+        </PopoverContent>
+      </Portal>
+    </Popover>
   );
 };
 

@@ -234,6 +234,22 @@ class ApiService {
     });
   }
 
+  // ============ PATIENT VITALS (summary) ============
+
+  /**
+   * Patient clinical quick-summary for UI strips/poppers.
+   * Assumed endpoint: GET /patients/<patient_id>/vitals/
+   */
+  async getPatientVitals(patientId: string) {
+    return this.request<{
+      allergies?: string[] | null;
+      chronic_conditions?: string[] | null;
+      medications?: string[] | null;
+      blood_type?: string | null;
+      nom_percent?: number | null;
+    }>(`/patients/${patientId}/vitals/`);
+  }
+
   // ============ CONTACTS ============
 
   /**
