@@ -81,8 +81,9 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
   initialFocusRef,
 }) => {
   const cardBg = useColorModeValue('white', 'paper.800');
-  const bodyBg = useColorModeValue('paper.50', 'paper.900');
-  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  /** Match warm page background (prototype paper), not cool `paper.50`. */
+  const bodyBg = useColorModeValue('surface.page', 'paper.900');
+  const borderColor = useColorModeValue('border.subtle', 'whiteAlpha.200');
   const crumbColor = useColorModeValue('paper.600', 'paper.500');
   const subColor = useColorModeValue('paper.700', 'paper.400');
 
@@ -174,10 +175,10 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
                     variant="outline"
                     size="sm"
                     h="36px"
-                    borderColor="line.strong"
+                    borderColor="border.default"
                     color="text.strong"
                     bg={cardBg}
-                    _hover={{ borderColor: 'paper.600' }}
+                    _hover={{ borderColor: 'border.strong' }}
                     onClick={onClose}
                     isDisabled={isSubmitting}
                   >

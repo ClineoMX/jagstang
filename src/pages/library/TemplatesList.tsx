@@ -60,7 +60,10 @@ const TemplatesList: React.FC = () => {
   const helpColor = useColorModeValue('paper.700', 'paper.400');
   const labelColor = useColorModeValue('paper.600', 'paper.500');
   const titleColor = useColorModeValue('ink.700', 'paper.50');
-  const dividerColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const dividerColor = useColorModeValue('border.subtle', 'whiteAlpha.200');
+  const drawerCardBg = useColorModeValue('white', 'paper.800');
+  const drawerBodyBg = useColorModeValue('surface.page', 'paper.900');
+  const drawerBorder = useColorModeValue('border.subtle', 'whiteAlpha.200');
 
   const {
     isOpen: isPreviewOpen,
@@ -221,10 +224,18 @@ const TemplatesList: React.FC = () => {
         onClose={onPreviewClose}
         size="md"
       >
-        <DrawerOverlay />
-        <DrawerContent>
+        <DrawerOverlay bg="blackAlpha.400" />
+        <DrawerContent
+          bg={drawerCardBg}
+          borderLeft="1px solid"
+          borderColor={drawerBorder}
+        >
           <DrawerCloseButton />
-          <DrawerHeader>
+          <DrawerHeader
+            borderBottom="1px solid"
+            borderColor={drawerBorder}
+            pb={4}
+          >
             <VStack align="start" spacing={1}>
               <Text
                 fontFamily="mono"
@@ -240,7 +251,7 @@ const TemplatesList: React.FC = () => {
               </Text>
             </VStack>
           </DrawerHeader>
-          <DrawerBody>
+          <DrawerBody bg={drawerBodyBg} py={5}>
             <Box
               sx={{
                 '& h1': { fontSize: 'xl', fontWeight: 'bold', mb: 4 },
