@@ -284,12 +284,19 @@ const PatientDetail: React.FC = () => {
     );
   }
 
-  const age = patient.dateOfBirth
-    ? Math.max(
-        0,
-        new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()
-      )
-    : null;
+  const birthdate = identity?.birthdate || patient.dateOfBirth;
+  const age = (() => {
+    if (!birthdate) return null;
+    const dob = new Date(birthdate);
+    if (isNaN(dob.getTime())) return null;
+    const now = new Date();
+    let years = now.getFullYear() - dob.getFullYear();
+    const hadBirthdayThisYear =
+      now.getMonth() > dob.getMonth() ||
+      (now.getMonth() === dob.getMonth() && now.getDate() >= dob.getDate());
+    if (!hadBirthdayThisYear) years -= 1;
+    return Math.max(0, years);
+  })();
 
   const handleOpenIdentityForm = () => {
     if (identity) {
@@ -423,15 +430,17 @@ const PatientDetail: React.FC = () => {
         sub={
           <>
             {age !== null ? `${age} años` : 'Edad no registrada'}
-            {patient.gender
-              ? ` · ${
-                  patient.gender === 'male'
-                    ? 'Hombre'
-                    : patient.gender === 'female'
-                      ? 'Mujer'
-                      : 'Otro'
-                }`
-              : ''}
+            {(() => {
+              const gender = patient.gender || identity?.gender;
+              if (!gender) return '';
+              return ` · ${
+                gender === 'male'
+                  ? 'Hombre'
+                  : gender === 'female'
+                    ? 'Mujer'
+                    : 'Otro'
+              }`;
+            })()}
             {` · Expediente #${patient.id.slice(0, 8).toUpperCase()}`}
           </>
         }
