@@ -55,7 +55,6 @@ import {
   FiPlus,
   FiMoreVertical,
 } from 'react-icons/fi';
-import { MdVerified } from 'react-icons/md';
 import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -732,21 +731,9 @@ const PatientDetail: React.FC = () => {
                   </VStack>
                 ) : (
                   <VStack align="stretch" spacing={3}>
-                    <HStack spacing={2}>
-                      <Text
-                        fontSize="13px"
-                        fontWeight={600}
-                        flex={1}
-                        noOfLines={1}
-                      >
-                        {interrogatoryNote.title}
-                      </Text>
-                      {interrogatoryNote.status === 'signed' ? (
-                        <Icon as={MdVerified} color="statusSoft.okFg" />
-                      ) : (
-                        <Icon as={FiEdit} color="statusSoft.warnFg" />
-                      )}
-                    </HStack>
+                    <Text fontSize="13px" fontWeight={600} noOfLines={1}>
+                      {interrogatoryNote.title}
+                    </Text>
                     {interrogatoryNote.createdAt && (
                       <Text fontSize="11.5px" color={labelColor}>
                         {format(
