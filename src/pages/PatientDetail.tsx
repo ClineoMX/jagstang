@@ -441,7 +441,8 @@ const PatientDetail: React.FC = () => {
                     : 'Otro'
               }`;
             })()}
-            {` · Expediente #${patient.id.slice(0, 8).toUpperCase()}`}
+            <br />
+            {`Expediente #${patient.id.slice(0, 8).toUpperCase()}`}
           </>
         }
         actions={
