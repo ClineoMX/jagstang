@@ -1548,8 +1548,8 @@ const PatientDetail: React.FC = () => {
   );
 };
 
-function summarizeList(items: string[], emptyLabel: string) {
-  if (!items.length) return emptyLabel;
+function summarizeList(items: string[]) {
+  if (!items.length) return '';
   const shown = items.slice(0, 2);
   const rest = items.length - shown.length;
   return rest > 0 ? `${shown.join(', ')} +${rest}` : shown.join(', ');
@@ -1564,7 +1564,7 @@ const VitalsPopperValue: React.FC<{
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
   const labelColor = useColorModeValue('paper.600', 'paper.500');
 
-  const summary = summarizeList(items, emptyLabel);
+  const summary = summarizeList(items);
   const isEmpty = !items.length;
 
   return (
@@ -1576,12 +1576,15 @@ const VitalsPopperValue: React.FC<{
           spacing={1}
           align="center"
           cursor="pointer"
-          _hover={{ textDecoration: 'underline' }}
-          color={isEmpty ? labelColor : 'text.strong'}
+          _hover={{ textDecoration: isEmpty ? 'none' : 'underline' }}
+          color={isEmpty ? 'text.strong' : 'text.strong'}
+          minH="18px"
         >
-          <Text as="span" fontSize="13px" fontWeight={500}>
-            {summary}
-          </Text>
+          {!isEmpty && (
+            <Text as="span" fontSize="13px" fontWeight={500}>
+              {summary}
+            </Text>
+          )}
           <Icon as={FiChevronDown} boxSize="14px" opacity={0.85} />
         </HStack>
       </PopoverTrigger>

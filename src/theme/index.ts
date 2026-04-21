@@ -192,7 +192,9 @@ const theme = extendTheme({
   semanticTokens: {
     colors: {
       // Surfaces ─────────────────────────────────────────────────────────────
-      'surface.page': { default: 'paper.50', _dark: 'paper.900' },
+      // Prototype uses a warmer paper (#f6f5f1). Keep the neutral-cool `paper.*`
+      // ramp for text, but restore the warm light-mode page background.
+      'surface.page': { default: '#f6f5f1', _dark: 'paper.900' },
       'surface.card': { default: 'white', _dark: 'paper.800' },
       'surface.raised': { default: 'paper.100', _dark: 'paper.700' },
       'surface.sunken': { default: 'paper.100', _dark: '#050608' },
