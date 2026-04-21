@@ -200,8 +200,9 @@ const theme = extendTheme({
       'surface.card': { default: 'white', _dark: 'paper.800' },
       'surface.raised': { default: 'paper.100', _dark: 'paper.700' },
       'surface.sunken': { default: 'paper.100', _dark: '#050608' },
-      // Table header background (prototype: --paper-2 #eeece5)
-      'surface.tableHeader': { default: '#eeece5', _dark: 'paper.800' },
+      // Table header background — slightly lighter than prototype `--paper-2`
+      // to keep tables feeling airy on the warm page background.
+      'surface.tableHeader': { default: '#f2f0ea', _dark: 'paper.800' },
       'surface.hover': { default: 'paper.100', _dark: 'whiteAlpha.50' },
       'surface.activeHover': { default: 'paper.200', _dark: 'whiteAlpha.100' },
 
