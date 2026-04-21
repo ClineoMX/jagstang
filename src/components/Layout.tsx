@@ -156,7 +156,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const bgColor = useColorModeValue('paper.50', 'background.dark');
+  const bgColor = useColorModeValue('surface.page', 'background.dark');
 
   // Tokens del menú flotante (alineados con AuthLayout)
   const menuBg = useColorModeValue('white', 'paper.800');

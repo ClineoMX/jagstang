@@ -19,7 +19,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   children,
   footer,
 }) => {
-  const pageBg = useColorModeValue('paper.50', 'background.dark');
+  const pageBg = useColorModeValue('surface.page', 'background.dark');
   const cardBg = useColorModeValue('white', 'paper.800');
   const borderColor = useColorModeValue('line.light', 'line.dark');
   const crumbsColor = useColorModeValue('paper.600', 'paper.400');

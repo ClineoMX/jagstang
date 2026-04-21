@@ -38,7 +38,7 @@ const PageShell: React.FC<PageShellProps> = ({
   children,
   maxW = 'container.xl',
 }) => {
-  const pageBg = useColorModeValue('paper.50', 'background.dark');
+  const pageBg = useColorModeValue('surface.page', 'background.dark');
   const crumbsColor = useColorModeValue('paper.600', 'paper.500');
   const subColor = useColorModeValue('paper.700', 'paper.400');
   const headingColor = useColorModeValue('ink.700', 'paper.50');
