@@ -29,12 +29,7 @@ import {
   Avatar,
   Link as ChakraLink,
 } from '@chakra-ui/react';
-import {
-  FiX,
-  FiCheckCircle,
-  FiAlertCircle,
-  FiMoreHorizontal,
-} from 'react-icons/fi';
+import { FiX, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -48,7 +43,6 @@ import { useNotes } from '../hooks/useNotes';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import PageHead from '../components/PageHead';
-import StatusBadge from '../components/StatusBadge';
 import {
   mergeNoteBodyForEditor,
   serializeNoteBodyForApi,
@@ -679,48 +673,13 @@ const NoteForm: React.FC = () => {
           borderRadius="8px"
           overflow="hidden"
         >
-          <HStack
-            justify="space-between"
-            px="18px"
-            py="12px"
-            borderBottom="1px solid"
-            borderColor={borderColor}
-          >
-            <HStack spacing={3} fontSize="12px" color={subColor}>
-              <StatusBadge tone={isDraft ? 'draft' : 'info'}>
-                {isDraft ? 'Borrador' : 'Nueva'}
-              </StatusBadge>
-              <Box w="1px" h="14px" bg={softBorder} />
-              <Text>
-                {patient.firstName} {patient.lastName}
-              </Text>
-            </HStack>
-            <HStack spacing={2} color={subColor}>
-              <HStack
-                spacing={2}
-                fontFamily="mono"
-                fontSize="11.5px"
-                color="statusSoft.okFg"
-              >
-                <Box w="6px" h="6px" borderRadius="full" bg="statusSoft.okFg" />
-                <Text>{saveStateLabel}</Text>
-              </HStack>
-              <IconButton
-                aria-label="Opciones"
-                icon={<FiMoreHorizontal />}
-                size="xs"
-                variant="ghost"
-              />
-            </HStack>
-          </HStack>
-
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Título de la nota"
             variant="unstyled"
             px="24px"
-            pt="18px"
+            pt="22px"
             pb="4px"
             fontSize="22px"
             fontWeight={600}
@@ -935,8 +894,16 @@ const NoteForm: React.FC = () => {
           </HStack>
         </Box>
 
-        {/* Side panel */}
-        <VStack spacing="14px" align="stretch">
+        {/* Side panel — sticky en escritorio: acompaña el scroll del editor */}
+        <VStack
+          spacing="14px"
+          align="stretch"
+          position={{ base: 'static', lg: 'sticky' }}
+          top={{ lg: '20px' }}
+          alignSelf={{ lg: 'flex-start' }}
+          maxH={{ lg: 'calc(100vh - 40px)' }}
+          overflowY={{ lg: 'auto' }}
+        >
           <SideCard heading="Paciente">
             <HStack spacing={3} align="center">
               <Avatar
