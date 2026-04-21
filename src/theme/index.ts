@@ -130,8 +130,10 @@ const colors = {
   },
 
   line: {
-    light: '#dde0e6', // soft divider on light bg
-    strong: '#c2c5cd', // emphasis border on light bg
+    // Light mode borders/dividers should match the warm prototype paper lines.
+    // Prototype: --line #e4e1d8, --line-2 #d3cfc2
+    light: '#e4e1d8', // soft divider on warm light bg
+    strong: '#d3cfc2', // emphasis border on warm light bg
     dark: '#2a2c33', // soft divider on dark bg
     darkStrong: '#3d4047', // emphasis border on dark bg
   },
