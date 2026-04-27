@@ -17,17 +17,10 @@ import {
   Divider,
   IconButton,
   useToast,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
   useDisclosure,
   Tooltip,
   Icon,
   Checkbox,
-  ModalFooter,
   FormControl,
   FormLabel,
   Input,
@@ -1264,236 +1257,305 @@ const PatientDetail: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      <Modal
+      <FormDrawer
         isOpen={isConsentsListModalOpen}
         onClose={onConsentsListModalClose}
-        size="2xl"
-        scrollBehavior="inside"
+        crumb={`Pacientes · ${patient.firstName} ${patient.lastName}`}
+        title="Consentimientos de clínica"
+        sub="Vista de solo lectura. Solo el paciente puede modificar sus consentimientos."
+        size="lg"
+        hideDefaultActions
+        bodyFillHeight
       >
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="md">Consentimientos de clínica</Heading>
-            <Text fontSize="sm" color={subColor} fontWeight="normal" mt={2}>
-              Vista de solo lectura. Solo el paciente puede modificar sus
-              consentimientos.
-            </Text>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            {consentsLoading ? (
-              <HStack justify="center" py={8}>
-                <Spinner size="lg" colorScheme="brand" />
-                <Text>Cargando consentimientos...</Text>
-              </HStack>
-            ) : consentsError ? (
-              <Alert status="error" borderRadius="md">
-                <AlertIcon />
-                <VStack align="start" spacing={0}>
-                  <AlertTitle>Error al cargar consentimientos</AlertTitle>
-                  <AlertDescription>{consentsError}</AlertDescription>
-                </VStack>
-              </Alert>
-            ) : patientConsents.length === 0 ? (
-              <Text color={subColor} py={4}>
-                No hay consentimientos registrados para este paciente.
+        <VStack spacing={4} align="stretch" flex={1} minH={0} w="full">
+          {consentsLoading ? (
+            <HStack justify="center" py={8}>
+              <Spinner size="lg" colorScheme="brand" />
+              <Text fontSize="sm" color={subColor}>
+                Cargando consentimientos…
               </Text>
-            ) : (
-              <VStack spacing={4} align="stretch">
-                {patientConsents.map((consent) => {
-                  const isGranted = consent.isGranted && !consent.isRevoked;
-                  return (
-                    <Card
-                      key={consent.id}
-                      variant="outline"
-                      borderWidth="2px"
-                      borderColor={
-                        isGranted ? consentGrantedBorder : borderColor
-                      }
-                      bg={isGranted ? consentGrantedBg : 'transparent'}
-                    >
-                      <CardBody>
-                        <HStack spacing={4} align="start">
-                          <Checkbox
-                            size="lg"
-                            colorScheme="green"
-                            isChecked={isGranted}
-                            isDisabled
-                            pointerEvents="none"
-                          />
-                          <VStack
-                            align="start"
-                            spacing={1}
-                            flex={1}
-                            cursor="pointer"
-                            onClick={() => handleConsentClick(consent)}
-                          >
-                            <HStack>
-                              <Text fontWeight="bold">
-                                {getConsentTypeLabel(consent.consentType)}
-                              </Text>
-                              {isGranted ? (
-                                <Badge colorScheme="green" fontSize="xs">
-                                  Otorgado
-                                </Badge>
-                              ) : consent.isRevoked ? (
-                                <Badge colorScheme="red" fontSize="xs">
-                                  Revocado
-                                </Badge>
-                              ) : (
-                                <Badge colorScheme="gray" fontSize="xs">
-                                  No otorgado
-                                </Badge>
-                              )}
-                            </HStack>
-                            {getConsentTypeDescription(consent.consentType) && (
-                              <Text fontSize="sm" color={descriptionColor}>
-                                {getConsentTypeDescription(consent.consentType)}
-                              </Text>
-                            )}
-                            {consent.grantedAt && (
-                              <Text
-                                fontSize="xs"
-                                color={consentGrantedText}
-                                fontWeight="medium"
-                              >
-                                Otorgado el{' '}
-                                {format(
-                                  new Date(consent.grantedAt),
-                                  "d 'de' MMMM, yyyy 'a las' HH:mm",
-                                  { locale: es }
-                                )}
-                              </Text>
-                            )}
-                            {consent.expiresAt && (
-                              <Text fontSize="xs" color={subColor}>
-                                Expira:{' '}
-                                {format(
-                                  new Date(consent.expiresAt),
-                                  "d 'de' MMM yyyy",
-                                  { locale: es }
-                                )}
-                              </Text>
-                            )}
-                          </VStack>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleConsentClick(consent)}
-                          >
-                            Ver detalles
-                          </Button>
-                        </HStack>
-                      </CardBody>
-                    </Card>
-                  );
-                })}
+            </HStack>
+          ) : consentsError ? (
+            <Alert status="error" borderRadius="md">
+              <AlertIcon />
+              <VStack align="start" spacing={0}>
+                <AlertTitle>Error al cargar consentimientos</AlertTitle>
+                <AlertDescription>{consentsError}</AlertDescription>
               </VStack>
-            )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+            </Alert>
+          ) : patientConsents.length === 0 ? (
+            <Text fontSize="sm" color={subColor} py={2}>
+              No hay consentimientos registrados para este paciente.
+            </Text>
+          ) : (
+            <VStack spacing={3} align="stretch" flex={1} minH={0} w="full">
+              {patientConsents.map((consent) => {
+                const isGranted = consent.isGranted && !consent.isRevoked;
+                const statusLabel = isGranted
+                  ? 'Otorgado'
+                  : consent.isRevoked
+                    ? 'Revocado'
+                    : 'No otorgado';
+                const statusTone = isGranted
+                  ? 'green'
+                  : consent.isRevoked
+                    ? 'red'
+                    : 'gray';
 
-      <Modal
+                return (
+                  <Box
+                    key={consent.id}
+                    bg={isGranted ? consentGrantedBg : cardBg}
+                    border="1px solid"
+                    borderColor={isGranted ? consentGrantedBorder : borderColor}
+                    borderRadius="10px"
+                    px={4}
+                    py={4}
+                    cursor="pointer"
+                    _hover={{ borderColor: isGranted ? consentGrantedBorder : 'paper.600' }}
+                    onClick={() => handleConsentClick(consent)}
+                  >
+                    <HStack align="start" spacing={4}>
+                      <Checkbox
+                        size="lg"
+                        colorScheme="green"
+                        isChecked={isGranted}
+                        isDisabled
+                        pointerEvents="none"
+                        mt="2px"
+                      />
+                      <Box flex={1} minW={0}>
+                        <HStack spacing={2} align="center" mb={1}>
+                          <Text fontWeight={600} fontSize="14px" noOfLines={1}>
+                            {getConsentTypeLabel(consent.consentType)}
+                          </Text>
+                          <Badge
+                            colorScheme={statusTone}
+                            fontSize="10px"
+                            letterSpacing="0.06em"
+                            textTransform="uppercase"
+                          >
+                            {statusLabel}
+                          </Badge>
+                        </HStack>
+
+                        {getConsentTypeDescription(consent.consentType) ? (
+                          <Text
+                            fontSize="13px"
+                            color={descriptionColor}
+                            lineHeight="1.45"
+                            noOfLines={3}
+                          >
+                            {getConsentTypeDescription(consent.consentType)}
+                          </Text>
+                        ) : null}
+
+                        {consent.grantedAt ? (
+                          <Text
+                            fontSize="12px"
+                            color={isGranted ? consentGrantedText : subColor}
+                            fontWeight={isGranted ? 600 : 500}
+                            mt={2.5}
+                          >
+                            Otorgado el{' '}
+                            {format(
+                              new Date(consent.grantedAt),
+                              "d 'de' MMMM, yyyy 'a las' HH:mm",
+                              { locale: es }
+                            )}
+                          </Text>
+                        ) : null}
+
+                        {consent.expiresAt ? (
+                          <Text fontSize="12px" color={subColor} mt={0.5}>
+                            Expira:{' '}
+                            {format(
+                              new Date(consent.expiresAt),
+                              "d 'de' MMM yyyy",
+                              { locale: es }
+                            )}
+                          </Text>
+                        ) : null}
+                      </Box>
+
+                      <Button
+                        size="sm"
+                        h="34px"
+                        variant="ghost"
+                        color="text.strong"
+                        _hover={{ bg: 'blackAlpha.50' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleConsentClick(consent);
+                        }}
+                        flexShrink={0}
+                      >
+                        Ver detalles
+                      </Button>
+                    </HStack>
+                  </Box>
+                );
+              })}
+            </VStack>
+          )}
+        </VStack>
+      </FormDrawer>
+
+      <FormDrawer
         isOpen={isConsentModalOpen}
         onClose={onConsentModalClose}
-        size="lg"
-        scrollBehavior="inside"
+        crumb={`Pacientes · ${patient.firstName} ${patient.lastName}`}
+        title={
+          selectedConsent
+            ? getConsentTypeLabel(selectedConsent.consentType)
+            : 'Detalle de consentimiento'
+        }
+        sub={
+          selectedConsent
+            ? getConsentTypeDescription(selectedConsent.consentType)
+            : undefined
+        }
+        size="md"
+        hideDefaultActions
       >
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            <VStack align="start" spacing={2}>
-              <HStack>
-                <Text>
-                  {selectedConsent
-                    ? getConsentTypeLabel(selectedConsent.consentType)
-                    : 'Detalle de consentimiento'}
-                </Text>
-                {selectedConsent &&
-                  (selectedConsent.isGranted && !selectedConsent.isRevoked ? (
-                    <Badge colorScheme="green" fontSize="sm">
-                      Otorgado
-                    </Badge>
-                  ) : selectedConsent.isRevoked ? (
-                    <Badge colorScheme="red" fontSize="sm">
-                      Revocado
-                    </Badge>
-                  ) : (
-                    <Badge colorScheme="gray" fontSize="sm">
-                      No otorgado
-                    </Badge>
-                  ))}
-              </HStack>
-            </VStack>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            {selectedConsent && (
-              <VStack align="stretch" spacing={4}>
-                {getConsentTypeDescription(selectedConsent.consentType) && (
-                  <Text fontSize="sm" color={descriptionColor}>
-                    {getConsentTypeDescription(selectedConsent.consentType)}
+        {selectedConsent ? (
+          <VStack align="stretch" spacing={4}>
+            <HStack spacing={2} align="center">
+              {selectedConsent.isGranted && !selectedConsent.isRevoked ? (
+                <Badge
+                  colorScheme="green"
+                  fontSize="10px"
+                  letterSpacing="0.06em"
+                  textTransform="uppercase"
+                >
+                  Otorgado
+                </Badge>
+              ) : selectedConsent.isRevoked ? (
+                <Badge
+                  colorScheme="red"
+                  fontSize="10px"
+                  letterSpacing="0.06em"
+                  textTransform="uppercase"
+                >
+                  Revocado
+                </Badge>
+              ) : (
+                <Badge
+                  colorScheme="gray"
+                  fontSize="10px"
+                  letterSpacing="0.06em"
+                  textTransform="uppercase"
+                >
+                  No otorgado
+                </Badge>
+              )}
+            </HStack>
+
+            <Box
+              bg={cardBg}
+              border="1px solid"
+              borderColor={borderColor}
+              borderRadius="10px"
+              px={4}
+              py={4}
+            >
+              <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4}>
+                <VStack align="start" spacing={0}>
+                  <Text
+                    fontSize="11px"
+                    fontFamily="mono"
+                    letterSpacing="0.08em"
+                    textTransform="uppercase"
+                    color={labelColor}
+                    fontWeight={500}
+                  >
+                    Otorgado el
                   </Text>
-                )}
-                <HStack justify="space-between" wrap="wrap" gap={2}>
+                  <Text
+                    fontSize="13.5px"
+                    fontWeight={600}
+                    color="text.strong"
+                    mt={1}
+                  >
+                    {selectedConsent.grantedAt
+                      ? format(
+                          new Date(selectedConsent.grantedAt),
+                          "d 'de' MMMM, yyyy 'a las' HH:mm",
+                          { locale: es }
+                        )
+                      : '—'}
+                  </Text>
+                </VStack>
+
+                {selectedConsent.expiresAt ? (
                   <VStack align="start" spacing={0}>
-                    <Text fontSize="xs" color={labelColor}>
-                      Otorgado el
+                    <Text
+                      fontSize="11px"
+                      fontFamily="mono"
+                      letterSpacing="0.08em"
+                      textTransform="uppercase"
+                      color={labelColor}
+                      fontWeight={500}
+                    >
+                      Expira
                     </Text>
-                    <Text fontWeight="medium">
-                      {selectedConsent.grantedAt
-                        ? format(
-                            new Date(selectedConsent.grantedAt),
-                            "d 'de' MMMM, yyyy 'a las' HH:mm",
-                            { locale: es }
-                          )
-                        : '—'}
+                    <Text
+                      fontSize="13.5px"
+                      fontWeight={600}
+                      color="text.strong"
+                      mt={1}
+                    >
+                      {format(
+                        new Date(selectedConsent.expiresAt),
+                        "d 'de' MMM yyyy",
+                        { locale: es }
+                      )}
                     </Text>
                   </VStack>
-                  {selectedConsent.expiresAt && (
-                    <VStack align="start" spacing={0}>
-                      <Text fontSize="xs" color={labelColor}>
-                        Expira
-                      </Text>
-                      <Text fontWeight="medium">
-                        {format(
-                          new Date(selectedConsent.expiresAt),
-                          "d 'de' MMM yyyy",
-                          { locale: es }
-                        )}
-                      </Text>
-                    </VStack>
-                  )}
-                  {selectedConsent.revokedAt && (
-                    <VStack align="start" spacing={0}>
-                      <Text fontSize="xs" color={labelColor}>
-                        Revocado el
-                      </Text>
-                      <Text fontWeight="medium" color="red.600">
-                        {format(
-                          new Date(selectedConsent.revokedAt),
-                          "d 'de' MMM yyyy",
-                          { locale: es }
-                        )}
-                      </Text>
-                    </VStack>
-                  )}
-                </HStack>
-                <Divider />
-                <Text fontSize="xs" color={subColor}>
-                  ID: {selectedConsent.id}
-                </Text>
-              </VStack>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" onClick={onConsentModalClose}>
-              Cerrar
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+                ) : null}
+
+                {selectedConsent.revokedAt ? (
+                  <VStack align="start" spacing={0}>
+                    <Text
+                      fontSize="11px"
+                      fontFamily="mono"
+                      letterSpacing="0.08em"
+                      textTransform="uppercase"
+                      color={labelColor}
+                      fontWeight={500}
+                    >
+                      Revocado el
+                    </Text>
+                    <Text fontSize="13.5px" fontWeight={700} color="red.600" mt={1}>
+                      {format(
+                        new Date(selectedConsent.revokedAt),
+                        "d 'de' MMM yyyy",
+                        { locale: es }
+                      )}
+                    </Text>
+                  </VStack>
+                ) : null}
+              </SimpleGrid>
+
+              <Divider my={4} borderColor={borderColor} />
+              <Text fontSize="12px" color={subColor} fontFamily="mono">
+                ID: {selectedConsent.id}
+              </Text>
+            </Box>
+
+            <HStack justify="flex-end">
+              <Button
+                variant="outline"
+                size="sm"
+                h="36px"
+                onClick={onConsentModalClose}
+              >
+                Cerrar
+              </Button>
+            </HStack>
+          </VStack>
+        ) : null}
+      </FormDrawer>
 
       {canShowSummary && (
         <FormDrawer

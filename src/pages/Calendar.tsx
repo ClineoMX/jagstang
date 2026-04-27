@@ -58,6 +58,7 @@ import CalendarAgendaView from '../components/CalendarAgendaView';
 import StatusBadge from '../components/StatusBadge';
 import FormDrawer from '../components/FormDrawer';
 import type { ApiAppointment } from '../types';
+import { normalizePatientSlug } from '../utils/patientSlug';
 
 const locales = { es };
 
@@ -171,6 +172,8 @@ const CalendarPage: React.FC = () => {
   const cardBg = useColorModeValue('white', 'paper.800');
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
   const mutedColor = useColorModeValue('paper.700', 'paper.400');
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  const subtleCardBg = useColorModeValue('paper.50', 'paper.800');
 
   const patientsMap = useMemo(
     () => Object.fromEntries(patients.map((p) => [p.id, p])),
@@ -786,9 +789,9 @@ const CalendarPage: React.FC = () => {
         {selectedEvent ? (
           <VStack align="stretch" spacing={4} flex={1} minH={0}>
             <Box
-              bg="paper.50"
+              bg={subtleCardBg}
               border="1px solid"
-              borderColor="line.light"
+              borderColor={borderColor}
               borderRadius="8px"
               overflow="hidden"
             >
@@ -796,7 +799,7 @@ const CalendarPage: React.FC = () => {
                 px={4}
                 py={3}
                 borderBottom="1px solid"
-                borderColor="line.light"
+                borderColor={borderColor}
                 justify="space-between"
                 align="center"
               >
@@ -805,7 +808,7 @@ const CalendarPage: React.FC = () => {
                   fontSize="10.5px"
                   letterSpacing="0.08em"
                   textTransform="uppercase"
-                  color="paper.600"
+                  color={labelColor}
                   fontWeight={500}
                 >
                   Paciente
@@ -842,14 +845,14 @@ const CalendarPage: React.FC = () => {
                     <Text
                       fontFamily="mono"
                       fontSize="10.5px"
-                      color="paper.600"
+                      color={labelColor}
                       letterSpacing="0.04em"
                       mt="1px"
                     >
-                      #{patient.slug.toUpperCase()}
+                      {normalizePatientSlug(patient.slug).toUpperCase()}
                     </Text>
                   ) : (
-                    <Text fontSize="11.5px" color="paper.600" mt="1px">
+                    <Text fontSize="11.5px" color={labelColor} mt="1px">
                       Paciente no encontrado
                     </Text>
                   )}
@@ -861,11 +864,11 @@ const CalendarPage: React.FC = () => {
                   borderColor="line.strong"
                   color="text.strong"
                   fontWeight={500}
-                  bg="white"
-                  isDisabled={!patient?.slug?.trim()}
+                  bg={cardBg}
+                  isDisabled={!normalizePatientSlug(patient?.slug)}
                   onClick={() => {
-                    if (patient?.slug?.trim())
-                      navigate(`/patients/${patient.slug}`);
+                    const slug = normalizePatientSlug(patient?.slug);
+                    if (slug) navigate(`/patients/${slug}`);
                     onClose();
                   }}
                 >
@@ -875,9 +878,9 @@ const CalendarPage: React.FC = () => {
             </Box>
 
             <Box
-              bg="white"
+              bg={cardBg}
               border="1px solid"
-              borderColor="line.light"
+              borderColor={borderColor}
               borderRadius="8px"
               overflow="hidden"
             >
@@ -885,14 +888,14 @@ const CalendarPage: React.FC = () => {
                 px={4}
                 py={3}
                 borderBottom="1px solid"
-                borderColor="line.light"
+                borderColor={borderColor}
               >
                 <Text
                   fontFamily="mono"
                   fontSize="10.5px"
                   letterSpacing="0.08em"
                   textTransform="uppercase"
-                  color="paper.600"
+                  color={labelColor}
                   fontWeight={500}
                 >
                   Detalles
@@ -928,14 +931,14 @@ const CalendarPage: React.FC = () => {
                     px={4}
                     py={3}
                     borderBottom={idx < arr.length - 1 ? '1px solid' : 'none'}
-                    borderColor="line.light"
+                    borderColor={borderColor}
                   >
                     <Text
                       fontFamily="mono"
                       fontSize="10.5px"
                       letterSpacing="0.06em"
                       textTransform="uppercase"
-                      color="paper.600"
+                      color={labelColor}
                       fontWeight={500}
                     >
                       {row.label}
@@ -997,7 +1000,7 @@ const CalendarPage: React.FC = () => {
                   h="36px"
                   borderColor="line.strong"
                   color="text.strong"
-                  bg="white"
+                  bg={cardBg}
                   onClick={onClose}
                 >
                   Cerrar
