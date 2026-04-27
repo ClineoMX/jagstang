@@ -22,14 +22,19 @@ function inferFileType(mime: string, name: string): AttachmentType {
 /**
  * Maps API note `attachments` array (snake_case or camelCase) to our Attachment type.
  */
-export function mapApiAttachments(raw: unknown): Attachment[] | undefined {
+export function mapApiAttachments(
+  raw: unknown,
+  ctx?: { patientId?: string; noteId?: string }
+): Attachment[] | undefined {
   if (!Array.isArray(raw) || raw.length === 0) return undefined;
   const out: Attachment[] = [];
   for (const item of raw) {
     if (!item || typeof item !== 'object') continue;
     const o = item as Record<string, unknown>;
-    const url = String(o.url ?? o.file_url ?? o.download_url ?? '').trim();
-    const id = String(o.id ?? o.uuid ?? (url ? `url-${url.slice(-24)}` : ''));
+    // Notes attachments no longer provide a direct URL. Downloads must go through:
+    //   GET /patients/<patient_id>/assets/<asset_id>/
+    // so we preserve the asset id and ignore any `url` field.
+    const id = String(o.asset_id ?? o.assetId ?? o.id ?? o.uuid ?? '').trim();
     const fileName = String(
       o.fileName ?? o.file_name ?? o.filename ?? 'archivo'
     ).trim();
@@ -41,9 +46,11 @@ export function mapApiAttachments(raw: unknown): Attachment[] | undefined {
       o.uploadedAt ?? o.uploaded_at ?? o.created_at ?? new Date().toISOString()
     );
     const uploadedBy = String(o.uploadedBy ?? o.uploaded_by ?? '');
-    const patientId = o.patientId != null ? String(o.patientId) : undefined;
-    const noteId = o.noteId != null ? String(o.noteId) : undefined;
-    if (!url && !fileName) continue;
+    const patientId =
+      ctx?.patientId ??
+      (o.patientId != null ? String(o.patientId) : undefined);
+    const noteId = ctx?.noteId ?? (o.noteId != null ? String(o.noteId) : undefined);
+    if (!id && !fileName) continue;
     const rawType = (o.fileType ?? o.file_type) as string | undefined;
     const allowed: AttachmentType[] = [
       'image',
@@ -64,12 +71,12 @@ export function mapApiAttachments(raw: unknown): Attachment[] | undefined {
         : inferFileType(mimeType, fileName);
 
     out.push({
-      id: id || `att-${out.length}`,
+      id: id || `asset-${out.length}`,
       fileName: fileName || 'archivo',
       fileSize,
       fileType,
       mimeType: mimeType || 'application/octet-stream',
-      url: url || '#',
+      url: '',
       uploadedAt,
       uploadedBy,
       patientId,

@@ -3,7 +3,7 @@ import { Box, HStack, Text, useColorModeValue } from '@chakra-ui/react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-export type TimelineItemKind = 'signed' | 'draft' | 'event' | 'rx' | 'lab';
+export type TimelineItemKind = 'signed' | 'draft' | 'event';
 
 export interface TimelineItem {
   id: string;
@@ -29,8 +29,6 @@ const FILTERS: Array<{
   { id: 'signed', label: 'Firmadas', dotColor: 'statusSoft.okFg' },
   { id: 'draft', label: 'Borradores', dotColor: 'statusSoft.warnFg' },
   { id: 'event', label: 'Citas', dotColor: 'brand.600' },
-  { id: 'rx', label: 'Recetas', dotColor: 'text.body' },
-  { id: 'lab', label: 'Labs', dotColor: 'brand.700' },
 ];
 
 const kindLabel = (k: TimelineItemKind) =>
@@ -38,11 +36,7 @@ const kindLabel = (k: TimelineItemKind) =>
     ? 'Nota firmada'
     : k === 'draft'
       ? 'Nota en borrador'
-      : k === 'event'
-        ? 'Cita'
-        : k === 'rx'
-          ? 'Receta'
-          : 'Laboratorio';
+      : 'Cita';
 
 const kindDotColor = (k: TimelineItemKind): string => {
   switch (k) {
@@ -52,10 +46,6 @@ const kindDotColor = (k: TimelineItemKind): string => {
       return 'statusSoft.warnFg';
     case 'event':
       return 'brand.600';
-    case 'rx':
-      return 'text.body';
-    case 'lab':
-      return 'brand.700';
     default:
       return 'text.muted';
   }

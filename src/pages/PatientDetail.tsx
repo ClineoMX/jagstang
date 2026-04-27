@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Box,
   ButtonGroup,
@@ -41,14 +41,6 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverHeader,
-  PopoverBody,
-  PopoverArrow,
-  PopoverCloseButton,
-  Portal,
 } from '@chakra-ui/react';
 import {
   FiCalendar,
@@ -63,10 +55,11 @@ import {
   FiPlus,
   FiMoreVertical,
 } from 'react-icons/fi';
-import { useNavigate, useParams } from 'react-router-dom';
+import { FaWandMagicSparkles } from 'react-icons/fa6';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { usePatient } from '../hooks/usePatients';
+import { usePatient, usePatients } from '../hooks/usePatients';
 import { useNotes } from '../hooks/useNotes';
 import { useAppointments } from '../hooks/useAppointments';
 import {
@@ -90,19 +83,24 @@ import PhoneNumberField, {
 } from '../components/PhoneNumberField';
 import { useAuth } from '../contexts/AuthContext';
 import PageHead from '../components/PageHead';
-import VitalsBar from '../components/VitalsBar';
+import PatientClinicalVitalsBar from '../components/PatientClinicalVitalsBar';
 import { usePatientVitals } from '../hooks/usePatientVitals';
 import Timeline, { type TimelineItem } from '../components/Timeline';
 import FormDrawer from '../components/FormDrawer';
 import StatusBadge from '../components/StatusBadge';
 import NoteAttachmentsList from '../components/NoteAttachmentsList';
 import { mergeNoteBodyForEditor } from '../utils/noteReceta';
-import { getMockTimelineForPatient } from '../data/timelineMockData';
 import InterrogationFormDrawer from '../components/InterrogationFormDrawer';
+import PatientFormModal from '../components/PatientFormModal';
+import { usePatientNotesSummary } from '../hooks/usePatientNotesSummary';
+import StreamingMarkdown from '../components/StreamingMarkdown';
+import SummaryLoadingSkeleton from '../components/SummaryLoadingSkeleton';
+import type { Patient } from '../types';
 
 const PatientDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { patientSlug } = useParams<{ patientSlug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const { doctor } = useAuth();
   const isWellness = (doctor?.role ?? '').toUpperCase() === 'WELLNESS';
@@ -117,33 +115,89 @@ const PatientDetail: React.FC = () => {
   const consentGrantedBorder = 'statusSoft.okBorder';
   const consentGrantedText = 'statusSoft.okFg';
   const descriptionColor = useColorModeValue('paper.600', 'paper.300');
+  /** Alinea divisores entre columnas (icono + título vs solo título) y con el borde 1px del card. */
+  const cardSectionHeaderMinH = '48px';
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedNote, setSelectedNote] = useState<any>(null);
   const formNoteViewerRef = React.useRef<FormNoteViewerHandle>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  const { patients, loading: patientsLoading } = usePatients();
+  const patientId = useMemo(() => {
+    const raw = (patientSlug ?? '').trim().replace(/^#/, '');
+    if (!raw) return undefined;
+    const match = patients.find((p: Patient) => p.slug === raw || p.id === raw);
+    if (match?.id) return match.id;
+    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      raw
+    );
+    return looksLikeUuid ? raw : undefined;
+  }, [patients, patientSlug]);
+
   const {
     patient,
-    profile,
     loading: patientLoading,
     error: patientError,
-  } = usePatient(id);
-  const { notes, loading: notesLoading, createNote } = useNotes(id);
+    refetch: refetchPatient,
+  } = usePatient(patientId);
+  const { notes, loading: notesLoading, createNote } = useNotes(patientId);
   const { appointments } = useAppointments();
   const {
     consents: patientConsents,
     loading: consentsLoading,
     error: consentsError,
-  } = usePatientConsents(id);
+  } = usePatientConsents(patientId);
   const {
     identity,
     exists: identityExists,
     loading: identityLoading,
     error: identityError,
     saveIdentity,
-  } = usePatientIdentity(id);
-  const { vitals } = usePatientVitals(id);
+  } = usePatientIdentity(patientId);
+  const {
+    vitals,
+    saving: vitalsSaving,
+    error: vitalsError,
+    addAllergy,
+    removeAllergy,
+    addChronicCondition,
+    removeChronicCondition,
+    addMedication,
+    removeMedication,
+    setBloodType,
+  } = usePatientVitals(patientId);
+
+  const notesSummary = usePatientNotesSummary(patientId);
+
+  const patientPathBase = useMemo(() => {
+    const slug = patient?.slug ?? patientSlug?.replace(/^#/, '') ?? patientId;
+    return slug ? `/patients/${slug}` : '/patients';
+  }, [patient?.slug, patientSlug, patientId]);
+
+  // If user landed on /patients/{id}, replace URL with /patients/{slug} once available.
+  useEffect(() => {
+    const slug = patient?.slug?.trim();
+    const raw = (patientSlug ?? '').trim().replace(/^#/, '');
+    if (!slug || !raw || raw === slug) return;
+    if (location.pathname.startsWith(`/patients/${raw}`)) {
+      navigate(location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`), {
+        replace: true,
+        state: location.state,
+      });
+    }
+  }, [location.pathname, location.state, navigate, patient?.slug, patientSlug]);
+
+  const {
+    isOpen: isSummaryDrawerOpen,
+    onOpen: onSummaryDrawerOpen,
+    onClose: onSummaryDrawerClose,
+  } = useDisclosure();
+
+  const handleOpenSummaryDrawer = useCallback(() => {
+    onSummaryDrawerOpen();
+    void notesSummary.start();
+  }, [onSummaryDrawerOpen, notesSummary.start]);
 
   const {
     isOpen: isConsentModalOpen,
@@ -171,6 +225,12 @@ const PatientDetail: React.FC = () => {
     onClose: onInterrogationDrawerClose,
   } = useDisclosure();
 
+  const {
+    isOpen: isPatientEditOpen,
+    onOpen: onPatientEditOpen,
+    onClose: onPatientEditClose,
+  } = useDisclosure();
+
   const [identityForm, setIdentityForm] = useState<Record<string, string>>({});
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
   const [emergencyPhone, setEmergencyPhone] = useState({
@@ -182,6 +242,9 @@ const PatientDetail: React.FC = () => {
     () => notes.find((n) => n.type === 'interrogation'),
     [notes]
   );
+  const hasInitialInterrogation = !!interrogatoryNote;
+  const hasAtLeastOneExtraNote = notes.length > (hasInitialInterrogation ? 1 : 0);
+  const canShowSummary = hasInitialInterrogation && hasAtLeastOneExtraNote;
 
   const stripHtml = (html: string): string => {
     const withBreaks = html
@@ -203,7 +266,7 @@ const PatientDetail: React.FC = () => {
   };
 
   const timelineItems: TimelineItem[] = useMemo(() => {
-    if (!id) return [];
+    if (!patientId) return [];
     const fromNotes: TimelineItem[] = notes.map((n) => ({
       id: `note-${n.id}`,
       kind: n.status === 'signed' ? ('signed' as const) : ('draft' as const),
@@ -215,7 +278,7 @@ const PatientDetail: React.FC = () => {
           : stripHtml(n.content).slice(0, 180),
       onClick: () => {
         if (n.status === 'draft') {
-          navigate(`/patients/${id}/notes/${n.id}/edit`);
+          navigate(`${patientPathBase}/notes/${n.id}/edit`);
         } else {
           handleViewNote(n);
         }
@@ -223,7 +286,7 @@ const PatientDetail: React.FC = () => {
     }));
 
     const fromAppointments: TimelineItem[] = appointments
-      .filter((apt) => apt.patient_id === id)
+      .filter((apt) => apt.patient_id === patientId)
       .map((apt) => {
         const start = new Date(apt.starts_at);
         const end = new Date(apt.ends_at);
@@ -250,19 +313,23 @@ const PatientDetail: React.FC = () => {
         };
       });
 
-    const mock = getMockTimelineForPatient(id).map((m) => ({
-      id: m.id,
-      kind: m.kind,
-      date: new Date(m.date),
-      title: m.title,
-      body: m.body,
-    }));
-
-    return [...fromNotes, ...fromAppointments, ...mock];
+    return [...fromNotes, ...fromAppointments];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, notes, appointments]);
+  }, [patientId, notes, appointments, patientPathBase]);
 
   if (patientLoading) {
+    return (
+      <Container maxW="1280px" py={10}>
+        <VStack spacing={4}>
+          <Spinner size="xl" color="brand.500" />
+          <Text>Cargando paciente...</Text>
+        </VStack>
+      </Container>
+    );
+  }
+
+  // Avoid flashing "not found" while we're still resolving slug -> id.
+  if (patientSlug && !patientId && patientsLoading) {
     return (
       <Container maxW="1280px" py={10}>
         <VStack spacing={4}>
@@ -412,7 +479,7 @@ const PatientDetail: React.FC = () => {
     onConsentModalOpen();
   };
 
-  const phone = patient.phone || profile?.phone;
+  const phone = patient.phone;
 
   return (
     <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
@@ -427,7 +494,6 @@ const PatientDetail: React.FC = () => {
             <Avatar
               size="sm"
               name={`${patient.firstName} ${patient.lastName}`}
-              src={profile?.avatar_url?.trim() || undefined}
               bg="statusSoft.infoBg"
               color="brand.700"
               fontWeight={600}
@@ -452,7 +518,9 @@ const PatientDetail: React.FC = () => {
               }`;
             })()}
             <br />
-            {`Expediente #${patient.id.slice(0, 8).toUpperCase()}`}
+            {patient.slug?.trim()
+              ? `Expediente #${patient.slug.toUpperCase()}`
+              : 'Expediente'}
           </>
         }
         actions={
@@ -521,6 +589,41 @@ const PatientDetail: React.FC = () => {
             >
               Nueva cita
             </Button>
+            {canShowSummary && (
+              <>
+                <Tooltip label="Resumen del expediente" hasArrow placement="bottom">
+                  <IconButton
+                    aria-label="Resumen del expediente"
+                    icon={<FaWandMagicSparkles />}
+                    variant="outline"
+                    size="sm"
+                    h="36px"
+                    borderColor="line.strong"
+                    color="text.strong"
+                    bg={cardBg}
+                    onClick={handleOpenSummaryDrawer}
+                    _hover={{ borderColor: 'paper.600' }}
+                    display={{ base: 'inline-flex', md: 'none' }}
+                  />
+                </Tooltip>
+                <Tooltip label="Resumen del expediente" hasArrow placement="bottom">
+                  <Button
+                    leftIcon={<FaWandMagicSparkles />}
+                    variant="outline"
+                    size="sm"
+                    h="36px"
+                    borderColor="line.strong"
+                    color="text.strong"
+                    bg={cardBg}
+                    onClick={handleOpenSummaryDrawer}
+                    _hover={{ borderColor: 'paper.600' }}
+                    display={{ base: 'none', md: 'inline-flex' }}
+                  >
+                    Resumen
+                  </Button>
+                </Tooltip>
+              </>
+            )}
             <ButtonGroup isAttached size="sm" variant="solid">
               <Button
                 leftIcon={<FiPlus />}
@@ -529,7 +632,7 @@ const PatientDetail: React.FC = () => {
                 color="white"
                 _hover={{ bg: 'brand.700' }}
                 borderRightRadius={0}
-                onClick={() => navigate(`/patients/${patient.id}/notes/new`)}
+                onClick={() => navigate(`${patientPathBase}/notes/new`)}
               >
                 Nueva nota
               </Button>
@@ -552,7 +655,7 @@ const PatientDetail: React.FC = () => {
                   <MenuItem
                     icon={<FiEdit3 />}
                     onClick={() =>
-                      navigate(`/patients/${patient.id}/notes/new`)
+                      navigate(`${patientPathBase}/notes/new`)
                     }
                   >
                     Nota de texto
@@ -560,7 +663,7 @@ const PatientDetail: React.FC = () => {
                   <MenuItem
                     icon={<FiFileText />}
                     onClick={() =>
-                      navigate(`/patients/${patient.id}/notes/new-form`)
+                      navigate(`${patientPathBase}/notes/new-form`)
                     }
                   >
                     Formulario
@@ -579,17 +682,7 @@ const PatientDetail: React.FC = () => {
                 borderColor="line.strong"
               />
               <MenuList>
-                <MenuItem
-                  icon={<FiEdit />}
-                  onClick={() =>
-                    toast({
-                      title: 'Editar paciente',
-                      description: 'Función en desarrollo',
-                      status: 'info',
-                      duration: 2000,
-                    })
-                  }
-                >
+                <MenuItem icon={<FiEdit />} onClick={onPatientEditOpen}>
                   Editar
                 </MenuItem>
                 <MenuItem
@@ -604,48 +697,18 @@ const PatientDetail: React.FC = () => {
         }
       />
 
-      <VitalsBar
-        items={[
-          {
-            label: 'Alergias',
-            value: (
-              <VitalsPopperValue
-                title="Alergias"
-                emptyLabel="No registradas"
-                items={vitals?.allergies || []}
-              />
-            ),
-          },
-          {
-            label: 'Crónicas',
-            value: (
-              <VitalsPopperValue
-                title="Condiciones crónicas"
-                emptyLabel="—"
-                items={vitals?.chronicConditions || []}
-              />
-            ),
-          },
-          {
-            label: 'Medicamentos',
-            value: (
-              <VitalsPopperValue
-                title="Medicamentos actuales"
-                emptyLabel="—"
-                items={vitals?.medications || []}
-              />
-            ),
-          },
-          {
-            label: 'Tipo sangre',
-            value: vitals?.bloodType || patient.bloodType || '—',
-          },
-          {
-            label: 'NOM %',
-            value:
-              typeof vitals?.nomPercent === 'number' ? `${vitals.nomPercent}%` : '94%',
-          },
-        ]}
+      <PatientClinicalVitalsBar
+        vitals={vitals}
+        patientBloodFallback={patient.bloodType ?? null}
+        saving={vitalsSaving}
+        vitalsError={vitalsError}
+        onAddAllergy={addAllergy}
+        onRemoveAllergy={removeAllergy}
+        onAddChronic={addChronicCondition}
+        onRemoveChronic={removeChronicCondition}
+        onAddMedication={addMedication}
+        onRemoveMedication={removeMedication}
+        onSetBloodType={setBloodType}
       />
 
       <Box
@@ -665,12 +728,14 @@ const PatientDetail: React.FC = () => {
           >
             <HStack
               justify="space-between"
+              align="center"
+              minH={cardSectionHeaderMinH}
               px={4}
               py={3}
               borderBottom="1px solid"
               borderColor={borderColor}
             >
-              <HStack spacing={2}>
+              <HStack spacing={2} align="center">
                 <Icon as={FiUser} color="brand.600" />
                 <Text fontSize="14px" fontWeight={600}>
                   Ficha de identidad
@@ -750,12 +815,14 @@ const PatientDetail: React.FC = () => {
             >
               <HStack
                 justify="space-between"
+                align="center"
+                minH={cardSectionHeaderMinH}
                 px={4}
                 py={3}
                 borderBottom="1px solid"
                 borderColor={borderColor}
               >
-                <HStack spacing={2}>
+                <HStack spacing={2} align="center">
                   <Icon as={FiClipboard} color="brand.600" />
                   <Text fontSize="14px" fontWeight={600}>
                     Interrogatorio inicial
@@ -821,6 +888,7 @@ const PatientDetail: React.FC = () => {
                     />
                     <NoteAttachmentsList
                       attachments={interrogatoryNote.attachments}
+                      patientId={patient.id}
                     />
                     {!interrogatoryNote.isSigned && (
                       <Button
@@ -829,7 +897,7 @@ const PatientDetail: React.FC = () => {
                         alignSelf="flex-start"
                         onClick={() =>
                           navigate(
-                            `/patients/${patient.id}/notes/${interrogatoryNote.id}`
+                            `${patientPathBase}/notes/${interrogatoryNote.id}`
                           )
                         }
                       >
@@ -843,16 +911,24 @@ const PatientDetail: React.FC = () => {
           )}
         </VStack>
 
-        <Box>
+        <Box pt="1px">
           <HStack
-            spacing={3}
-            mb={3}
-            pb={2}
+            spacing={2}
+            minH={cardSectionHeaderMinH}
+            py={3}
+            mb={4}
             align="center"
             borderBottom="1px solid"
             borderColor={borderColor}
           >
-            <Heading as="h2" size="md" fontSize="16px" fontWeight={600}>
+            <Heading
+              as="h2"
+              fontSize="14px"
+              fontWeight={600}
+              letterSpacing="-0.01em"
+              lineHeight="1.25"
+              m={0}
+            >
               Expediente clínico
             </Heading>
           </HStack>
@@ -999,6 +1075,7 @@ const PatientDetail: React.FC = () => {
                           />
                           <NoteAttachmentsList
                             attachments={selectedNote?.attachments}
+                            patientId={patient.id}
                           />
                         </>
                       );
@@ -1013,6 +1090,7 @@ const PatientDetail: React.FC = () => {
                       </Text>
                       <NoteAttachmentsList
                         attachments={selectedNote?.attachments}
+                        patientId={patient.id}
                       />
                     </Box>
                   );
@@ -1028,8 +1106,9 @@ const PatientDetail: React.FC = () => {
                   px={{ base: 6, md: 10 }}
                   py={{ base: 6, md: 8 }}
                   color={inkStrong}
-                  fontSize="14.5px"
-                  lineHeight="1.7"
+                  fontFamily="mono"
+                  fontSize="14px"
+                  lineHeight="1.65"
                   sx={{
                     '& h1': {
                       fontSize: '22px',
@@ -1083,7 +1162,10 @@ const PatientDetail: React.FC = () => {
                     __html: mergeNoteBodyForEditor(selectedNote?.content || ''),
                   }}
                 />
-                <NoteAttachmentsList attachments={selectedNote?.attachments} />
+                <NoteAttachmentsList
+                  attachments={selectedNote?.attachments}
+                  patientId={patient.id}
+                />
               </Box>
             )}
           </ModalBody>
@@ -1121,7 +1203,7 @@ const PatientDetail: React.FC = () => {
                     onClick={() => {
                       onClose();
                       navigate(
-                        `/patients/${patient.id}/notes/${selectedNote.id}/edit`
+                        `${patientPathBase}/notes/${selectedNote.id}/edit`
                       );
                     }}
                   >
@@ -1164,7 +1246,7 @@ const PatientDetail: React.FC = () => {
                     leftIcon={<FiPlus />}
                     onClick={() => {
                       onClose();
-                      navigate(`/patients/${patient.id}/notes/new`, {
+                      navigate(`${patientPathBase}/notes/new`, {
                         state: { followUpFromNoteId: selectedNote.id },
                       });
                     }}
@@ -1409,6 +1491,56 @@ const PatientDetail: React.FC = () => {
         </ModalContent>
       </Modal>
 
+      {canShowSummary && (
+        <FormDrawer
+          isOpen={isSummaryDrawerOpen}
+          onClose={() => {
+            notesSummary.stop();
+            onSummaryDrawerClose();
+          }}
+          title="Resumen de expediente"
+          sub="Generado a partir de las notas clínicas con asistencia de IA."
+          size="lg"
+          hideDefaultActions
+          bodyFillHeight
+        >
+          <VStack align="stretch" spacing={4} flex={1} minH={0} w="full">
+            {notesSummary.error ? (
+              <Alert status="error" borderRadius="md" flexShrink={0}>
+                <AlertIcon />
+                <Text fontSize="sm">{notesSummary.error}</Text>
+              </Alert>
+            ) : null}
+            <Box
+              flex="1"
+              minH={0}
+              w="full"
+              overflowY="auto"
+              bg={previewBodyBg}
+              border="1px solid"
+              borderColor={borderColor}
+              borderRadius="8px"
+              px={4}
+              py={3}
+            >
+              {notesSummary.loading && !notesSummary.hasText ? (
+                <SummaryLoadingSkeleton />
+              ) : !notesSummary.hasText && !notesSummary.loading ? (
+                <Text fontSize="13px" color={subColor}>
+                  No hay resumen para mostrar. Cierra el panel y vuelve a abrirlo
+                  con el botón Resumen del encabezado.
+                </Text>
+              ) : (
+                <StreamingMarkdown
+                  text={notesSummary.text}
+                  isStreaming={notesSummary.loading}
+                />
+              )}
+            </Box>
+          </VStack>
+        </FormDrawer>
+      )}
+
       <FormDrawer
         isOpen={isIdentityModalOpen}
         onClose={onIdentityModalClose}
@@ -1505,6 +1637,17 @@ const PatientDetail: React.FC = () => {
         </SimpleGrid>
       </FormDrawer>
 
+      {patient && (
+        <PatientFormModal
+          isOpen={isPatientEditOpen}
+          onClose={onPatientEditClose}
+          patientId={patient.id}
+          onSuccess={() => {
+            void refetchPatient();
+          }}
+        />
+      )}
+
       {!isWellness && patient && (
         <InterrogationFormDrawer
           isOpen={isInterrogationDrawerOpen}
@@ -1545,85 +1688,6 @@ const PatientDetail: React.FC = () => {
         />
       )}
     </Container>
-  );
-};
-
-function summarizeList(items: string[]) {
-  if (!items.length) return '';
-  const shown = items.slice(0, 2);
-  const rest = items.length - shown.length;
-  return rest > 0 ? `${shown.join(', ')} +${rest}` : shown.join(', ');
-}
-
-const VitalsPopperValue: React.FC<{
-  title: string;
-  items: string[];
-  emptyLabel: string;
-}> = ({ title, items, emptyLabel }) => {
-  const cardBg = useColorModeValue('white', 'paper.800');
-  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
-  const labelColor = useColorModeValue('paper.600', 'paper.500');
-
-  const summary = summarizeList(items);
-  const isEmpty = !items.length;
-
-  return (
-    <Popover placement="bottom-start" strategy="fixed">
-      <PopoverTrigger>
-        <HStack
-          as="button"
-          type="button"
-          spacing={1}
-          align="center"
-          cursor="pointer"
-          _hover={{ textDecoration: isEmpty ? 'none' : 'underline' }}
-          color={isEmpty ? 'text.strong' : 'text.strong'}
-          minH="18px"
-        >
-          {!isEmpty && (
-            <Text as="span" fontSize="13px" fontWeight={500}>
-              {summary}
-            </Text>
-          )}
-          <Icon as={FiChevronDown} boxSize="14px" opacity={0.85} />
-        </HStack>
-      </PopoverTrigger>
-      <Portal>
-        <PopoverContent
-          bg={cardBg}
-          borderColor={borderColor}
-          borderRadius="10px"
-          boxShadow="0 12px 32px rgba(20,22,27,.16)"
-          w="320px"
-          _focusVisible={{ boxShadow: '0 12px 32px rgba(20,22,27,.16)' }}
-        >
-          <PopoverArrow bg={cardBg} />
-          <PopoverCloseButton />
-          <PopoverHeader
-            fontWeight={600}
-            fontSize="13px"
-            borderColor={borderColor}
-          >
-            {title}
-          </PopoverHeader>
-          <PopoverBody pt={3} pb={4}>
-            {!items.length ? (
-              <Text fontSize="13px" color={labelColor}>
-                {emptyLabel}
-              </Text>
-            ) : (
-              <VStack align="stretch" spacing={2}>
-                {items.map((item, idx) => (
-                  <Text key={`${item}-${idx}`} fontSize="13px" fontWeight={500}>
-                    {item}
-                  </Text>
-                ))}
-              </VStack>
-            )}
-          </PopoverBody>
-        </PopoverContent>
-      </Portal>
-    </Popover>
   );
 };
 

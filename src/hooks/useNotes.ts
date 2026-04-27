@@ -24,7 +24,7 @@ export const useNotes = (patientId: string | undefined) => {
       signedBy: n.signed_by,
       createdAt: n.created_at,
       updatedAt: n.updated_at,
-      attachments: mapApiAttachments(n.attachments),
+      attachments: mapApiAttachments(n.attachments, { patientId: pid, noteId: n.id }),
     }));
 
   useEffect(() => {

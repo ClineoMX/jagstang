@@ -115,6 +115,18 @@ Response:
 }
 ```
 
+# Update Patient
+---
+
+Path: `/patients/<patient_id>/`
+Method: `PUT`
+
+Headers: `"Content-Type:application/json,X-Clineo-Api-Key:process.env.apikey,X-Clineo-Id:login.id,Authorization:Bearer login.access"`
+
+Payload: mismo shape que **Create Patient** (`name`, `lastname`, `lastname_m` opcional, `phone` opcional).
+
+Response: objeto paciente actualizado (misma forma que create cuando aplica).
+
 # Create Note
 ---
 
@@ -1064,4 +1076,159 @@ Response:
   "page": 1,
   "size": 10
 }
+```
+
+# Upsert vitals
+
+Path: `/patients/<id>/vitals/`
+Method: `PUT`
+
+
+Headers: `Content-Type: application/json;X-Clineo-Api-Key: process.env.apikey; X-Clineo-Id: login.id;Authorization:Bearer login.access;`
+
+**IMPORTANT** Payload must contain all keys
+
+Payload:
+```json
+{
+  "blood_type": "O+",
+  "allergies": [
+    {
+      "name": "Penicilina",
+      "created_at": "2026-04-21T15:30:00Z"
+    }
+  ],
+  "medications": [
+    {
+      "name": "Omeprazol",
+      "created_at": "2026-04-21T15:30:00Z"
+    }
+  ],
+  "chronic_conditions": [
+    {
+      "name": "Asma",
+      "created_at": "2026-04-21T15:30:00Z"
+    },
+    {
+      "name": "Atritis",
+      "created_at": "2026-04-21T15:30:00Z"
+    }
+  ]
+}
+```
+
+Response:
+```json
+null
+```
+Status:204
+
+
+# Get vitals
+
+Path: `/patients/<id>/vitals/`
+Method: `GET`
+
+
+Headers: `Content-Type: application/json;X-Clineo-Api-Key: process.env.apikey; X-Clineo-Id: login.id;Authorization:Bearer login.access;`
+
+**IMPORTANT** Payload must contain all keys
+
+Response:
+```json
+{
+  "blood_type": "O+",
+  "allergies": [
+    {
+      "name": "Penicilina",
+      "suggested": true
+    }
+  ],
+  "medications": [
+    {
+      "name": "Omeprazol",
+      "suggested": false
+    }
+  ],
+  "chronic_conditions": [
+    {
+      "name": "Asma",
+      "suggested": true
+    },
+    {
+      "name": "Atritis",
+      "suggested": true
+    }
+  ]
+}
+```
+Status:200
+
+Payload:
+```json
+null
+```
+
+
+
+# Get patients as table
+
+Path: `/patients/table/`
+Method: `GET`
+
+
+Headers: `Content-Type: application/json;X-Clineo-Api-Key: process.env.apikey; X-Clineo-Id: login.id;Authorization:Bearer login.access;`
+
+**Campos por fila (`results[]`):** `id`, `name`, `lastname`, `lastname_m`, `phone`, `birth_date`, `gender`, `blood_type`, `is_recurrent`, **`last_visit`**. Fechas “vacías” del backend usan `0001-01-01T00:00:00Z` (p. ej. sin fecha de nacimiento o sin última cita). **`last_visit`**: inicio (UTC) de la última cita del paciente con el doctor que no esté cancelada; si no hay ninguna, `0001-01-01T00:00:00Z`.
+
+Response:
+```json
+{
+  "results": [
+    {
+      "id": "fbe2279a-d025-42ab-bf32-e6d7001baeb3",
+      "name": "John",
+      "lastname": "Doe",
+      "lastname_m": "",
+      "phone": "+525544332211",
+      "birth_date": "2000-01-20T00:00:00Z",
+      "gender": "male",
+      "blood_type": "A+",
+      "is_recurrent": true,
+      "last_visit": "2026-04-20T15:30:00Z"
+    },
+    {
+      "id": "8d83c81d-7e32-4406-befa-7a39aeef43d7",
+      "name": "Jane",
+      "lastname": "Doe",
+      "lastname_m": "",
+      "phone": "",
+      "birth_date": "0001-01-01T00:00:00Z",
+      "gender": "",
+      "blood_type": "A-",
+      "is_recurrent": false,
+      "last_visit": "0001-01-01T00:00:00Z"
+    },
+    {
+      "id": "469504be-e228-438c-b9a8-6d5f9881c477",
+      "name": "John",
+      "lastname": "Doe",
+      "lastname_m": "",
+      "phone": "+525511414141",
+      "birth_date": "0001-01-01T00:00:00Z",
+      "gender": "",
+      "blood_type": "A+",
+      "is_recurrent": false,
+      "last_visit": "0001-01-01T00:00:00Z"
+    }
+  ],
+  "count": 3,
+  "size": 10
+}
+```
+Status:200
+
+Payload:
+```json
+null
 ```

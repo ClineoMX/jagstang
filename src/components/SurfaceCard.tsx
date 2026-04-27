@@ -18,6 +18,8 @@ const SurfaceCard: React.FC<SurfaceCardProps> = ({
 }) => {
   const cardBg = useColorModeValue('white', 'paper.800');
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const hoverBorder = useColorModeValue('brand.200', 'brand.600');
+  const hoverShadow = useColorModeValue('brandRing', 'brandRingDark');
   return (
     <Box
       bg={cardBg}
@@ -25,6 +27,11 @@ const SurfaceCard: React.FC<SurfaceCardProps> = ({
       borderColor={borderColor}
       borderRadius="8px"
       p={flush ? 0 : { base: 5, md: 6 }}
+      transition="border-color 0.15s ease, box-shadow 0.15s ease"
+      _hover={{
+        borderColor: hoverBorder,
+        boxShadow: hoverShadow,
+      }}
       {...rest}
     >
       {children}

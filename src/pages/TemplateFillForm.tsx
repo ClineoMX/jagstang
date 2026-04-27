@@ -32,6 +32,7 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import type { TemplateItem, TemplateField } from '../types';
+import { usePatients } from '../hooks/usePatients';
 
 // Worker pdf.js (mismo que en Templates)
 const pdfWorkerSrc =
@@ -72,6 +73,15 @@ const TemplateFillForm: React.FC = () => {
   } | undefined;
   const { template: stateTemplate, pdfUrl, patientId, patientName } = state ?? {};
   const template = stateTemplate ?? FALLBACK_TEMPLATE;
+
+  const { patients } = usePatients();
+  const patientPathBase = useMemo(() => {
+    const raw = (patientId ?? '').trim();
+    if (!raw) return null;
+    const match = patients.find((p) => p.id === raw || p.slug === raw);
+    const slug = match?.slug?.trim() ? match.slug.trim() : undefined;
+    return `/patients/${slug ?? raw}`;
+  }, [patientId, patients]);
 
   const [formValues, setFormValues] = useState<FormValues>(() =>
     template.fields.reduce<FormValues>((acc, f) => {
@@ -248,7 +258,9 @@ const TemplateFillForm: React.FC = () => {
                 leftIcon={<Icon as={FiArrowLeft} />}
                 variant="ghost"
                 size="sm"
-                onClick={() => (patientId ? navigate(`/patients/${patientId}`) : navigate('/profile'))}
+                onClick={() =>
+                  patientPathBase ? navigate(patientPathBase) : navigate('/profile')
+                }
               >
                 Volver
               </Button>
@@ -516,7 +528,9 @@ const TemplateFillForm: React.FC = () => {
             </Button>
             <Button
               variant="ghost"
-              onClick={() => (patientId ? navigate(`/patients/${patientId}`) : navigate('/profile'))}
+              onClick={() =>
+                patientPathBase ? navigate(patientPathBase) : navigate('/profile')
+              }
             >
               Volver
             </Button>

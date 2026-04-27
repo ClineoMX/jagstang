@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -16,6 +16,7 @@ import {
   AlertDescription,
   useColorModeValue,
   Spinner,
+  Collapse,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -29,7 +30,14 @@ import {
   Avatar,
   Link as ChakraLink,
 } from '@chakra-ui/react';
-import { FiX, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import {
+  FiX,
+  FiCheck,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiChevronDown,
+  FiChevronUp,
+} from 'react-icons/fi';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -38,20 +46,22 @@ import RichTextEditor from '../components/RichTextEditor';
 import FormNoteFiller from '../components/FormNoteFiller';
 import type { FormFieldValue } from '../components/FormNoteFiller';
 import type { NoteType, NoteCompletenessAnalysis } from '../types';
-import { usePatient } from '../hooks/usePatients';
+import { usePatient, usePatients } from '../hooks/usePatients';
+import { usePatientVitals } from '../hooks/usePatientVitals';
 import { useNotes } from '../hooks/useNotes';
+import PatientClinicalSummary from '../components/PatientClinicalSummary';
+import CollapsibleSideCard from '../components/CollapsibleSideCard';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import PageHead from '../components/PageHead';
 import {
   mergeNoteBodyForEditor,
   serializeNoteBodyForApi,
-  hasRecetaSection,
 } from '../utils/noteReceta';
 
 const NoteForm: React.FC = () => {
-  const { patientId, noteId } = useParams<{
-    patientId: string;
+  const { patientSlug, noteId } = useParams<{
+    patientSlug: string;
     noteId?: string;
   }>();
   const navigate = useNavigate();
@@ -65,8 +75,41 @@ const NoteForm: React.FC = () => {
   const softBorder = useColorModeValue('line.strong', 'whiteAlpha.300');
   const labelColor = useColorModeValue('paper.600', 'paper.500');
   const subColor = useColorModeValue('paper.700', 'paper.400');
+  const inkStrong = useColorModeValue('paper.900', 'paper.50');
+  const bodyColor = useColorModeValue('paper.700', 'paper.400');
+
+  const { patients } = usePatients();
+  const patientId = useMemo(() => {
+    const raw = (patientSlug ?? '').trim().replace(/^#/, '');
+    if (!raw) return undefined;
+    const match = patients.find((p) => p.slug === raw || p.id === raw);
+    if (match?.id) return match.id;
+    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      raw
+    );
+    return looksLikeUuid ? raw : undefined;
+  }, [patients, patientSlug]);
 
   const { patient, loading: patientLoading } = usePatient(patientId);
+  const patientPathBase = useMemo(() => {
+    const cleanParam = patientSlug?.trim() ? patientSlug.trim().replace(/^#/, '') : undefined;
+    const slug = patient?.slug?.trim() || cleanParam || patientId;
+    return slug ? `/patients/${slug}` : '/patients';
+  }, [patient?.slug, patientSlug, patientId]);
+
+  // Replace /patients/{id}/... with /patients/{slug}/... once slug is available.
+  useEffect(() => {
+    const slug = patient?.slug?.trim();
+    const raw = (patientSlug ?? '').trim().replace(/^#/, '');
+    if (!slug || !raw || raw === slug) return;
+    if (location.pathname.startsWith(`/patients/${raw}`)) {
+      navigate(location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`), {
+        replace: true,
+        state: location.state,
+      });
+    }
+  }, [location.pathname, location.state, navigate, patient?.slug, patientSlug]);
+  const { vitals, loading: vitalsLoading } = usePatientVitals(patientId);
   const {
     createNote,
     updateNote,
@@ -86,6 +129,7 @@ const NoteForm: React.FC = () => {
     useState<NoteCompletenessAnalysis | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isNomOpen, setIsNomOpen] = useState(false);
 
   const [useFormMode, setUseFormMode] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
@@ -177,7 +221,7 @@ const NoteForm: React.FC = () => {
       if (isFormNote) {
         // Las notas por formulario tienen su propio editor dedicado.
         // Redirigimos para que el usuario vea siempre la misma UI al editarlas.
-        navigate(`/patients/${patientId}/notes/${note.id}/edit-form`, {
+        navigate(`${patientPathBase}/notes/${note.id}/edit-form`, {
           replace: true,
         });
         return;
@@ -252,7 +296,7 @@ const NoteForm: React.FC = () => {
           // elija de nuevo (los valores de campos suelen requerir actualizarse).
           void parsedFormValues;
           void restoredFormId;
-          navigate(`/patients/${patientId}/notes/new-form`, { replace: true });
+          navigate(`${patientPathBase}/notes/new-form`, { replace: true });
           return;
         }
 
@@ -263,7 +307,7 @@ const NoteForm: React.FC = () => {
         setContent(mergeNoteBodyForEditor(rawContent));
         setNoteType(noteTypeVal);
 
-        navigate(`/patients/${patientId}/notes/new`, {
+        navigate(`${patientPathBase}/notes/new`, {
           replace: true,
           state: {},
         });
@@ -565,7 +609,7 @@ const NoteForm: React.FC = () => {
       });
       const shouldShowModal = !localStorage.getItem('dontShowSignModal');
       if (shouldShowModal) onSignModalOpen();
-      else navigate(`/patients/${patientId}`);
+      else navigate(patientPathBase);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -582,7 +626,7 @@ const NoteForm: React.FC = () => {
   const handleCloseSignModal = () => {
     if (dontShowAgain) localStorage.setItem('dontShowSignModal', 'true');
     onSignModalClose();
-    navigate(`/patients/${patientId}`);
+    navigate(patientPathBase);
   };
 
   const getMissingFields = (): string[] => {
@@ -592,9 +636,6 @@ const NoteForm: React.FC = () => {
       .map((key) => completenessAnalysis.reasoning[key])
       .filter(Boolean);
   };
-
-  const isFieldMissing = (key: string): boolean =>
-    (completenessAnalysis?.missing_fields ?? []).includes(key);
 
   const isDraft = noteStatus === 'draft';
   /** Borrador guardado y sin cambios locales → acción principal es Firmar; si no, Guardar borrador. */
@@ -629,7 +670,6 @@ const NoteForm: React.FC = () => {
           </>
         }
         title={isDraft ? 'Editar nota clínica' : 'Nueva nota clínica'}
-        sub="Escribe primero, metadata después."
         actions={
           <>
             <HStack
@@ -873,7 +913,7 @@ const NoteForm: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 color="text.body"
-                onClick={() => navigate(`/patients/${patientId}`)}
+                onClick={() => navigate(patientPathBase)}
                 isDisabled={isSubmitting}
               >
                 Cancelar
@@ -917,144 +957,173 @@ const NoteForm: React.FC = () => {
                 <Text fontSize="13.5px" fontWeight={500}>
                   {patient.firstName} {patient.lastName}
                 </Text>
-                <Text fontSize="12px" color={subColor}>
-                  {patient.dateOfBirth
-                    ? `${Math.max(
+                {(() => {
+                  const parts: string[] = [];
+                  if (patient.dateOfBirth) {
+                    parts.push(
+                      `${Math.max(
                         0,
                         new Date().getFullYear() -
                           new Date(patient.dateOfBirth).getFullYear()
                       )} años`
-                    : ''}
-                  {patient.gender
-                    ? ` · ${
-                        patient.gender === 'male'
-                          ? 'Hombre'
-                          : patient.gender === 'female'
-                            ? 'Mujer'
-                            : 'Otro'
-                      }`
-                    : ''}
-                </Text>
+                    );
+                  }
+                  if (patient.gender) {
+                    parts.push(
+                      patient.gender === 'male'
+                        ? 'Hombre'
+                        : patient.gender === 'female'
+                          ? 'Mujer'
+                          : 'Otro'
+                    );
+                  }
+                  const meta = parts.filter(Boolean).join(' · ');
+                  return meta ? (
+                    <Text fontSize="12px" color={subColor} lineHeight="1.25" mt={0.5}>
+                      {meta}
+                    </Text>
+                  ) : null;
+                })()}
               </VStack>
             </HStack>
           </SideCard>
 
-          <SideCard heading="Configuración">
-            <VStack align="stretch" spacing={2} fontSize="12.5px">
-              <HStack justify="space-between">
-                <Text color={subColor}>Tipo</Text>
-                <Text fontWeight={500}>
-                  {useFormMode
-                    ? 'Formulario'
-                    : noteType === 'interrogation'
-                      ? 'Interrogatorio'
-                      : noteType === 'evolution'
-                        ? 'Evolución'
-                        : noteType === 'exploration'
-                          ? 'Exploración'
-                          : noteType === 'psychology-interrogation'
-                            ? 'HC Psicología'
-                            : noteType === 'psychology-evolution'
-                              ? 'Sesión Psicología'
-                              : 'Documento'}
-                </Text>
-              </HStack>
-              <HStack justify="space-between">
-                <Text color={subColor}>Plantilla</Text>
-                <Text fontWeight={500}>
-                  {useFormMode ? '—' : 'Por defecto'}
-                </Text>
-              </HStack>
-              <HStack justify="space-between">
-                <Text color={subColor}>Receta adjunta</Text>
-                <Text fontWeight={500}>
-                  {hasRecetaSection(content) ? 'Sí' : 'No'}
-                </Text>
-              </HStack>
-            </VStack>
-          </SideCard>
+          <CollapsibleSideCard heading="Resumen clínico" defaultOpen={false}>
+            <PatientClinicalSummary
+              vitals={vitals}
+              bloodFallback={patient.bloodType}
+              loading={vitalsLoading}
+            />
+          </CollapsibleSideCard>
 
-          <SideCard heading="Integridad NOM‑004">
-            {showAnalysisPanel ? (
-              isLoadingAnalysis ? (
-                <HStack spacing={2} fontSize="12.5px" color={subColor}>
-                  <Spinner size="xs" />
-                  <Text>Analizando…</Text>
-                </HStack>
-              ) : completenessAnalysis ? (
-                <VStack align="stretch" spacing={2} fontSize="12.5px">
-                  <HStack justify="space-between">
-                    <Text color={subColor}>Completitud</Text>
-                    <Text fontWeight={600} color="brand.600">
-                      {completenessAnalysis.completeness_score}%
-                    </Text>
+          <Box
+            bg={cardBg}
+            border="1px solid"
+            borderColor={borderColor}
+            borderRadius="8px"
+            overflow="hidden"
+          >
+            <Box
+              as="button"
+              type="button"
+              onClick={() => setIsNomOpen((v) => !v)}
+              display="block"
+              w="full"
+              textAlign="left"
+              borderRadius="0"
+              px={4}
+              py={3.5}
+              aria-expanded={isNomOpen}
+            >
+              <HStack justify="space-between" align="center">
+                <Text
+                  fontSize="11px"
+                  fontFamily="mono"
+                  letterSpacing="0.1em"
+                  textTransform="uppercase"
+                  color={labelColor}
+                  fontWeight={600}
+                  userSelect="none"
+                >
+                  Integridad NOM‑004
+                </Text>
+                <Icon
+                  as={isNomOpen ? FiChevronUp : FiChevronDown}
+                  boxSize={4}
+                  color={labelColor}
+                  flexShrink={0}
+                />
+              </HStack>
+            </Box>
+
+            {/* Progress siempre visible */}
+            <Box px={4} pb={isNomOpen ? 0 : 3.5}>
+              {showAnalysisPanel ? (
+                isLoadingAnalysis ? (
+                  <HStack spacing={2} fontSize="12.5px" color={subColor} py={1}>
+                    <Spinner size="xs" />
+                    <Text>Analizando…</Text>
                   </HStack>
-                  <Box
-                    h="4px"
-                    bg="paper.200"
-                    borderRadius="full"
-                    overflow="hidden"
-                  >
-                    <Box
-                      h="100%"
-                      w={`${completenessAnalysis.completeness_score}%`}
-                      bg={
-                        completenessAnalysis.completeness_score >= 90
-                          ? 'statusSoft.okFg'
-                          : completenessAnalysis.completeness_score >= 70
-                            ? 'statusSoft.warnFg'
-                            : 'statusSoft.critFg'
-                      }
-                    />
-                  </Box>
-                  {getMissingFields().length > 0 && (
-                    <Box pt={2}>
-                      <Text color={subColor} mb={1}>
-                        Campos faltantes:
+                ) : completenessAnalysis ? (
+                  <VStack align="stretch" spacing={2} fontSize="12.5px">
+                    <HStack justify="space-between">
+                      <Text color={subColor}>Completitud</Text>
+                      <Text fontWeight={600} color="brand.600">
+                        {completenessAnalysis.completeness_score}%
                       </Text>
-                      <VStack align="stretch" spacing={1}>
-                        {Object.entries(completenessAnalysis.reasoning)
-                          .filter(([key]) => isFieldMissing(key))
-                          .slice(0, 4)
-                          .map(([key, value]) => (
-                            <HStack key={key} spacing={2} align="start">
-                              <Icon
-                                as={FiAlertCircle}
-                                color="statusSoft.warnFg"
-                                mt="2px"
-                              />
-                              <Text fontSize="12px">
-                                {value || key.replace(/_/g, ' ')}
-                              </Text>
-                            </HStack>
-                          ))}
-                      </VStack>
+                    </HStack>
+                    <Box
+                      h="4px"
+                      bg="paper.200"
+                      borderRadius="full"
+                      overflow="hidden"
+                    >
+                      <Box
+                        h="100%"
+                        w={`${completenessAnalysis.completeness_score}%`}
+                        bg={
+                          completenessAnalysis.completeness_score >= 90
+                            ? 'statusSoft.okFg'
+                            : completenessAnalysis.completeness_score >= 70
+                              ? 'statusSoft.warnFg'
+                              : 'statusSoft.critFg'
+                        }
+                      />
                     </Box>
-                  )}
-                  <Button
-                    variant="link"
-                    size="xs"
-                    color="brand.600"
-                    alignSelf="flex-start"
-                    onClick={() =>
-                      currentNoteId &&
-                      loadCompletenessAnalysisWithContent(currentNoteId, false)
-                    }
-                  >
-                    Analizar ahora →
-                  </Button>
-                </VStack>
+                  </VStack>
+                ) : (
+                  <Text fontSize="12.5px" color={subColor}>
+                    Guarda el borrador para obtener el análisis.
+                  </Text>
+                )
               ) : (
                 <Text fontSize="12.5px" color={subColor}>
-                  Guarda el borrador para obtener el análisis.
+                  El análisis se genera una vez guardada la nota como borrador.
                 </Text>
-              )
-            ) : (
-              <Text fontSize="12.5px" color={subColor}>
-                El análisis se genera una vez guardada la nota como borrador.
-              </Text>
-            )}
-          </SideCard>
+              )}
+            </Box>
+
+            {/* Detalle colapsable */}
+            <Collapse in={isNomOpen} animateOpacity>
+              {showAnalysisPanel && completenessAnalysis && (
+                <Box
+                  px={4}
+                  pt={3}
+                  pb={3.5}
+                  maxH="260px"
+                  overflowY="auto"
+                  pr={3}
+                >
+                  <VStack align="stretch" spacing={2}>
+                    {Object.entries(completenessAnalysis.reasoning ?? {}).map(
+                      ([key, value]) => {
+                        const missing = (
+                          completenessAnalysis.missing_fields ?? []
+                        ).includes(key);
+                        return (
+                          <HStack key={key} align="start" spacing={2}>
+                            <Icon
+                              as={missing ? FiX : FiCheck}
+                              color={
+                                missing ? 'statusSoft.critFg' : 'statusSoft.okFg'
+                              }
+                              boxSize="14px"
+                              mt="2px"
+                              flexShrink={0}
+                              aria-label={missing ? 'Ausente' : 'Presente'}
+                            />
+                            <Text fontSize="12px" color={subColor}>
+                              {value}
+                            </Text>
+                          </HStack>
+                        );
+                      }
+                    )}
+                  </VStack>
+                </Box>
+              )}
+            </Collapse>
+          </Box>
 
           {previousNotes.length > 0 && (
             <SideCard heading="Notas anteriores">
@@ -1066,7 +1135,7 @@ const NoteForm: React.FC = () => {
                     color="text.strong"
                     _hover={{ color: 'brand.600', textDecoration: 'underline' }}
                     onClick={() =>
-                      navigate(`/patients/${patientId}`, {
+                      navigate(patientPathBase, {
                         state: { highlightNote: n.id },
                       })
                     }
@@ -1089,43 +1158,99 @@ const NoteForm: React.FC = () => {
 
       {/* Confirm sign modal */}
       <Modal isOpen={isConfirmSignOpen} onClose={onConfirmSignClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            <HStack spacing={2}>
-              <Box color="brand.600">
-                <FiCheckCircle size={20} />
-              </Box>
-              <Text>Confirmar firma</Text>
-            </HStack>
+        <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(6px)" />
+        <ModalContent
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="10px"
+          boxShadow="0 20px 60px -20px rgba(15, 23, 42, 0.25)"
+          overflow="hidden"
+        >
+          <ModalCloseButton
+            top="14px"
+            right="14px"
+            color="text.muted"
+            _hover={{ color: 'text.strong', bg: 'surface.hover' }}
+          />
+          <ModalHeader px={7} pt={6} pb={4} borderBottom="1px solid" borderColor={borderColor}>
+            <Box pr={8}>
+              <HStack spacing={3} align="center" mb={1.5}>
+                <Box
+                  w="28px"
+                  h="28px"
+                  borderRadius="8px"
+                  display="inline-flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  bg="statusSoft.okBg"
+                  color="statusSoft.okFg"
+                  flexShrink={0}
+                >
+                  <FiCheckCircle size={18} />
+                </Box>
+                <Text
+                  as="span"
+                  fontFamily="mono"
+                  fontSize="11px"
+                  color={labelColor}
+                  letterSpacing="0.08em"
+                  textTransform="uppercase"
+                  fontWeight={500}
+                >
+                  Firma
+                </Text>
+              </HStack>
+              <Text fontSize="18px" fontWeight={600} letterSpacing="-0.012em" color={inkStrong}>
+                Confirmar firma
+              </Text>
+            </Box>
           </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={4} align="stretch">
-              <Text>
-                Una vez firmada, la nota no podrá ser modificada. Esta acción es
-                permanente e irreversible.
+          <ModalBody px={7} py={5}>
+            <VStack spacing={3} align="stretch">
+              <Text fontSize="13.5px" color={bodyColor} lineHeight="1.55">
+                Una vez firmada, la nota no podrá ser modificada. Esta acción es permanente e
+                irreversible.
               </Text>
-              <Text fontWeight="medium">
-                ¿Deseas continuar con la firma de la nota?
-              </Text>
+              <Box
+                bg={paperBg}
+                border="1px solid"
+                borderColor={borderColor}
+                borderRadius="8px"
+                p="10px 12px"
+              >
+                <Text fontSize="13px" color={inkStrong} fontWeight={600}>
+                  ¿Deseas continuar con la firma de la nota?
+                </Text>
+              </Box>
             </VStack>
           </ModalBody>
-          <ModalFooter>
-            <HStack spacing={3}>
+          <ModalFooter px={7} pt={0} pb={6}>
+            <HStack spacing={3} w="full" justify="flex-end">
               <Button
                 variant="outline"
+                borderColor="line.strong"
+                _hover={{ borderColor: 'paper.600', bg: 'surface.hover' }}
                 onClick={onConfirmSignClose}
                 isDisabled={isSubmitting}
+                h="36px"
+                px={5}
+                borderRadius="10px"
+                fontWeight={600}
               >
                 Cancelar
               </Button>
               <Button
-                colorScheme="brand"
                 bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
                 onClick={() => proceedWithSigning(false)}
                 isLoading={isSubmitting}
-                loadingText="Firmando..."
+                loadingText="Firmando…"
+                h="36px"
+                px={6}
+                borderRadius="10px"
+                fontWeight={700}
               >
                 Continuar
               </Button>

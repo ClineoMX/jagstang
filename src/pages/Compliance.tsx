@@ -36,6 +36,7 @@ import { apiService } from '../services/api';
 import PageHead from '../components/PageHead';
 import StatusBadge from '../components/StatusBadge';
 import type { StatusBadgeTone } from '../components/StatusBadge';
+import { usePatients } from '../hooks/usePatients';
 
 const METRIC_LABELS: Record<string, string> = {
   profile_completeness: 'Completitud del perfil',
@@ -75,6 +76,16 @@ type AlertFilter = 'all' | 'ok' | 'warning' | 'critical';
 
 const Compliance: React.FC = () => {
   const navigate = useNavigate();
+  const { patients } = usePatients();
+  const slugById = useMemo(
+    () =>
+      new Map(
+        patients
+          .filter((p) => !!p.slug?.trim())
+          .map((p) => [p.id, p.slug!.trim()] as const)
+      ),
+    [patients]
+  );
 
   const cardBg = useColorModeValue('white', 'paper.800');
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
@@ -461,7 +472,9 @@ const Compliance: React.FC = () => {
                           _hover={{ textDecoration: 'underline' }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/patients/${patient.patient_id}`);
+                            navigate(
+                              `/patients/${slugById.get(patient.patient_id) ?? patient.patient_id}`
+                            );
                           }}
                         >
                           {fullName}

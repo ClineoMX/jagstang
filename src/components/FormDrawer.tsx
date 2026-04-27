@@ -43,6 +43,12 @@ interface FormDrawerProps {
   /** Render without the built-in submit/cancel buttons. */
   hideDefaultActions?: boolean;
   /**
+   * When true, the drawer body fills remaining viewport height (flex column,
+   * overflow hidden). Children should set flex={1} minH={0} and their own
+   * overflowY where scrolling is needed.
+   */
+  bodyFillHeight?: boolean;
+  /**
    * Optional. When provided, the drawer body is wrapped in a <form> element
    * and the default submit button uses type="submit". Use this for standard
    * form-submit-on-enter behavior.
@@ -75,6 +81,7 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
   cancelLabel = 'Cancelar',
   footerLeft,
   hideDefaultActions = false,
+  bodyFillHeight = false,
   onSubmit,
   children,
   closeOnOverlayClick = true,
@@ -84,7 +91,7 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
   /** Match warm page background (prototype paper), not cool `paper.50`. */
   const bodyBg = useColorModeValue('surface.page', 'paper.900');
   const borderColor = useColorModeValue('border.subtle', 'whiteAlpha.200');
-  const crumbColor = useColorModeValue('paper.600', 'paper.500');
+  const crumbColor = useColorModeValue('brand.600', 'brand.300');
   const subColor = useColorModeValue('paper.700', 'paper.400');
 
   const Form: React.ElementType = onSubmit ? 'form' : 'div';
@@ -108,12 +115,20 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
       initialFocusRef={initialFocusRef}
     >
       <DrawerOverlay bg="blackAlpha.400" />
-      <DrawerContent bg={cardBg} borderLeft="1px solid" borderColor={borderColor}>
+      <DrawerContent
+        bg={cardBg}
+        borderLeft="1px solid"
+        borderColor={borderColor}
+        display="flex"
+        flexDirection="column"
+        maxH="100vh"
+        minH={bodyFillHeight ? '100dvh' : undefined}
+      >
         <DrawerCloseButton
           top="14px"
           right="14px"
           color="text.muted"
-          _hover={{ color: 'text.strong', bg: 'surface.hover' }}
+          _hover={{ color: 'brand.600', bg: 'brand.50' }}
         />
         <DrawerHeader
           px={6}
@@ -156,7 +171,17 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
         </DrawerHeader>
 
         <Form {...formProps}>
-          <DrawerBody px={6} py={5} flex={1} overflowY="auto" bg={bodyBg}>
+          <DrawerBody
+            px={6}
+            py={5}
+            flex={1}
+            minH={0}
+            bg={bodyBg}
+            overflowY={bodyFillHeight ? 'hidden' : 'auto'}
+            overflow={bodyFillHeight ? 'hidden' : undefined}
+            display={bodyFillHeight ? 'flex' : undefined}
+            flexDirection={bodyFillHeight ? 'column' : undefined}
+          >
             {children}
           </DrawerBody>
 

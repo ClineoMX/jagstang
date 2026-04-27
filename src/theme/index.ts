@@ -205,13 +205,17 @@ const theme = extendTheme({
       'surface.tableHeader': { default: '#f2f0ea', _dark: 'paper.800' },
       'surface.hover': { default: 'paper.100', _dark: 'whiteAlpha.50' },
       'surface.activeHover': { default: 'paper.200', _dark: 'whiteAlpha.100' },
+      /** Cyan-tinted row hover (tables, dense lists). */
+      'surface.rowHover': { default: 'brand.50', _dark: 'whiteAlpha.50' },
 
       // Text ─────────────────────────────────────────────────────────────────
       'text.strong': { default: 'paper.900', _dark: 'paper.50' },
       'text.body': { default: 'paper.700', _dark: 'paper.200' },
       'text.muted': { default: 'paper.600', _dark: 'paper.300' },
       'text.label': { default: 'paper.500', _dark: 'paper.400' },
-      'text.faint': { default: 'paper.400', _dark: 'paper.500' },
+      // Slightly warmer than `paper.400` so placeholders/meta read “paper ink”
+      // on the warm `#f6f5f1` page background (closer to prototype `--ink-4`).
+      'text.faint': { default: '#a09c94', _dark: 'paper.500' },
       'text.onBrand': { default: 'white', _dark: 'white' },
 
       // ink.* shadowed so legacy `color="ink.700"` (text-only token) flips
@@ -225,6 +229,13 @@ const theme = extendTheme({
       'border.default': { default: 'line.strong', _dark: 'line.dark' },
       'border.strong': { default: 'paper.400', _dark: 'line.darkStrong' },
       'border.focus': { default: 'brand.500', _dark: 'brand.300' },
+
+      // Shadow the raw warm `line.*` tokens so that legacy hardcoded usages
+      // like `borderColor="line.strong"` (inputs, buttons, drawers) flip to
+      // a cool Clineo-cyan–tinted border in dark mode instead of staying on
+      // the warm beige (#d3cfc2 / #e4e1d8) defined for light mode.
+      'line.light': { default: '#e4e1d8', _dark: 'rgba(76, 183, 215, 0.14)' },
+      'line.strong': { default: '#d3cfc2', _dark: 'rgba(76, 183, 215, 0.28)' },
 
       // Brand link / accent text (AA on either surface)
       link: { default: 'brand.600', _dark: 'brand.300' },
@@ -299,6 +310,11 @@ const theme = extendTheme({
     md: '0 4px 6px rgba(0, 0, 0, 0.1)',
     lg: '0 10px 15px rgba(0, 0, 0, 0.1)',
     xl: '0 20px 25px rgba(0, 0, 0, 0.1)',
+    /** Clineo cyan micro-ring (cards, subtle elevation). */
+    brandRing:
+      '0 1px 2px rgba(20,22,27,.04), 0 0 0 1px rgba(76, 183, 215, 0.22)',
+    brandRingDark:
+      '0 0 0 1px rgba(76, 183, 215, 0.38), 0 4px 14px rgba(0,0,0,.25)',
   },
   styles: {
     global: () => ({
@@ -306,6 +322,16 @@ const theme = extendTheme({
         bg: 'surface.page',
         color: 'text.strong',
         lineHeight: '1.6',
+      },
+      '::selection': {
+        bg: 'brand.100',
+        color: 'text.strong',
+      },
+      // Native controls outside Chakra's themed wrappers still inherit browser
+      // placeholder gray; align them to the warm semantic palette.
+      'input::placeholder, textarea::placeholder': {
+        color: 'text.faint',
+        opacity: 1,
       },
       // iOS Safari enlarges the viewport when focusing inputs with computed font-size < 16px.
       // Keep compact typography on md+; on narrow viewports force 16px on real form controls.
@@ -329,29 +355,73 @@ const theme = extendTheme({
           borderColor: 'border.subtle',
         },
       },
+      variants: {
+        simple: {
+          tbody: {
+            tr: {
+              transition: 'background 0.12s ease',
+              _hover: {
+                bg: 'surface.rowHover',
+              },
+            },
+          },
+        },
+      },
+    },
+    Link: {
+      baseStyle: {
+        color: 'link',
+        _hover: {
+          color: 'brand.400',
+          textDecoration: 'underline',
+        },
+        _focusVisible: {
+          boxShadow: '0 0 0 3px rgba(76, 183, 215, 0.28)',
+          borderRadius: 'sm',
+          textDecoration: 'none',
+        },
+      },
     },
     Button: {
       baseStyle: {
         fontWeight: '600',
         borderRadius: 'base',
+        // Optical centering for the Utendo custom TTF.
+        // Utendo's glyphs visually sit higher than the geometric center of
+        // their line box (see Avatar's complementary `paddingTop: '2px'` fix).
+        // Inside a flex-centered button, this makes text appear above the
+        // button's vertical center — and above any icon that is centered
+        // geometrically. Two-step correction:
+        //   1. The button `size` variants use asymmetric vertical padding
+        //      (`pt > pb`) which shifts the whole content area down ~2px,
+        //      placing the text's optical center at the button's midline.
+        //   2. `.chakra-button__icon` is translated up by the same amount so
+        //      icons remain at the true midline (and visually line up with
+        //      the now-centered text).
+        '.chakra-button__icon': {
+          transform: 'translateY(-2px)',
+        },
       },
       sizes: {
         sm: {
           fontSize: 'sm',
           px: 4,
-          py: 2,
+          pt: '10px',
+          pb: '6px',
           minH: '36px',
         },
         md: {
           fontSize: 'md',
           px: 6,
-          py: 3,
+          pt: '14px',
+          pb: '10px',
           minH: '44px',
         },
         lg: {
           fontSize: 'lg',
           px: 8,
-          py: 4,
+          pt: '18px',
+          pb: '14px',
           minH: '48px',
         },
       },
@@ -386,6 +456,11 @@ const theme = extendTheme({
       },
     },
     Input: {
+      baseStyle: {
+        field: {
+          _placeholder: { color: 'text.faint', opacity: 1 },
+        },
+      },
       sizes: {
         md: {
           field: {
@@ -400,8 +475,42 @@ const theme = extendTheme({
           field: {
             borderColor: 'border.default',
             _hover: {
-              borderColor: 'border.strong',
+              borderColor: 'brand.300',
             },
+            _focus: {
+              borderColor: 'border.focus',
+              boxShadow: '0 0 0 3px rgba(76, 183, 215, 0.2)',
+            },
+          },
+        }),
+      },
+    },
+    Textarea: {
+      baseStyle: {
+        _placeholder: { color: 'text.faint', opacity: 1 },
+      },
+      variants: {
+        outline: () => ({
+          borderColor: 'border.default',
+          _hover: { borderColor: 'brand.300' },
+          _focus: {
+            borderColor: 'border.focus',
+            boxShadow: '0 0 0 3px rgba(76, 183, 215, 0.2)',
+          },
+        }),
+      },
+    },
+    Select: {
+      baseStyle: {
+        field: {
+          _placeholder: { color: 'text.faint', opacity: 1 },
+        },
+      },
+      variants: {
+        outline: () => ({
+          field: {
+            borderColor: 'border.default',
+            _hover: { borderColor: 'brand.300' },
             _focus: {
               borderColor: 'border.focus',
               boxShadow: '0 0 0 3px rgba(76, 183, 215, 0.2)',
@@ -423,6 +532,114 @@ const theme = extendTheme({
         alignItems: 'center',
         justifyContent: 'center',
         lineHeight: 1,
+      },
+    },
+    // ─── Menus (dropdowns, row actions, sidebar account menu) ────────────────
+    // Unified "proto" style: rounded card, subtle border, soft drop shadow,
+    // rounded items with hover/active surfaces. Individual call-sites can
+    // still override (e.g. Layout.tsx uses a dark-themed sidebar menu).
+    Menu: {
+      baseStyle: {
+        list: {
+          bg: 'surface.card',
+          borderColor: 'border.subtle',
+          borderWidth: '1px',
+          borderRadius: '10px',
+          boxShadow: '0 16px 40px -12px rgba(15, 23, 42, 0.25)',
+          _dark: {
+            boxShadow:
+              '0 16px 40px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(76, 183, 215, 0.08)',
+          },
+          py: 1.5,
+          px: 1,
+          minW: '200px',
+        },
+        item: {
+          fontSize: '13px',
+          fontWeight: 500,
+          color: 'text.body',
+          bg: 'transparent',
+          borderRadius: '6px',
+          mx: 0,
+          my: 0.5,
+          px: 2.5,
+          py: 2,
+          transition: 'background 0.12s ease, color 0.12s ease',
+          _hover: { bg: 'surface.hover', color: 'text.strong' },
+          _focus: { bg: 'surface.hover', color: 'text.strong' },
+          _active: { bg: 'surface.activeHover' },
+          // Compensate Utendo's high glyph position so MenuItem icons line
+          // up with the text's optical center. Same trick used on Button.
+          '.chakra-menu__icon-wrapper': {
+            transform: 'translateY(-2px)',
+          },
+        },
+        divider: {
+          borderColor: 'border.subtle',
+          opacity: 1,
+          my: 1,
+        },
+        groupTitle: {
+          fontFamily: 'mono',
+          fontSize: '10.5px',
+          fontWeight: 600,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'text.label',
+          px: 2.5,
+          my: 1,
+        },
+      },
+    },
+    // ─── Popovers (filters, mini-forms, hover cards) ─────────────────────────
+    Popover: {
+      baseStyle: {
+        content: {
+          bg: 'surface.card',
+          borderColor: 'border.subtle',
+          borderWidth: '1px',
+          borderRadius: '10px',
+          boxShadow: '0 16px 40px -12px rgba(15, 23, 42, 0.25)',
+          _focus: {
+            outline: 'none',
+            boxShadow: '0 16px 40px -12px rgba(15, 23, 42, 0.25)',
+          },
+          _focusVisible: {
+            outline: 'none',
+            boxShadow: '0 16px 40px -12px rgba(15, 23, 42, 0.25)',
+          },
+          _dark: {
+            boxShadow:
+              '0 16px 40px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(76, 183, 215, 0.08)',
+            _focus: {
+              boxShadow:
+                '0 16px 40px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(76, 183, 215, 0.08)',
+            },
+            _focusVisible: {
+              boxShadow:
+                '0 16px 40px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(76, 183, 215, 0.08)',
+            },
+          },
+        },
+        header: {
+          borderColor: 'border.subtle',
+          fontSize: '13px',
+          fontWeight: 600,
+          color: 'text.strong',
+          px: 3,
+          py: 2.5,
+        },
+        footer: {
+          borderColor: 'border.subtle',
+          px: 3,
+          py: 2,
+        },
+        closeButton: {
+          top: 2,
+          insetEnd: 2,
+          color: 'text.muted',
+          _hover: { color: 'text.strong', bg: 'surface.hover' },
+        },
       },
     },
     Avatar: {

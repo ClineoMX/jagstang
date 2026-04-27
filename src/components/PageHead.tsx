@@ -24,7 +24,8 @@ interface PageHeadProps {
  */
 const PageHead: React.FC<PageHeadProps> = ({ crumbs, title, sub, actions }) => {
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
-  const crumbsColor = useColorModeValue('paper.600', 'paper.500');
+  /** Micro-accent: crumbs in brand cyan (readable on warm paper). */
+  const crumbsColor = useColorModeValue('brand.600', 'brand.300');
   const subColor = useColorModeValue('paper.700', 'paper.400');
 
   return (

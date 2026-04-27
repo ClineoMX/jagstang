@@ -12,7 +12,7 @@ import {
   Heading,
   Link as ChakraLink,
 } from '@chakra-ui/react';
-import { FiSearch, FiPlus } from 'react-icons/fi';
+import { FiPlus } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { differenceInMinutes, format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -33,6 +33,7 @@ interface RecentNote {
   status: string;
   type?: string;
   patient_id: string;
+  patient_slug?: string;
   patient_name: string;
   patient_lastname: string;
   created_at?: string;
@@ -104,6 +105,7 @@ const Dashboard: React.FC = () => {
               (n as { type?: string; note_type?: string }).type ??
               (n as { type?: string; note_type?: string }).note_type,
             patient_id: n.patient_id,
+            patient_slug: (n as { patient_slug?: string | null }).patient_slug ?? undefined,
             patient_name: n.patient_name,
             patient_lastname: n.patient_lastname,
             created_at: n.created_at,
@@ -191,7 +193,8 @@ const Dashboard: React.FC = () => {
   const handleNewNote = () => {
     const firstPatient = patients[0];
     if (firstPatient) {
-      navigate(`/patients/${firstPatient.id}/notes/new`);
+      if (!firstPatient.slug?.trim()) return;
+      navigate(`/patients/${firstPatient.slug}/notes/new`);
     } else {
       navigate('/patients');
     }
@@ -206,7 +209,7 @@ const Dashboard: React.FC = () => {
     : '—';
   const nextCitaSub = nextAppointment
     ? `· ${nextPatient ? `${nextPatient.firstName} ${nextPatient.lastName}` : 'Paciente'}`
-    : 'sin programar';
+    : 'No hay más citas programadas';
 
   return (
     <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
@@ -221,19 +224,6 @@ const Dashboard: React.FC = () => {
         }
         actions={
           <>
-            <Button
-              variant="outline"
-              leftIcon={<FiSearch />}
-              size="sm"
-              h="36px"
-              borderColor="line.strong"
-              color="text.strong"
-              bg={cardBg}
-              _hover={{ borderColor: 'paper.600' }}
-              display={{ base: 'none', sm: 'inline-flex' }}
-            >
-              Buscar
-            </Button>
             <Button
               leftIcon={<FiPlus />}
               size="sm"
@@ -356,7 +346,9 @@ const Dashboard: React.FC = () => {
                   <HStack
                     key={apt.id}
                     as="button"
-                    onClick={() => navigate(`/patients/${apt.patient_id}`)}
+                    onClick={() =>
+                      navigate(`/patients/${p?.slug ?? apt.patient_id}`)
+                    }
                     display="grid"
                     gridTemplateColumns={{
                       base: '52px 1fr auto',
@@ -479,19 +471,25 @@ const Dashboard: React.FC = () => {
                     ? `Creada hoy, ${format(created, 'HH:mm')}`
                     : `Creada ${format(created, 'd MMM, HH:mm', { locale: es })}`
                   : '';
+                const patientSlug =
+                  note.patient_slug?.trim() ||
+                  patientById[note.patient_id]?.slug?.trim() ||
+                  '';
+                const patientSlugForUrl =
+                  patientSlug || note.patient_id;
 
                 return (
                   <HStack
                     key={note.id}
                     as="button"
                     onClick={() =>
-                      note.status === 'signed'
-                        ? navigate(`/patients/${note.patient_id}`)
-                        : navigate(`/patients/${note.patient_id}`)
+                      navigate(
+                        `/patients/${patientSlugForUrl}/notes/${note.id}/edit`
+                      )
                     }
                     display="grid"
-                    gridTemplateColumns={{ base: '1fr', sm: '1fr auto' }}
-                    gap={{ base: 2, md: 4 }}
+                    gridTemplateColumns="1fr auto"
+                    gap={{ base: 3, md: 4 }}
                     px={{ base: 3, md: 5 }}
                     py={3}
                     borderBottom="1px solid"
@@ -502,36 +500,34 @@ const Dashboard: React.FC = () => {
                     sx={{ '&:last-child': { borderBottom: 'none' } }}
                   >
                     <Box minW={0}>
-                      <HStack spacing={2} align="center">
+                      <Text
+                        fontWeight={500}
+                        fontSize="13.5px"
+                        color="text.strong"
+                        noOfLines={1}
+                      >
+                        {note.title}
+                      </Text>
+                      {patientSlug ? (
                         <Text
-                          fontWeight={500}
-                          fontSize="13.5px"
-                          color="text.strong"
+                          fontFamily="mono"
+                          fontSize="10.5px"
+                          letterSpacing="0.06em"
+                          textTransform="uppercase"
+                          color={metaColor}
+                          mt="2px"
                           noOfLines={1}
                         >
-                          {note.title}
-                          {(note.patient_name || note.patient_lastname) && (
-                            <Text as="span" color={mutedColor} fontWeight={400}>
-                              {' · '}
-                              {note.patient_name} {note.patient_lastname}
-                            </Text>
-                          )}
+                          #{patientSlug}
                         </Text>
-                        <StatusBadge tone={tone}>{label}</StatusBadge>
-                      </HStack>
+                      ) : null}
                       {when && (
                         <Text fontSize="12px" color={mutedColor} mt="2px">
                           {when}
                         </Text>
                       )}
                     </Box>
-                    <Text
-                      fontSize="12px"
-                      color={metaColor}
-                      display={{ base: 'none', sm: 'block' }}
-                    >
-                      Abrir →
-                    </Text>
+                    <StatusBadge tone={tone}>{label}</StatusBadge>
                   </HStack>
                 );
               })}

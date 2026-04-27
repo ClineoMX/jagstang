@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import type { Editor } from '@tiptap/core';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
 import {
   Box,
   Button,
@@ -228,6 +229,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 }) => {
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
   const bgColor = useColorModeValue('white', 'paper.800');
+  const lastEmittedHtmlRef = useRef<string>('');
 
   const editor = useEditor({
     extensions: [
@@ -235,17 +237,23 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         link: { openOnClick: false },
         heading: { levels: [1, 2, 3] },
       }),
+      Underline,
     ],
     content: value,
     editable: !readOnly,
     onUpdate: ({ editor: ed }) => {
-      onChange(ed.getHTML());
+      const html = ed.getHTML();
+      lastEmittedHtmlRef.current = html;
+      onChange(html);
     },
   });
 
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value);
+    if (!editor) return;
+    // Avoid resetting the document on every parent re-render.
+    // Only apply external value changes (e.g. loading a note/template).
+    if (value !== lastEmittedHtmlRef.current && value !== editor.getHTML()) {
+      editor.commands.setContent(value, { emitUpdate: false });
     }
   }, [value, editor]);
 
@@ -265,8 +273,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             minHeight,
             padding: '1rem',
             outline: 'none',
-            fontSize: 'md',
-            fontFamily: 'body',
+            fontSize: '14px',
+            lineHeight: '1.65',
+            // Match the PageHead crumbs typography.
+            fontFamily: 'mono',
             '&:focus': {
               outline: 'none',
             },
@@ -333,7 +343,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               textDecoration: 'underline',
             },
             strong: {
-              fontWeight: 'bold',
+              fontWeight: 700,
             },
             em: {
               fontStyle: 'italic',

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Container,
@@ -38,6 +38,7 @@ import {
   FiEdit,
 } from 'react-icons/fi';
 import ContactFormModal from '../components/ContactFormModal';
+import TablePagination from '../components/TablePagination';
 import PageHead from '../components/PageHead';
 import StatusBadge from '../components/StatusBadge';
 import type { StatusBadgeTone } from '../components/StatusBadge';
@@ -72,6 +73,8 @@ const getContactTypeTone = (type: string): StatusBadgeTone => {
 
 const ContactList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const cardBg = useColorModeValue('white', 'paper.800');
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
@@ -100,6 +103,15 @@ const ContactList: React.FC = () => {
       );
     });
   }, [contacts, searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
+
+  const pagedContacts = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredContacts.slice(start, start + pageSize);
+  }, [filteredContacts, page, pageSize]);
 
   const handleEdit = (e: React.MouseEvent, contact: Contact) => {
     e.stopPropagation();
@@ -272,7 +284,7 @@ const ContactList: React.FC = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {filteredContacts.map((contact) => {
+                {pagedContacts.map((contact) => {
                   return (
                     <Tr
                       key={contact.id}
@@ -458,6 +470,16 @@ const ContactList: React.FC = () => {
               </Tbody>
             </Table>
           </Box>
+          <TablePagination
+            totalItems={filteredContacts.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+          />
         </Box>
       )}
 

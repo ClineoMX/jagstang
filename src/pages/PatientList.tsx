@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Container,
@@ -28,6 +28,11 @@ import {
   MenuList,
   MenuItem,
   Tooltip,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody,
+  Divider,
 } from '@chakra-ui/react';
 import {
   FiPlus,
@@ -37,6 +42,11 @@ import {
   FiMoreVertical,
   FiEdit,
   FiExternalLink,
+  FiChevronUp,
+  FiChevronDown,
+  FiCheck,
+  FiFilter,
+  FiX,
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -44,6 +54,7 @@ import { es } from 'date-fns/locale';
 import PatientFormModal from '../components/PatientFormModal';
 import PageHead from '../components/PageHead';
 import StatusBadge from '../components/StatusBadge';
+import TablePagination from '../components/TablePagination';
 import { usePatients } from '../hooks/usePatients';
 import type { Patient } from '../types';
 
@@ -65,8 +76,88 @@ const genderInitial = (g?: string): string => {
   return '';
 };
 
+type PatientSortKey =
+  | 'name'
+  | 'age'
+  | 'gender'
+  | 'isRecurrent'
+  | 'lastVisit';
+type SortDir = 'asc' | 'desc';
+type RecurrentFilter = 'all' | 'recurrent' | 'first';
+type GenderFilter = 'all' | 'male' | 'female' | 'other';
+
+interface FilterSectionProps<T extends string> {
+  title: string;
+  options: Array<{ id: T; label: string }>;
+  value: T;
+  onChange: (v: T) => void;
+  labelColor: string;
+  inkStrong: string;
+  subColor: string;
+}
+
+function FilterSection<T extends string>({
+  title,
+  options,
+  value,
+  onChange,
+  labelColor,
+  inkStrong,
+  subColor,
+}: FilterSectionProps<T>) {
+  return (
+    <Box px={3} py={2.5}>
+      <Text
+        fontSize="10.5px"
+        fontFamily="mono"
+        letterSpacing="0.12em"
+        textTransform="uppercase"
+        color={labelColor}
+        mb={1.5}
+      >
+        {title}
+      </Text>
+      <VStack align="stretch" spacing={0.5}>
+        {options.map((opt) => {
+          const on = value === opt.id;
+          return (
+            <Box
+              key={opt.id}
+              as="button"
+              type="button"
+              onClick={() => onChange(opt.id)}
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              w="full"
+              px={2}
+              py={1.5}
+              borderRadius="6px"
+              fontSize="13px"
+              fontWeight={on ? 600 : 400}
+              color={on ? inkStrong : subColor}
+              textAlign="left"
+              _hover={{ bg: 'blackAlpha.50', _dark: { bg: 'whiteAlpha.100' } }}
+              transition="background 0.12s ease"
+            >
+              <Text as="span">{opt.label}</Text>
+              {on && <Icon as={FiCheck} boxSize={3.5} color="brand.500" />}
+            </Box>
+          );
+        })}
+      </VStack>
+    </Box>
+  );
+}
+
 const PatientList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [recurrentFilter, setRecurrentFilter] = useState<RecurrentFilter>('all');
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
+  const [sortKey, setSortKey] = useState<PatientSortKey>('lastVisit');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const navigate = useNavigate();
 
   const cardBg = useColorModeValue('white', 'paper.800');
@@ -83,16 +174,137 @@ const PatientList: React.FC = () => {
   const { patients, loading, error, refetch } = usePatients();
 
   const filteredPatients = useMemo(() => {
-    if (searchQuery.trim() === '') return patients;
-    const query = searchQuery.toLowerCase();
-    return patients.filter(
-      (p) =>
-        p.firstName?.toLowerCase().includes(query) ||
-        p.lastName?.toLowerCase().includes(query) ||
-        p.email?.toLowerCase().includes(query) ||
-        p.phone?.includes(query)
+    const q = searchQuery.trim().toLowerCase();
+    const bySearch = q
+      ? patients.filter(
+          (p) =>
+            p.firstName?.toLowerCase().includes(q) ||
+            p.lastName?.toLowerCase().includes(q) ||
+            p.lastNameMaternal?.toLowerCase().includes(q) ||
+            p.email?.toLowerCase().includes(q) ||
+            p.phone?.includes(q)
+        )
+      : patients;
+
+    const byRecurrent =
+      recurrentFilter === 'all'
+        ? bySearch
+        : bySearch.filter((p) =>
+            recurrentFilter === 'recurrent' ? !!p.isRecurrent : !p.isRecurrent
+          );
+
+    const byGender =
+      genderFilter === 'all'
+        ? byRecurrent
+        : byRecurrent.filter((p) => {
+            if (genderFilter === 'other') {
+              return !!p.gender && p.gender !== 'male' && p.gender !== 'female';
+            }
+            return p.gender === genderFilter;
+          });
+
+    const compare = (a: Patient, b: Patient): number => {
+      switch (sortKey) {
+        case 'name': {
+          const aName = `${a.firstName ?? ''} ${a.lastName ?? ''} ${a.lastNameMaternal ?? ''}`
+            .trim()
+            .toLowerCase();
+          const bName = `${b.firstName ?? ''} ${b.lastName ?? ''} ${b.lastNameMaternal ?? ''}`
+            .trim()
+            .toLowerCase();
+          return aName.localeCompare(bName, 'es');
+        }
+        case 'age': {
+          const aAge = calcAge(a.dateOfBirth);
+          const bAge = calcAge(b.dateOfBirth);
+          const av = aAge ?? -1;
+          const bv = bAge ?? -1;
+          return av - bv;
+        }
+        case 'gender': {
+          const rank = (g?: Patient['gender']): number => {
+            if (g === 'female') return 2;
+            if (g === 'male') return 1;
+            if (g) return 0; // other / prefer_not_to_say
+            return -1;
+          };
+          return rank(a.gender) - rank(b.gender);
+        }
+        case 'isRecurrent': {
+          const av = a.isRecurrent ? 1 : 0;
+          const bv = b.isRecurrent ? 1 : 0;
+          return av - bv;
+        }
+        case 'lastVisit': {
+          const aTime = a.lastVisit ? new Date(a.lastVisit).getTime() : 0;
+          const bTime = b.lastVisit ? new Date(b.lastVisit).getTime() : 0;
+          return aTime - bTime;
+        }
+        default:
+          return 0;
+      }
+    };
+
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...byGender].sort((a, b) => dir * compare(a, b));
+  }, [patients, searchQuery, recurrentFilter, genderFilter, sortKey, sortDir]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, recurrentFilter, genderFilter, sortKey, sortDir]);
+
+  const pagedPatients = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredPatients.slice(start, start + pageSize);
+  }, [filteredPatients, page, pageSize]);
+
+  const toggleSort = (key: PatientSortKey) => {
+    setSortKey((prev) => {
+      if (prev !== key) {
+        setSortDir(key === 'name' ? 'asc' : 'desc');
+        return key;
+      }
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      return prev;
+    });
+  };
+
+  const sortIconFor = (key: PatientSortKey) => {
+    const isActive = sortKey === key;
+    const icon = isActive
+      ? sortDir === 'asc'
+        ? FiChevronUp
+        : FiChevronDown
+      : FiChevronDown;
+    return (
+      <Icon
+        as={icon}
+        boxSize={3.5}
+        opacity={isActive ? 1 : 0.35}
+        transition="opacity .12s"
+      />
     );
-  }, [patients, searchQuery]);
+  };
+
+  const RECURRENT_FILTERS: Array<{ id: RecurrentFilter; label: string }> = [
+    { id: 'all', label: 'Todos' },
+    { id: 'recurrent', label: 'Recurrente' },
+    { id: 'first', label: 'Primera vez' },
+  ];
+  const GENDER_FILTERS: Array<{ id: GenderFilter; label: string }> = [
+    { id: 'all', label: 'Todos' },
+    { id: 'female', label: 'Femenino' },
+    { id: 'male', label: 'Masculino' },
+    { id: 'other', label: 'Otro' },
+  ];
+
+  const activeFilterCount =
+    (recurrentFilter !== 'all' ? 1 : 0) + (genderFilter !== 'all' ? 1 : 0);
+  const hasActiveFilters = activeFilterCount > 0;
+  const clearAllFilters = () => {
+    setRecurrentFilter('all');
+    setGenderFilter('all');
+  };
 
   const handleEdit = (e: React.MouseEvent, patient: Patient) => {
     e.stopPropagation();
@@ -136,6 +348,91 @@ const PatientList: React.FC = () => {
                 borderRadius="6px"
               />
             </InputGroup>
+            <Popover isLazy placement="bottom-end" gutter={6}>
+              <PopoverTrigger>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  h="36px"
+                  px={3}
+                  borderRadius="6px"
+                  borderColor={hasActiveFilters ? inkStrong : 'line.strong'}
+                  bg={cardBg}
+                  color={inkStrong}
+                  fontWeight={500}
+                  fontSize="13px"
+                  leftIcon={<Icon as={FiFilter} boxSize={3.5} />}
+                  _hover={{ borderColor: 'paper.600' }}
+                  _active={{ bg: cardBg }}
+                  display={{ base: 'none', md: 'inline-flex' }}
+                  aria-label="Filtros"
+                >
+                  <HStack as="span" spacing={1.5}>
+                    <Text as="span">Filtros</Text>
+                    {hasActiveFilters && (
+                      <Box
+                        as="span"
+                        display="inline-flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        minW="18px"
+                        h="18px"
+                        px={1.5}
+                        borderRadius="999px"
+                        bg="brand.600"
+                        color="white"
+                        fontSize="10.5px"
+                        fontWeight={700}
+                        lineHeight={1}
+                      >
+                        {activeFilterCount}
+                      </Box>
+                    )}
+                  </HStack>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent w="260px">
+                <PopoverBody p={0}>
+                  <FilterSection
+                    title="Estado"
+                    options={RECURRENT_FILTERS}
+                    value={recurrentFilter}
+                    onChange={(v) => setRecurrentFilter(v as RecurrentFilter)}
+                    labelColor={labelColor}
+                    inkStrong={inkStrong}
+                    subColor={subColor}
+                  />
+                  <Divider borderColor={borderColor} />
+                  <FilterSection
+                    title="Sexo"
+                    options={GENDER_FILTERS}
+                    value={genderFilter}
+                    onChange={(v) => setGenderFilter(v as GenderFilter)}
+                    labelColor={labelColor}
+                    inkStrong={inkStrong}
+                    subColor={subColor}
+                  />
+                  {hasActiveFilters && (
+                    <>
+                      <Divider borderColor={borderColor} />
+                      <HStack px={3} py={2} justify="flex-end">
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          leftIcon={<Icon as={FiX} boxSize={3} />}
+                          color={subColor}
+                          fontWeight={500}
+                          onClick={clearAllFilters}
+                          _hover={{ color: inkStrong, bg: rowHoverBg }}
+                        >
+                          Limpiar filtros
+                        </Button>
+                      </HStack>
+                    </>
+                  )}
+                </PopoverBody>
+              </PopoverContent>
+            </Popover>
             <Button
               leftIcon={<FiPlus />}
               size="sm"
@@ -240,7 +537,14 @@ const PatientList: React.FC = () => {
                     borderColor={borderColor}
                     minW="180px"
                   >
-                    Paciente
+                    <HStack spacing={1.5} justify="space-between">
+                      <Box as="button" onClick={() => toggleSort('name')}>
+                        <HStack spacing={1.5}>
+                          <Text as="span">Paciente</Text>
+                          {sortIconFor('name')}
+                        </HStack>
+                      </Box>
+                    </HStack>
                   </Th>
                   <Th
                     py={2.5}
@@ -255,7 +559,12 @@ const PatientList: React.FC = () => {
                     borderColor={borderColor}
                     display={{ base: 'none', md: 'table-cell' }}
                   >
-                    Edad · Género
+                    <Box as="button" onClick={() => toggleSort('age')}>
+                      <HStack spacing={1.5}>
+                        <Text as="span">Edad</Text>
+                        {sortIconFor('age')}
+                      </HStack>
+                    </Box>
                   </Th>
                   <Th
                     py={2.5}
@@ -264,6 +573,33 @@ const PatientList: React.FC = () => {
                     fontSize="10.5px"
                     letterSpacing="0.08em"
                     textTransform="uppercase"
+                    color={labelColor}
+                    fontWeight={500}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    display={{ base: 'none', md: 'table-cell' }}
+                    textAlign="center"
+                  >
+                    <Box
+                      as="button"
+                      onClick={() => toggleSort('gender')}
+                      display="inline-flex"
+                      justifyContent="center"
+                      w="full"
+                    >
+                      <HStack spacing={1.5}>
+                        <Text as="span">Género</Text>
+                        {sortIconFor('gender')}
+                      </HStack>
+                    </Box>
+                  </Th>
+                  <Th
+                    py={2.5}
+                    px={4}
+                    fontFamily="mono"
+                    fontSize="10.5px"
+                    letterSpacing="0.08em"
+                    textTransform="none"
                     color={labelColor}
                     fontWeight={500}
                     borderBottom="1px solid"
@@ -278,7 +614,7 @@ const PatientList: React.FC = () => {
                     fontFamily="mono"
                     fontSize="10.5px"
                     letterSpacing="0.08em"
-                    textTransform="uppercase"
+                    textTransform="none"
                     color={labelColor}
                     fontWeight={500}
                     borderBottom="1px solid"
@@ -301,7 +637,12 @@ const PatientList: React.FC = () => {
                     borderColor={borderColor}
                     display={{ base: 'none', md: 'table-cell' }}
                   >
-                    Estado
+                    <Box as="button" onClick={() => toggleSort('isRecurrent')}>
+                      <HStack spacing={1.5}>
+                        <Text as="span">Estado</Text>
+                        {sortIconFor('isRecurrent')}
+                      </HStack>
+                    </Box>
                   </Th>
                   <Th
                     py={2.5}
@@ -316,7 +657,12 @@ const PatientList: React.FC = () => {
                     borderColor={borderColor}
                     display={{ base: 'none', lg: 'table-cell' }}
                   >
-                    Última visita
+                    <Box as="button" onClick={() => toggleSort('lastVisit')}>
+                      <HStack spacing={1.5}>
+                        <Text as="span">Última visita</Text>
+                        {sortIconFor('lastVisit')}
+                      </HStack>
+                    </Box>
                   </Th>
                   <Th
                     py={2.5}
@@ -328,7 +674,7 @@ const PatientList: React.FC = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {filteredPatients.map((patient) => {
+                {pagedPatients.map((patient) => {
                   const age = calcAge(patient.dateOfBirth);
                   const gi = genderInitial(patient.gender);
                   const primaryContact = patient.email || patient.phone;
@@ -336,7 +682,10 @@ const PatientList: React.FC = () => {
                     <Tr
                       key={patient.id}
                       cursor="pointer"
-                      onClick={() => navigate(`/patients/${patient.id}`)}
+                      onClick={() => {
+                        if (!patient.slug?.trim()) return;
+                        navigate(`/patients/${patient.slug}`);
+                      }}
                       _hover={{ bg: rowHoverBg }}
                       transition="background .1s"
                       borderBottom="1px solid"
@@ -372,7 +721,7 @@ const PatientList: React.FC = () => {
                               color={labelColor}
                               letterSpacing="0.04em"
                             >
-                              #{patient.id.slice(0, 8).toUpperCase()}
+                              #{(patient.slug ?? '').toUpperCase()}
                             </Text>
                           </Box>
                         </HStack>
@@ -385,19 +734,31 @@ const PatientList: React.FC = () => {
                       >
                         <Text fontSize="13px" color={inkStrong}>
                           {age !== null ? `${age} años` : '—'}
-                          {gi && (
-                            <Text
-                              as="span"
-                              color={labelColor}
-                              ml={2}
-                              fontFamily="mono"
-                              fontSize="11.5px"
-                              letterSpacing="0.04em"
-                            >
-                              · {gi}
-                            </Text>
-                          )}
                         </Text>
+                      </Td>
+                      <Td
+                        py={2.5}
+                        px={4}
+                        borderBottom="none"
+                        display={{ base: 'none', md: 'table-cell' }}
+                        textAlign="center"
+                      >
+                        {gi ? (
+                          <Text
+                            as="span"
+                            fontFamily="mono"
+                            fontSize="11.5px"
+                            letterSpacing="0.08em"
+                            fontWeight={600}
+                            color={inkStrong}
+                          >
+                            {gi}
+                          </Text>
+                        ) : (
+                          <Text fontSize="12.5px" color={labelColor}>
+                            —
+                          </Text>
+                        )}
                       </Td>
                       <Td
                         py={2.5}
@@ -523,7 +884,7 @@ const PatientList: React.FC = () => {
                             <MenuItem
                               icon={<FiExternalLink />}
                               onClick={() =>
-                                navigate(`/patients/${patient.id}`)
+                                patient.slug?.trim() && navigate(`/patients/${patient.slug}`)
                               }
                             >
                               Abrir expediente
@@ -543,6 +904,16 @@ const PatientList: React.FC = () => {
               </Tbody>
             </Table>
           </Box>
+          <TablePagination
+            totalItems={filteredPatients.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+          />
         </Box>
       )}
 

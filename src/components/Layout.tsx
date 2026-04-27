@@ -81,7 +81,12 @@ const NavItem: React.FC<NavItemProps> = ({
           : undefined
       }
     >
-      <Icon as={ItemIcon} boxSize="20px" strokeWidth={1.75} />
+      <Icon
+        as={ItemIcon}
+        boxSize="20px"
+        strokeWidth={1.75}
+        color={isActive ? 'brand.400' : 'currentColor'}
+      />
       <Text
         fontSize="10.5px"
         fontWeight={500}
@@ -138,7 +143,12 @@ const BottomNavItem: React.FC<BottomNavItemProps> = ({
           : undefined
       }
     >
-      <Icon as={ItemIcon} boxSize="20px" strokeWidth={1.75} />
+      <Icon
+        as={ItemIcon}
+        boxSize="20px"
+        strokeWidth={1.75}
+        color={isActive ? 'brand.400' : 'currentColor'}
+      />
       <Text
         fontSize="10px"
         fontWeight={500}

@@ -26,7 +26,7 @@ import {
   useDisclosure,
   useToast,
 } from '@chakra-ui/react';
-import { useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
 import {
   FiArrowLeft,
   FiCalendar,
@@ -55,8 +55,11 @@ const FIELD_TYPE_ICONS: Record<string, React.ElementType> = {
   CHECKBOX: FiCheckSquare,
   SIGNATURE: FiEdit3,
 };
-import { usePatient } from '../hooks/usePatients';
+import { usePatient, usePatients } from '../hooks/usePatients';
+import { usePatientVitals } from '../hooks/usePatientVitals';
 import { useNotes } from '../hooks/useNotes';
+import PatientClinicalSummary from '../components/PatientClinicalSummary';
+import CollapsibleSideCard from '../components/CollapsibleSideCard';
 import { apiService } from '../services/api';
 
 interface FormSummary {
@@ -65,11 +68,12 @@ interface FormSummary {
 }
 
 const FormNoteForm: React.FC = () => {
-  const { patientId, noteId } = useParams<{
-    patientId: string;
+  const { patientSlug, noteId } = useParams<{
+    patientSlug: string;
     noteId?: string;
   }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
 
   const cardBg = useColorModeValue('white', 'paper.800');
@@ -82,7 +86,38 @@ const FormNoteForm: React.FC = () => {
   const hoverBg = useColorModeValue('paper.50', 'whiteAlpha.50');
   const iconBg = useColorModeValue('brand.50', 'whiteAlpha.100');
 
+  const { patients } = usePatients();
+  const patientId = useMemo(() => {
+    const raw = (patientSlug ?? '').trim().replace(/^#/, '');
+    if (!raw) return undefined;
+    const match = patients.find((p) => p.slug === raw || p.id === raw);
+    if (match?.id) return match.id;
+    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      raw
+    );
+    return looksLikeUuid ? raw : undefined;
+  }, [patients, patientSlug]);
+
   const { patient, loading: patientLoading } = usePatient(patientId);
+  const patientPathBase = useMemo(() => {
+    const cleanParam = patientSlug?.trim() ? patientSlug.trim().replace(/^#/, '') : undefined;
+    const slug = patient?.slug?.trim() || cleanParam || patientId;
+    return slug ? `/patients/${slug}` : '/patients';
+  }, [patient?.slug, patientSlug, patientId]);
+
+  // Replace /patients/{id}/... with /patients/{slug}/... once slug is available.
+  useEffect(() => {
+    const slug = patient?.slug?.trim();
+    const raw = (patientSlug ?? '').trim().replace(/^#/, '');
+    if (!slug || !raw || raw === slug) return;
+    if (location.pathname.startsWith(`/patients/${raw}`)) {
+      navigate(location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`), {
+        replace: true,
+        state: location.state,
+      });
+    }
+  }, [location.pathname, location.state, navigate, patient?.slug, patientSlug]);
+  const { vitals, loading: vitalsLoading } = usePatientVitals(patientId);
   const {
     notes,
     loading: notesLoading,
@@ -347,7 +382,7 @@ const FormNoteForm: React.FC = () => {
         duration: 3000,
         isClosable: true,
       });
-      navigate(`/patients/${patientId}`);
+      navigate(patientPathBase);
     } catch (error: any) {
       toast({
         title: 'Error al firmar',
@@ -362,7 +397,7 @@ const FormNoteForm: React.FC = () => {
   };
 
   const handleCancel = () => {
-    navigate(patientId ? `/patients/${patientId}` : '/patients');
+    navigate(patientPathBase);
   };
 
   if (patientLoading || (noteId && notesLoading) || isLoadingNote) {
@@ -758,27 +793,44 @@ const FormNoteForm: React.FC = () => {
                   <Text fontSize="13.5px" fontWeight={500}>
                     {patient.firstName} {patient.lastName}
                   </Text>
-                  <Text fontSize="12px" color={subColor}>
-                    {patient.dateOfBirth
-                      ? `${Math.max(
+                  {(() => {
+                    const parts: string[] = [];
+                    if (patient.dateOfBirth) {
+                      parts.push(
+                        `${Math.max(
                           0,
                           new Date().getFullYear() -
                             new Date(patient.dateOfBirth).getFullYear()
                         )} años`
-                      : ''}
-                    {patient.gender
-                      ? ` · ${
-                          patient.gender === 'male'
-                            ? 'Hombre'
-                            : patient.gender === 'female'
-                              ? 'Mujer'
-                              : 'Otro'
-                        }`
-                      : ''}
-                  </Text>
+                      );
+                    }
+                    if (patient.gender) {
+                      parts.push(
+                        patient.gender === 'male'
+                          ? 'Hombre'
+                          : patient.gender === 'female'
+                            ? 'Mujer'
+                            : 'Otro'
+                      );
+                    }
+                    const meta = parts.filter(Boolean).join(' · ');
+                    return meta ? (
+                      <Text fontSize="12px" color={subColor} lineHeight="1.25" mt={0.5}>
+                        {meta}
+                      </Text>
+                    ) : null;
+                  })()}
                 </VStack>
               </HStack>
             </SideCard>
+
+            <CollapsibleSideCard heading="Resumen clínico" defaultOpen={false}>
+              <PatientClinicalSummary
+                vitals={vitals}
+                bloodFallback={patient.bloodType}
+                loading={vitalsLoading}
+              />
+            </CollapsibleSideCard>
 
             <SideCard heading="Formulario">
               <VStack align="stretch" spacing={3} fontSize="12.5px">
@@ -928,33 +980,95 @@ const FormNoteForm: React.FC = () => {
         onClose={onConfirmSignClose}
         isCentered
       >
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Firmar nota por formulario</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Text fontSize="sm" color={subColor}>
-              Una vez firmada, la nota no podrá editarse. ¿Deseas continuar?
+        <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(6px)" />
+        <ModalContent
+          bg={useColorModeValue('white', 'paper.800')}
+          border="1px solid"
+          borderColor={useColorModeValue('line.light', 'whiteAlpha.200')}
+          borderRadius="10px"
+          boxShadow="0 20px 60px -20px rgba(15, 23, 42, 0.25)"
+          overflow="hidden"
+        >
+          <ModalCloseButton
+            top="14px"
+            right="14px"
+            color="text.muted"
+            _hover={{ color: 'text.strong', bg: 'surface.hover' }}
+          />
+          <ModalHeader
+            px={7}
+            pt={6}
+            pb={4}
+            borderBottom="1px solid"
+            borderColor={useColorModeValue('line.light', 'whiteAlpha.200')}
+          >
+            <Box pr={8}>
+              <Text
+                as="span"
+                fontFamily="mono"
+                fontSize="11px"
+                color={useColorModeValue('paper.600', 'paper.500')}
+                letterSpacing="0.08em"
+                textTransform="uppercase"
+                fontWeight={500}
+                display="inline-flex"
+                alignItems="center"
+                gap="8px"
+              >
+                <Box
+                  w="8px"
+                  h="8px"
+                  borderRadius="full"
+                  bg="statusSoft.okFg"
+                />
+                Firma
+              </Text>
+              <Text
+                mt={1.5}
+                fontSize="18px"
+                fontWeight={600}
+                letterSpacing="-0.012em"
+                color={useColorModeValue('paper.900', 'paper.50')}
+              >
+                Firmar nota por formulario
+              </Text>
+            </Box>
+          </ModalHeader>
+          <ModalBody px={7} py={5}>
+            <Text fontSize="13.5px" color={subColor} lineHeight="1.55">
+              Una vez firmada, la nota no podrá editarse. Esta acción es permanente e irreversible.
             </Text>
           </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="ghost"
-              mr={3}
-              onClick={onConfirmSignClose}
-              isDisabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              bg="brand.600"
-              color="white"
-              _hover={{ bg: 'brand.700' }}
-              onClick={proceedWithSigning}
-              isLoading={isSubmitting}
-            >
-              Firmar
-            </Button>
+          <ModalFooter px={7} pt={0} pb={6}>
+            <HStack spacing={3} w="full" justify="flex-end">
+              <Button
+                variant="outline"
+                borderColor="line.strong"
+                _hover={{ borderColor: 'paper.600', bg: 'surface.hover' }}
+                onClick={onConfirmSignClose}
+                isDisabled={isSubmitting}
+                h="36px"
+                px={5}
+                borderRadius="10px"
+                fontWeight={600}
+              >
+                Cancelar
+              </Button>
+              <Button
+                bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
+                onClick={proceedWithSigning}
+                isLoading={isSubmitting}
+                loadingText="Firmando…"
+                h="36px"
+                px={6}
+                borderRadius="10px"
+                fontWeight={700}
+              >
+                Firmar
+              </Button>
+            </HStack>
           </ModalFooter>
         </ModalContent>
       </Modal>

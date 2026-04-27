@@ -125,7 +125,7 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/patients/:id"
+        path="/patients/:patientSlug"
         element={
           <ProtectedRoute>
             <Layout>
@@ -135,7 +135,7 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/patients/:patientId/notes/new"
+        path="/patients/:patientSlug/notes/new"
         element={
           <ProtectedRoute>
             <Layout>
@@ -145,7 +145,7 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/patients/:patientId/notes/:noteId/edit"
+        path="/patients/:patientSlug/notes/:noteId/edit"
         element={
           <ProtectedRoute>
             <Layout>
@@ -155,7 +155,7 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/patients/:patientId/notes/new-form"
+        path="/patients/:patientSlug/notes/new-form"
         element={
           <ProtectedRoute>
             <Layout>
@@ -165,7 +165,7 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/patients/:patientId/notes/:noteId/edit-form"
+        path="/patients/:patientSlug/notes/:noteId/edit-form"
         element={
           <ProtectedRoute>
             <Layout>

@@ -42,7 +42,6 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
 
   const {
     patient: apiPatient,
-    profile: apiProfile,
     loading: loadingPatient,
   } = usePatient(patientId);
 
@@ -57,7 +56,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setFirstName(apiPatient.firstName);
       setLastName(apiPatient.lastName);
       setLastNameMaternal(apiPatient.lastNameMaternal ?? '');
-      setLoadedPhoneE164(apiPatient.phone ?? apiProfile?.phone ?? null);
+      setLoadedPhoneE164(apiPatient.phone ?? null);
       setPhone({ countryIso2: 'MX', nationalNumber: '' });
     } else if (!isEditing) {
       setFirstName('');
@@ -66,7 +65,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setLoadedPhoneE164(null);
       setPhone({ countryIso2: 'MX', nationalNumber: '' });
     }
-  }, [isEditing, patientId, isOpen, apiPatient, apiProfile]);
+  }, [isEditing, patientId, isOpen, apiPatient]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,10 +89,15 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
         phone.nationalNumber
       );
       if (isEditing && patientId) {
-        await apiService.updatePatientProfile(patientId, { phone: phoneE164 });
+        await apiService.updatePatient(patientId, {
+          name: firstName.trim(),
+          lastname: lastName.trim(),
+          lastname_m: lastNameMaternal.trim() || undefined,
+          ...(phoneE164 && { phone: phoneE164 }),
+        });
         toast({
           title: 'Paciente actualizado',
-          description: 'El paciente ha sido actualizado exitosamente',
+          description: 'Los datos del paciente se guardaron correctamente.',
           status: 'success',
           duration: 3000,
           isClosable: true,
@@ -156,7 +160,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
       title={isEditing ? 'Editar paciente' : 'Nuevo paciente'}
       sub={
         isEditing
-          ? 'Actualiza los datos de contacto del paciente.'
+          ? 'Nombre, apellidos y teléfono (mismo formato que al crear un paciente).'
           : 'Registra un nuevo paciente en tu lista.'
       }
       onSubmit={handleSubmit}

@@ -13,13 +13,6 @@ import {
   AlertDialogHeader,
   AlertDialogBody,
   AlertDialogFooter,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  ModalFooter,
   useDisclosure,
   Avatar,
   useToast,
@@ -33,7 +26,6 @@ import {
 } from '@chakra-ui/react';
 import {
   FiPlus,
-  FiCalendar as FiCalendarIcon,
   FiCheck,
   FiX,
   FiChevronLeft,
@@ -66,6 +58,7 @@ import MiniCalendar from '../components/MiniCalendar';
 import CalendarDayView from '../components/CalendarDayView';
 import CalendarAgendaView from '../components/CalendarAgendaView';
 import StatusBadge from '../components/StatusBadge';
+import FormDrawer from '../components/FormDrawer';
 import type { ApiAppointment } from '../types';
 
 const locales = { es };
@@ -649,12 +642,16 @@ const CalendarPage: React.FC = () => {
           </Flex>
 
           {view === 'day' && (
-            <CalendarDayView
-              day={currentDate}
-              appointments={filteredAppointments}
-              patientName={patientName}
-              onSelect={openEvent}
-            />
+            <Box maxH="680px" overflowY="auto" overscrollBehavior="contain">
+              <CalendarDayView
+                day={currentDate}
+                appointments={filteredAppointments}
+                patientName={patientName}
+                onSelect={openEvent}
+                startHour={0}
+                endHour={24}
+              />
+            </Box>
           )}
 
           {view === 'agenda' && (
@@ -772,142 +769,263 @@ const CalendarPage: React.FC = () => {
         </Box>
       </Box>
 
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalOverlay backdropFilter="blur(4px)" />
-        <ModalContent borderRadius="10px">
-          <ModalHeader>
-            <HStack spacing={3}>
-              <Box bg="brand.600" p={2} borderRadius="md" color="white">
-                <Icon as={FiCalendarIcon} boxSize={5} />
-              </Box>
-              <Heading as="span" size="md">
-                Detalles de la Cita
-              </Heading>
-            </HStack>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            {selectedEvent && (
-              <VStack spacing={5} align="stretch">
-                <HStack
-                  spacing={4}
-                  p={4}
-                  bg="statusSoft.infoBg"
-                  borderRadius="md"
-                  cursor={patient ? 'pointer' : 'default'}
-                  onClick={
-                    patient
-                      ? () => {
-                          navigate(`/patients/${patient.id}`);
-                          onClose();
-                        }
-                      : undefined
-                  }
+      <FormDrawer
+        isOpen={isOpen}
+        onClose={onClose}
+        crumb="Agenda"
+        title="Detalles de la cita"
+        sub={
+          selectedEvent
+            ? format(selectedEvent.start, "EEEE, d 'de' MMMM 'de' yyyy", {
+                locale: es,
+              })
+            : 'Selecciona una cita para ver el detalle.'
+        }
+        size="md"
+        hideDefaultActions
+        bodyFillHeight
+      >
+        {selectedEvent ? (
+          <VStack align="stretch" spacing={4} flex={1} minH={0}>
+            <Box
+              bg="paper.50"
+              border="1px solid"
+              borderColor="line.light"
+              borderRadius="8px"
+              overflow="hidden"
+            >
+              <HStack
+                px={4}
+                py={3}
+                borderBottom="1px solid"
+                borderColor="line.light"
+                justify="space-between"
+                align="center"
+              >
+                <Text
+                  fontFamily="mono"
+                  fontSize="10.5px"
+                  letterSpacing="0.08em"
+                  textTransform="uppercase"
+                  color="paper.600"
+                  fontWeight={500}
                 >
-                  <Avatar
-                    size="lg"
-                    name={
-                      patient
-                        ? `${patient.firstName} ${patient.lastName}`
-                        : 'Paciente'
-                    }
-                    src={patient?.avatar}
+                  Paciente
+                </Text>
+                <StatusBadge tone={statusTone(selectedEvent.resource.status)}>
+                  {statusLabel(selectedEvent.resource.status)}
+                </StatusBadge>
+              </HStack>
+              <HStack px={4} py={4} spacing={3} align="center">
+                <Avatar
+                  size="sm"
+                  name={
+                    patient
+                      ? `${patient.firstName} ${patient.lastName}`
+                      : 'Paciente'
+                  }
+                  src={patient?.avatar}
+                  bg="statusSoft.infoBg"
+                  color="brand.700"
+                  fontWeight={600}
+                />
+                <Box flex={1} minW={0}>
+                  <Text
+                    fontSize="14px"
+                    fontWeight={600}
+                    color="text.strong"
+                    noOfLines={1}
+                  >
+                    {patient
+                      ? `${patient.firstName} ${patient.lastName}`
+                      : `Paciente (${selectedEvent.resource.patient_id.slice(0, 8)}…)`}
+                  </Text>
+                  {patient?.slug?.trim() ? (
+                    <Text
+                      fontFamily="mono"
+                      fontSize="10.5px"
+                      color="paper.600"
+                      letterSpacing="0.04em"
+                      mt="1px"
+                    >
+                      #{patient.slug.toUpperCase()}
+                    </Text>
+                  ) : (
+                    <Text fontSize="11.5px" color="paper.600" mt="1px">
+                      Paciente no encontrado
+                    </Text>
+                  )}
+                </Box>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  h="30px"
+                  borderColor="line.strong"
+                  color="text.strong"
+                  fontWeight={500}
+                  bg="white"
+                  isDisabled={!patient?.slug?.trim()}
+                  onClick={() => {
+                    if (patient?.slug?.trim())
+                      navigate(`/patients/${patient.slug}`);
+                    onClose();
+                  }}
+                >
+                  Ver expediente
+                </Button>
+              </HStack>
+            </Box>
+
+            <Box
+              bg="white"
+              border="1px solid"
+              borderColor="line.light"
+              borderRadius="8px"
+              overflow="hidden"
+            >
+              <Box
+                px={4}
+                py={3}
+                borderBottom="1px solid"
+                borderColor="line.light"
+              >
+                <Text
+                  fontFamily="mono"
+                  fontSize="10.5px"
+                  letterSpacing="0.08em"
+                  textTransform="uppercase"
+                  color="paper.600"
+                  fontWeight={500}
+                >
+                  Detalles
+                </Text>
+              </Box>
+              <VStack align="stretch" spacing={0}>
+                {[
+                  {
+                    label: 'Fecha',
+                    value: format(
+                      selectedEvent.start,
+                      "EEEE, d 'de' MMMM 'de' yyyy",
+                      { locale: es }
+                    ),
+                  },
+                  {
+                    label: 'Hora',
+                    value: `${format(selectedEvent.start, 'HH:mm')} – ${format(
+                      selectedEvent.end,
+                      'HH:mm'
+                    )}`,
+                    mono: true,
+                  },
+                  {
+                    label: 'Duración',
+                    value: `${selectedEvent.resource.duration} minutos`,
+                  },
+                ].map((row, idx, arr) => (
+                  <HStack
+                    key={row.label}
+                    justify="space-between"
+                    spacing={4}
+                    px={4}
+                    py={3}
+                    borderBottom={idx < arr.length - 1 ? '1px solid' : 'none'}
+                    borderColor="line.light"
+                  >
+                    <Text
+                      fontFamily="mono"
+                      fontSize="10.5px"
+                      letterSpacing="0.06em"
+                      textTransform="uppercase"
+                      color="paper.600"
+                      fontWeight={500}
+                    >
+                      {row.label}
+                    </Text>
+                    <Text
+                      fontSize="13px"
+                      fontWeight={500}
+                      color="text.strong"
+                      fontFamily={row.mono ? 'mono' : undefined}
+                      textAlign="right"
+                      noOfLines={1}
+                    >
+                      {row.value}
+                    </Text>
+                  </HStack>
+                ))}
+              </VStack>
+            </Box>
+
+            <Box mt="auto" pt={2}>
+              <HStack spacing={2} justify="flex-end" flexWrap="wrap">
+                {selectedEvent.resource.status === 'PENDING' && (
+                  <Button
+                    leftIcon={<Icon as={FiCheck} />}
+                    size="sm"
+                    h="36px"
                     bg="brand.600"
                     color="white"
-                  />
-                  <VStack align="start" spacing={0} flex={1}>
-                    <Text fontWeight="bold" fontSize="lg">
-                      {patient
-                        ? `${patient.firstName} ${patient.lastName}`
-                        : `Paciente (${selectedEvent.resource.patient_id.slice(0, 8)}...)`}
-                    </Text>
-                    <Text fontSize="sm" color="text.body">
-                      {patient
-                        ? 'Click para ver perfil'
-                        : 'Paciente no encontrado'}
-                    </Text>
-                  </VStack>
-                </HStack>
-                <VStack spacing={3} align="stretch">
-                  <HStack justify="space-between">
-                    <Text fontWeight="semibold" fontSize="sm">
-                      Estado
-                    </Text>
-                    <StatusBadge
-                      tone={statusTone(selectedEvent.resource.status)}
-                    >
-                      {statusLabel(selectedEvent.resource.status)}
-                    </StatusBadge>
-                  </HStack>
-                  <HStack justify="space-between">
-                    <Text fontWeight="semibold" fontSize="sm">
-                      Fecha
-                    </Text>
-                    <Text fontSize="sm">
-                      {format(
-                        selectedEvent.start,
-                        "EEEE, d 'de' MMMM 'de' yyyy",
-                        { locale: es }
-                      )}
-                    </Text>
-                  </HStack>
-                  <HStack justify="space-between">
-                    <Text fontWeight="semibold" fontSize="sm">
-                      Hora
-                    </Text>
-                    <Text fontSize="sm" fontFamily="mono">
-                      {format(selectedEvent.start, 'HH:mm')} –{' '}
-                      {format(selectedEvent.end, 'HH:mm')}
-                    </Text>
-                  </HStack>
-                  <HStack justify="space-between">
-                    <Text fontWeight="semibold" fontSize="sm">
-                      Duración
-                    </Text>
-                    <Text fontSize="sm">
-                      {selectedEvent.resource.duration} minutos
-                    </Text>
-                  </HStack>
-                </VStack>
-              </VStack>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <HStack spacing={2}>
-              {selectedEvent?.resource.status === 'PENDING' && (
-                <Tooltip label="Confirmar">
-                  <IconButton
-                    aria-label="Confirmar cita"
-                    icon={<Icon as={FiCheck} />}
-                    colorScheme="green"
-                    variant="ghost"
-                    size="sm"
+                    _hover={{ bg: 'brand.700' }}
                     onClick={handleConfirmAppointment}
                     isLoading={isUpdatingStatus}
-                    isDisabled={isUpdatingStatus}
-                  />
-                </Tooltip>
-              )}
-              {selectedEvent?.resource.status !== 'CANCELLED' && (
-                <Tooltip label="Cancelar cita">
-                  <IconButton
-                    aria-label="Cancelar cita"
-                    icon={<Icon as={FiX} />}
-                    colorScheme="red"
-                    variant="ghost"
+                    isDisabled={isUpdatingStatus || isCancelling}
+                  >
+                    Confirmar cita
+                  </Button>
+                )}
+                {selectedEvent.resource.status !== 'CANCELLED' && (
+                  <Button
+                    leftIcon={<Icon as={FiX} />}
+                    variant="outline"
                     size="sm"
+                    h="36px"
+                    borderColor="statusSoft.critBorder"
+                    color="statusSoft.critFg"
+                    bg="statusSoft.critBg"
+                    _hover={{
+                      bg: 'statusSoft.critBg',
+                      borderColor: 'statusSoft.critFg',
+                    }}
                     onClick={handleRequestCancelAppointment}
                     isDisabled={isUpdatingStatus || isCancelling}
-                  />
-                </Tooltip>
-              )}
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                Cerrar
-              </Button>
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+                  >
+                    Cancelar cita
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  h="36px"
+                  borderColor="line.strong"
+                  color="text.strong"
+                  bg="white"
+                  onClick={onClose}
+                >
+                  Cerrar
+                </Button>
+              </HStack>
+            </Box>
+          </VStack>
+        ) : (
+          <VStack spacing={3} align="stretch">
+            <Text fontSize="sm" color="text.body">
+              No hay cita seleccionada.
+            </Text>
+            <Button
+              variant="outline"
+              size="sm"
+              h="36px"
+              borderColor="line.strong"
+              color="text.strong"
+              onClick={onClose}
+              alignSelf="flex-end"
+            >
+              Cerrar
+            </Button>
+          </VStack>
+        )}
+      </FormDrawer>
 
       <AlertDialog
         isOpen={isCancelOpen}

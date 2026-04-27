@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -18,6 +18,7 @@ import { FiDownload, FiFile, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import SurfaceCard from '../../components/SurfaceCard';
+import TablePagination from '../../components/TablePagination';
 
 interface DocumentItem {
   id: string;
@@ -46,6 +47,13 @@ const INITIAL_DOCUMENTS: DocumentItem[] = [
 
 const DocumentsList: React.FC = () => {
   const [documents] = useState<DocumentItem[]>(INITIAL_DOCUMENTS);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  const pagedDocs = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return documents.slice(start, start + pageSize);
+  }, [documents, page, pageSize]);
 
   const headerColor = useColorModeValue('paper.600', 'paper.500');
   const rowBorder = useColorModeValue('line.light', 'whiteAlpha.200');
@@ -84,9 +92,10 @@ const DocumentsList: React.FC = () => {
             </Text>
           </VStack>
         ) : (
-          <Table variant="simple" size="md">
-            <Thead>
-              <Tr>
+          <>
+            <Table variant="simple" size="md">
+              <Thead>
+                <Tr>
                 <Th
                   fontFamily="mono"
                   fontSize="10.5px"
@@ -136,11 +145,11 @@ const DocumentsList: React.FC = () => {
                   borderColor={rowBorder}
                   textTransform="uppercase"
                 ></Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {documents.map((doc) => (
-                <Tr key={doc.id}>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {pagedDocs.map((doc) => (
+                  <Tr key={doc.id}>
                   <Td borderColor={rowBorder}>
                     <HStack spacing={3}>
                       <FiFile />
@@ -192,10 +201,21 @@ const DocumentsList: React.FC = () => {
                       />
                     </HStack>
                   </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+            <TablePagination
+              totalItems={documents.length}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(s) => {
+                setPageSize(s);
+                setPage(1);
+              }}
+            />
+          </>
         )}
       </SurfaceCard>
     </VStack>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -20,6 +20,7 @@ import {
 import { FiChevronRight, FiFileText, FiPlus, FiSearch } from 'react-icons/fi';
 import { apiService } from '../services/api';
 import SurfaceCard from './SurfaceCard';
+import TablePagination from './TablePagination';
 
 interface SavedFormSummary {
   id: string;
@@ -48,12 +49,23 @@ const FormulariosList: React.FC<FormulariosListProps> = ({
 
   const [savedForms, setSavedForms] = useState<SavedFormSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const filteredForms = useMemo(() => {
     if (searchQuery.trim() === '') return savedForms;
     const q = searchQuery.toLowerCase();
     return savedForms.filter((f) => f.name.toLowerCase().includes(q));
   }, [savedForms, searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
+
+  const pagedForms = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredForms.slice(start, start + pageSize);
+  }, [filteredForms, page, pageSize]);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,9 +136,10 @@ const FormulariosList: React.FC<FormulariosListProps> = ({
           )}
         </VStack>
       ) : (
-        <Table variant="simple" size="md">
-          <Thead>
-            <Tr>
+        <>
+          <Table variant="simple" size="md">
+            <Thead>
+              <Tr>
               <Th
                 fontFamily="mono"
                 fontSize="10.5px"
@@ -157,10 +170,10 @@ const FormulariosList: React.FC<FormulariosListProps> = ({
                 w="56px"
                 px={2}
               />
-            </Tr>
-          </Thead>
-          <Tbody>
-            {filteredForms.map((form) => (
+              </Tr>
+            </Thead>
+            <Tbody>
+              {pagedForms.map((form) => (
               <Tr
                 key={form.id}
                 cursor="pointer"
@@ -204,9 +217,20 @@ const FormulariosList: React.FC<FormulariosListProps> = ({
                   />
                 </Td>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
+              ))}
+            </Tbody>
+          </Table>
+          <TablePagination
+            totalItems={filteredForms.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+          />
+        </>
       )}
     </SurfaceCard>
   );

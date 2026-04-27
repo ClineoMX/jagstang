@@ -10,10 +10,10 @@ Referencia de rutas ya usadas en la app: `src/services/api.ts` y `api.md`.
 
 | Área UI / flujo | Estado hoy | Causa principal |
 |----|----|----|
-| **Barra de signos / resumen clínico** (VitalsBar) | Valores fijos (`No registradas`, `—`, `94%`) | No hay modelo agregado de alergias, crónicos, medicamentos, sangre ni NOM por paciente en una sola respuesta ligera |
-| **Timeline** (filtros Recetas / Labs) | Solo notas + citas reales; rx/lab solo vía `getMockTimelineForPatient` | No hay entidades de receta/lab independientes del HTML de la nota |
+| **Barra de signos / resumen clínico** (VitalsBar) | **Integrado** con `GET`/`PUT /patients/<id>/vitals/` (`usePatientVitals`, `PatientClinicalVitalsBar`) | Pendiente a nivel producto: **NOM % por paciente en esta barra** (no está en el contrato de vitals; dashboard NOM sigue en §2.3) |
+| **Timeline** (detalle de paciente) | Notas + citas reales | Filtros solo por tipo de nota (firmada/borrador) y citas |
 | **Dashboard · franja NOM** | Valores estáticos (`94%`, `1 alerta`) | No se llama a `GET /doctor/compliance/` en home; haría falta resumen liviano |
-| **Lista de pacientes (tabla)** | Edad, género, sangre, última visita, email suelen quedar vacíos | `GET /patients/` devuelve muy pocos campos |
+| **Lista de pacientes (tabla)** | **Enriquecida en cliente** (`usePatients`: identidad, vitals, detalle/perfil, citas por lotes) | `GET /patients/` sigue siendo mínimo; el diseño se cubre con llamadas paralelas (ver §2.4) |
 | **Cumplimiento NOM (página)** | Datos reales del reporte | Botón “Exportar” sin endpoint |
 | **Búsqueda global** (Dashboard) | UI sin acción | No hay búsqueda unificada pacientes/notas/citas |
 | **Perfil médico** (`/profile`) | `handleSaveProfile` solo dispara un toast | No hay `GET/PATCH /doctor/profile/` ni upload de avatar |
@@ -27,49 +27,33 @@ Referencia de rutas ya usadas en la app: `src/services/api.ts` y `api.md`.
 
 ## 2. Datos faltantes por pantalla / componente
 
-### 2.1 Detalle de paciente — `VitalsBar`
+### 2.1 Detalle de paciente — barra de vitales (`PatientClinicalVitalsBar` / `VitalsBar`)
 
-**UI esperada:** alergias, enfermedades crónicas, medicamentos activos, tipo de sangre, indicador NOM del paciente (o del expediente).
+**Implementación actual:** `PatientDetail.tsx` usa **`PatientClinicalVitalsBar`**, datos desde **`usePatientVitals`** → `GET /patients/<id>/vitals/` y **`PUT /patients/<id>/vitals/`** (ver `api.md` y `apiService.getPatientVitals` / `upsertPatientVitals`). Cada lista expone ítems `{ name, created_at }`; en cliente se normalizan **nombres de alergias, crónicos y medicamentos a mayúsculas**; el **tipo de sangre** no se fuerza a mayúsculas.
+
+**UI:** popovers por fila (alergias / crónicos / medicamentos / tipo de sangre); campo “añadir” **lazy** (solo tras pulsar `+`); sin drawer de “resumen” duplicado.
 
 | Dato | ¿Existe hoy? | Notas |
 |------|--------------|-------|
-| Alergias | No en API dedicada | Hoy solo texto libre en notas; sin lista estructurada |
-| Crónicos | No | Idem |
-| Medicamentos activos | No | Idem |
-| Tipo de sangre | Parcial | El tipo `Patient` en frontend contempla `bloodType`, pero **`usePatient` no mapea** sangre desde `GET /patients/<id>/` ni desde identidad |
-| NOM % del paciente | No en VitalsBar | La página de cumplimiento expone scores por paciente vía `GET /doctor/compliance/`, pero **no se consume en detalle de paciente** para la barra |
+| Alergias | Sí | `GET`/`PUT` vitals, `allergies[]` |
+| Crónicos | Sí | `chronic_conditions[]` |
+| Medicamentos activos | Sí | `medications[]` |
+| Tipo de sangre | Sí | `blood_type` en vitals; fallback visual opcional desde `Patient.bloodType` si el modelo demográfico lo tuviera |
+| NOM % del paciente (en esta barra) | No | No forma parte del contrato de vitals documentado; la página de cumplimiento sigue en `GET /doctor/compliance/` (ver §2.3 / §2.7) |
 
-`PatientDetail.tsx` renderiza literalmente:
+**Brechas relacionadas (fuera de esta barra):**
 
-```tsx
-<VitalsBar
-  items={[
-    { label: 'Alergias', value: 'No registradas' },
-    { label: 'Crónicas', value: '—' },
-    { label: 'Medicamentos', value: '—' },
-    { label: 'Tipo sangre', value: patient.bloodType || '—' },
-    { label: 'NOM %', value: '94%' },
-  ]}
-/>
-```
-
-**Campos útiles en respuestas existentes (si se amplían):**
-
-- `GET /patients/<id>/profile/` — hoy: teléfono, `is_recurrent`, `avatar_url`, `has_interrogatory`. Podría incluir **resumen clínico mínimo** o IDs a sub-recursos.
-- `GET /patients/<id>/identity-sheet/` — útil para edad y género (se está usando); **no sustituye** alergias/medicación.
+- La **tabla de lista** ya combina vitals + identidad para sangre/edad (§2.4); el listado plano de `GET /patients/` no sustituye ese enriquecimiento en un solo payload.
+- `GET /patients/<id>/profile/` — teléfono, `is_recurrent`, `avatar_url`, etc.; **no** reemplaza el resumen clínico de vitals.
+- `GET /patients/<id>/identity-sheet/` — edad y género; **no** sustituye alergias/medicación (sigue siendo vitals).
 
 ---
 
-### 2.2 Detalle de paciente — `Timeline` (Recetas / Laboratorios)
+### 2.2 Detalle de paciente — `Timeline`
 
-**Hoy:** `PatientDetail.tsx` compone el timeline con `GET .../notes/` + citas del doctor filtradas por `patient_id` + `getMockTimelineForPatient(id)` para eventos rx/lab (mapa vacío por defecto).
+**Hoy:** `PatientDetail.tsx` compone el timeline con `GET .../notes/` y citas del doctor filtradas por `patient_id`. No hay tipos de evento aparte de notas y citas en la UI.
 
-**Falta para el diseño:**
-
-- Identificador, fecha, título y cuerpo/resumen **estructurado** para eventos que **no** sean notas ni citas.
-- Opcional: vínculo a PDF/orden, laboratorio, estado del estudio.
-
-**Origen posible sin endpoint nuevo:** parsear bloques de notas (sección receta delimitada en HTML) — frágil y costoso en cliente.
+**Futuro (cuando existan recetas u órdenes de laboratorio como entidades):** habría que definir contrato (timeline unificado o endpoints por tipo) antes de volver a exponer filtros o filas dedicadas en el timeline.
 
 ---
 
@@ -86,15 +70,20 @@ Referencia de rutas ya usadas en la app: `src/services/api.ts` y `api.md`.
 
 ### 2.4 Lista de pacientes — tabla compacta
 
+**Estado:** cubierto por el refactor de **`usePatients`** (`PatientList.tsx`): tras `GET /patients/`, el hook enriquece cada fila en lotes (`LIST_ENRICH_BATCH`) con `getPatient`, `getPatientIdentity`, `getPatientProfile`, `getPatientVitals` y, al final, `lastVisit` derivado de `GET /doctor/appointments/` (última cita no cancelada por `patient_id`).
+
 Columnas del diseño: paciente, edad·género, contacto, sangre, estado (recurrente), última visita.
 
-| Columna | Fuente actual | Brecha |
+| Columna | Fuente en UI hoy | Notas |
 |----|----|----|
-| Paciente | `GET /patients/?limit=` | OK (nombre, apellidos, `is_recurrent`) |
-| Edad / género | Lista | **`birthdate` y `gender` no vienen en el listado**; solo en identidad por paciente (`GET .../identity-sheet/`) → N+1 requests o celda vacía |
-| Contacto (email / teléfono) | Lista | **Email no está** en `listPatients`; teléfono solo en `getPatient` / `profile`, no en la lista |
-| Sangre | Lista | **`bloodType` no viene** en `listPatients` (ni siquiera en identidad) |
-| Última visita | Lista | **`lastVisit` no viene**; la UI muestra “Sin visitas” siempre salvo que se rellene desde otro flujo |
+| Paciente | `GET /patients/` | Nombre, apellidos, `is_recurrent` |
+| Edad / género | Identidad + cálculo en lista | `birthdate` / `gender` desde `GET .../identity-sheet/` |
+| Contacto | Detalle + perfil | Teléfono y avatar desde `GET .../` y `GET .../profile/` |
+| Email | — | La UI admite `patient.email` para búsqueda/fila, pero **el enriquecimiento actual no mapea email** (no viene en las respuestas tipadas de detalle/perfil usadas). Si el producto lo necesita, habría que añadirlo al contrato o al `fetchPatientListExtras`. |
+| Sangre | Vitals | `blood_type` desde `GET .../vitals/` |
+| Última visita | Citas del doctor | Agregación en cliente sobre el listado de citas cargado |
+
+**Optimización futura (backend):** un `GET /patients/` enriquecido o `GET /patients/table/` seguiría reduciendo tráfico frente a ~4 llamadas por paciente en lotes.
 
 ---
 
@@ -116,7 +105,6 @@ Columnas del diseño: paciente, edad·género, contacto, sangre, estado (recurre
 
 - `attachments` en listado/detalle de notas: el cliente las tipa como `unknown[]`. **Sigue sin documentarse el shape** (id, url, mime, nombre, tamaño) en `api.md`, y no se garantiza paridad entre `GET .../notes/` y `GET .../notes/<id>/`.
 - El componente `NoteAttachmentsList` asume una forma específica que solo vive en el cliente.
-- Para timeline “receta”: si la receta solo vive como HTML dentro de la nota, hace falta **convención de extracción** en API (campo derivado) o entidad aparte (ver §3).
 - **Endpoints no documentados en `api.md` pero usados por el cliente:**
   - `GET /patients/<id>/notes/` (listar)
   - `GET /patients/<id>/notes/<note_id>/`
@@ -206,35 +194,26 @@ El detalle (`GET /doctor/forms/<id>/`) devuelve un solo campo de ejemplo; el cli
 
 | Propuesta | Método y ruta (sugerencia) | Objetivo |
 |-----------|---------------------------|----------|
-| **Resumen clínico del paciente** | `GET /patients/<id>/clinical-summary/` | Una respuesta para VitalsBar: `allergies[]`, `conditions[]`, `medications[]`, `blood_type`, `last_vitals?`, `nom_patient_score?` |
+| **Resumen clínico del paciente** | `GET`/`PUT /patients/<id>/vitals/` (**implementado**) | Listas con `name` + `created_at` y `blood_type`; si se desea **NOM % por paciente** en la misma respuesta o un alias `clinical-summary`, habría que extender contrato o añadir ruta aparte |
 | **Resumen NOM para dashboard** | `GET /doctor/compliance/summary/` | `overall_score`, `alert_breakdown`, `worst_metric`, `computed_at` sin array de pacientes |
-| **Listado de pacientes enriquecido** | Ampliar `GET /patients/` o `GET /patients/table/` | Incluir en cada fila: `birthdate`/`age`, `gender`, `phone`, `email?`, `blood_type`, `last_visit_at`, `avatar_url` |
+| **Listado de pacientes enriquecido** *(opcional, escala)* | Ampliar `GET /patients/` o `GET /patients/table/` | Colapsar en una respuesta lo que hoy hace `usePatients` en cliente (`birthdate`/`age`, `gender`, `phone`, `email?`, `blood_type`, `last_visit_at`, `avatar_url`) para menos round-trips |
 | **Perfil del doctor** | `GET /doctor/profile/`, `PATCH /doctor/profile/`, `POST /doctor/avatar/` | Editar identidad profesional (§2.8) |
 | **Documentos profesionales** | `GET/POST/DELETE /doctor/documents/` | Cédula, certificados, etc. (§2.9) |
 | **Plantillas de notas (CRUD)** | `POST/PATCH/DELETE /doctor/templates/` | Reemplazar `templatesStore.ts` (§2.10) |
 
-### 3.2 Timeline: recetas y laboratorios
-
-| Propuesta | Método y ruta (sugerencia) | Objetivo |
-|-----------|---------------------------|----------|
-| **Órdenes / estudios de laboratorio** | `GET /patients/<id>/lab-orders/` | Lista para filtro “Labs” del timeline |
-| **Recetas emitidas** | `GET /patients/<id>/prescriptions/` o eventos `GET /patients/<id>/timeline-events/` | Lista unificada tipo-discriminado (`note`, `appointment`, `prescription`, `lab`) ordenada por fecha |
-
-Alternativa más compacta: **un solo** `GET /patients/<id>/timeline/?from=&to=&kinds=` que devuelva items ya fusionados.
-
-### 3.3 Exportación y reporting
+### 3.2 Exportación y reporting
 
 | Propuesta | Método y ruta (sugerencia) | Objetivo |
 |-----------|---------------------------|----------|
 | **Export cumplimiento** | `GET /doctor/compliance/export?format=csv` | Respuesta archivo para el botón “Exportar” |
 
-### 3.4 Búsqueda (si se mantiene el botón del prototipo)
+### 3.3 Búsqueda (si se mantiene el botón del prototipo)
 
 | Propuesta | Método y ruta (sugerencia) | Objetivo |
 |-----------|---------------------------|----------|
 | **Búsqueda global** | `GET /doctor/search?q=&types=patients,notes,appointments` | Unificar resultados con snippets y deep links |
 
-### 3.5 Calendario
+### 3.4 Calendario
 
 | Propuesta | Método y ruta (sugerencia) | Objetivo |
 |-----------|---------------------------|----------|
@@ -248,12 +227,11 @@ Alternativa más compacta: **un solo** `GET /patients/<id>/timeline/?from=&to=&k
 
 Si se prefieren menos endpoints:
 
-1. **`GET /patients/`** — ampliar cada resultado con los campos de la tabla (§2.4).
+1. **`GET /patients/`** — *(opcional)* ampliar cada resultado con los campos de la tabla (§2.4) para no depender del enriquecimiento por paciente en cliente.
 2. **`GET /doctor/compliance/`** — añadir `summary_line` opcional o documentar que el cliente use solo las primeras claves para el dashboard.
 3. **`GET /doctor/templates/`** — agregar `type` y `updated_at` al resultado (hoy solo `id`, `name`, `content`).
 4. **`GET /patients/<id>/notes/` y `/<note_id>/`** — incluir `attachments[]` con shape formal `{id, url, mime_type, original_filename, file_size}` (misma forma que `GET /patients/<id>/assets/`) en vez de `unknown[]`.
-5. **Notas** — campo opcional `has_prescription: boolean` o `extracted_prescription_summary: string` para alimentar filtros de timeline sin parsear HTML en cliente.
-6. **`POST /doctor/appointments/`** — devolver el objeto creado, no `null`.
+5. **`POST /doctor/appointments/`** — devolver el objeto creado, no `null`.
 
 ---
 
@@ -261,6 +239,7 @@ Si se prefieren menos endpoints:
 
 | Tema | `api.md` | `src/services/api.ts` | Acción sugerida |
 |------|----------|----------------------|-----------------|
+| Vitals del paciente | `GET`/`PUT /patients/<id>/vitals/` | `getPatientVitals` / `upsertPatientVitals` | OK (mantener sincronizados ante cambios de contrato) |
 | Header de identidad | `X-Clineo-Id: login.id` | `X-Clineo-Identity: login.id` | Alinear **un** nombre oficial y actualizar el lado contrario |
 | Login payload | Muestra comas faltantes en los ejemplos JSON (`"password" "password"`, `"username": "..."` sin coma) | OK | Arreglar JSON del ejemplo en `api.md` |
 | Update contact | `PUT /doctor/contacts/` (sin id) | `PUT /doctor/contacts/<id>/` | Documentar el patrón real con id |
@@ -284,15 +263,14 @@ Si se prefieren menos endpoints:
 ## 6. Priorización sugerida (backend ↔ UX)
 
 1. **P0 — Perfil del doctor (`GET/PATCH /doctor/profile/` + avatar):** hoy los cambios en `/profile` no persisten; bloquea usabilidad básica.
-2. **P0 — Lista de pacientes:** enriquecer listado o endpoint tabla (impacto directo en columnas vacías, N+1 con identidad).
-3. **P0 — Dashboard NOM:** `compliance` summary o segunda llamada liviana (eliminar números falsos).
-4. **P0 — Plantillas de notas (POST/PATCH/DELETE + `type`/`updated_at` en GET):** hoy todo vive en memoria y se pierde al recargar.
-5. **P1 — VitalsBar:** `clinical-summary` o campos en `profile`/identidad acordados con clínica.
-6. **P1 — Timeline rx/lab:** timeline unificado o recursos por tipo.
-7. **P1 — Calendario:** filtros `from/to`, `patient_name`, respuesta de `POST`.
-8. **P1 — Documentos profesionales del doctor:** CRUD completo.
-9. **P2 — Export NOM / búsqueda global / attachments formalizados:** según roadmap de producto.
-10. **P2 — Alinear `api.md` con `api.ts`:** headers, endpoints no documentados, typos (sección §5).
+2. **P0 — Dashboard NOM:** `compliance` summary o segunda llamada liviana (eliminar números falsos).
+3. **P0 — Plantillas de notas (POST/PATCH/DELETE + `type`/`updated_at` en GET):** hoy todo vive en memoria y se pierde al recargar.
+4. **P1 — VitalsBar (complementos):** NOM % u otros indicadores en detalle de paciente si deben vivir junto a vitals o en `compliance` por `patient_id` (la barra ya consume vitals).
+5. **P1 — Lista de pacientes (backend):** endpoint o `GET /patients/` enriquecido para reducir round-trips frente al enriquecimiento en cliente (§2.4).
+6. **P1 — Calendario:** filtros `from/to`, `patient_name`, respuesta de `POST`.
+7. **P1 — Documentos profesionales del doctor:** CRUD completo.
+8. **P2 — Export NOM / búsqueda global / attachments formalizados:** según roadmap de producto.
+9. **P2 — Alinear `api.md` con `api.ts`:** headers, endpoints no documentados, typos (sección §5).
 
 ---
 
@@ -300,15 +278,15 @@ Si se prefieren menos endpoints:
 
 Los placeholders y mocks actuales están acotados y bien delimitados:
 
-- `PatientDetail.tsx` — items fijos de `VitalsBar`.
+- `PatientDetail.tsx` — vitales reales vía `usePatientVitals` / `PatientClinicalVitalsBar` (ya no placeholders en la barra).
 - `Dashboard.tsx` — celda NOM en `TodayStrip`.
 - `DoctorProfile.tsx` — `handleSaveProfile` (toast only) y upload de avatar con `URL.createObjectURL`.
 - `library/DocumentsList.tsx` — `INITIAL_DOCUMENTS` hardcoded.
 - `data/templatesStore.ts` — store en memoria seedeado con `mockData.ts`.
-- `data/timelineMockData.ts` — mapa vacío para entradas rx/lab.
+- `PatientList.tsx` / `usePatients` — tabla enriquecida en cliente (no depende solo del payload de `GET /patients/`).
 
 Cuando el backend exponga los datos y endpoints anteriores, el trabajo en frontend será principalmente **mapeo y eliminación de mocks**, no rediseño: cada punto de contacto ya está aislado detrás de un hook (`usePatients`, `usePatientIdentity`, `useNotes`, etc.) o de `apiService`.
 
 ---
 
-*Documento generado para alinear equipo de producto/backend con el diseño prototipo v2. Actualizar cuando `api.md` incorpore nuevos contratos o se cierren los gaps listados arriba.*
+*Documento generado para alinear equipo de producto/backend con el diseño prototipo v2. Actualizar cuando `api.md` incorpore nuevos contratos o se cierren los gaps listados arriba. Última revisión relevante: **tabla de pacientes** vía enriquecimiento en `usePatients` (identidad, vitals, perfil, citas) y **vitals** en detalle (`GET`/`PUT /patients/<id>/vitals/`).*
