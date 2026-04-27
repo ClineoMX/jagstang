@@ -324,7 +324,7 @@ const Dashboard: React.FC = () => {
           Tienes <b>{notesDraft} notas en borrador</b>. Las notas sin firmar no
           cuentan para NOM‑004.{' '}
           <ChakraLink
-            color="#5f4109"
+            color="statusSoft.warnFg"
             fontWeight={600}
             textDecoration="underline"
             onClick={handleNewNote}

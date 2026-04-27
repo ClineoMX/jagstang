@@ -17,7 +17,7 @@ const Nudge: React.FC<NudgeProps> = ({ children, tone = 'warn' }) => {
       ? {
           bg: 'statusSoft.warnBg',
           borderColor: 'statusSoft.warnBorder',
-          color: '#5f4109',
+          color: 'statusSoft.warnFg',
           icon: 'statusSoft.warnFg',
         }
       : {
