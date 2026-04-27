@@ -10,8 +10,6 @@ import {
   Button,
   Avatar,
   Badge,
-  Card,
-  CardBody,
   useColorModeValue,
   SimpleGrid,
   Divider,
@@ -34,6 +32,13 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
 } from '@chakra-ui/react';
 import {
   FiCalendar,
