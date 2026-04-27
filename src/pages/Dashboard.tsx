@@ -26,6 +26,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePatients } from '../hooks/usePatients';
 import { useAppointments } from '../hooks/useAppointments';
 import { apiService } from '../services/api';
+import { normalizePatientSlug } from '../utils/patientSlug';
 
 interface RecentNote {
   id: string;
@@ -38,6 +39,13 @@ interface RecentNote {
   patient_lastname: string;
   created_at?: string;
   accessed_at?: string;
+}
+
+interface ComplianceOverallScore {
+  doctor_id: string;
+  overall_score: number;
+  patient_count: number;
+  computed_at: string;
 }
 
 const statusToTone = (status: string): StatusBadgeTone => {
@@ -87,6 +95,7 @@ const Dashboard: React.FC = () => {
   const [notesCount, setNotesCount] = useState<number | null>(null);
   const [notesDraft, setNotesDraft] = useState<number>(0);
   const [recentNotes, setRecentNotes] = useState<RecentNote[]>([]);
+  const [complianceOverall, setComplianceOverall] = useState<ComplianceOverallScore | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +114,11 @@ const Dashboard: React.FC = () => {
               (n as { type?: string; note_type?: string }).type ??
               (n as { type?: string; note_type?: string }).note_type,
             patient_id: n.patient_id,
-            patient_slug: (n as { patient_slug?: string | null }).patient_slug ?? undefined,
+            patient_slug: (() => {
+              const raw = (n as { patient_slug?: string | null }).patient_slug;
+              const s = normalizePatientSlug(raw);
+              return s || undefined;
+            })(),
             patient_name: n.patient_name,
             patient_lastname: n.patient_lastname,
             created_at: n.created_at,
@@ -124,6 +137,29 @@ const Dashboard: React.FC = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiService
+      .getDoctorComplianceOverallScore()
+      .then((res) => {
+        if (cancelled) return;
+        setComplianceOverall(res);
+      })
+      .catch(() => {
+        if (!cancelled) setComplianceOverall(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const compliancePct = useMemo(() => {
+    if (!complianceOverall) return null;
+    const raw = Number(complianceOverall.overall_score);
+    if (!Number.isFinite(raw)) return null;
+    return Math.round(raw * 100);
+  }, [complianceOverall]);
 
   const welcomeLabel = (() => {
     const name = doctor?.firstName?.trim() || '';
@@ -194,7 +230,9 @@ const Dashboard: React.FC = () => {
     const firstPatient = patients[0];
     if (firstPatient) {
       if (!firstPatient.slug?.trim()) return;
-      navigate(`/patients/${firstPatient.slug}/notes/new`);
+      navigate(
+        `/patients/${normalizePatientSlug(firstPatient.slug)}/notes/new`
+      );
     } else {
       navigate('/patients');
     }
@@ -270,8 +308,13 @@ const Dashboard: React.FC = () => {
           },
           {
             label: 'Cumplimiento NOM',
-            value: '94%',
-            sub: '· 1 alerta',
+            value: compliancePct == null ? '—' : `${compliancePct}%`,
+            sub:
+              complianceOverall == null
+                ? '· sin datos'
+                : `· ${complianceOverall.patient_count} paciente${
+                    complianceOverall.patient_count === 1 ? '' : 's'
+                  }`,
           },
         ]}
       />
@@ -347,7 +390,9 @@ const Dashboard: React.FC = () => {
                     key={apt.id}
                     as="button"
                     onClick={() =>
-                      navigate(`/patients/${p?.slug ?? apt.patient_id}`)
+                      navigate(
+                        `/patients/${normalizePatientSlug(p?.slug) || apt.patient_id}`
+                      )
                     }
                     display="grid"
                     gridTemplateColumns={{
@@ -472,11 +517,11 @@ const Dashboard: React.FC = () => {
                     : `Creada ${format(created, 'd MMM, HH:mm', { locale: es })}`
                   : '';
                 const patientSlug =
-                  note.patient_slug?.trim() ||
-                  patientById[note.patient_id]?.slug?.trim() ||
+                  normalizePatientSlug(note.patient_slug) ||
+                  normalizePatientSlug(patientById[note.patient_id]?.slug) ||
                   '';
                 const patientSlugForUrl =
-                  patientSlug || note.patient_id;
+                  patientSlug || normalizePatientSlug(note.patient_id) || note.patient_id;
 
                 return (
                   <HStack
@@ -518,7 +563,7 @@ const Dashboard: React.FC = () => {
                           mt="2px"
                           noOfLines={1}
                         >
-                          #{patientSlug}
+                          {patientSlug}
                         </Text>
                       ) : null}
                       {when && (

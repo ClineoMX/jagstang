@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -33,6 +33,7 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import type { TemplateItem, TemplateField } from '../types';
 import { usePatients } from '../hooks/usePatients';
+import { normalizePatientSlug } from '../utils/patientSlug';
 
 // Worker pdf.js (mismo que en Templates)
 const pdfWorkerSrc =
@@ -76,11 +77,14 @@ const TemplateFillForm: React.FC = () => {
 
   const { patients } = usePatients();
   const patientPathBase = useMemo(() => {
-    const raw = (patientId ?? '').trim();
+    const raw = normalizePatientSlug(patientId);
     if (!raw) return null;
-    const match = patients.find((p) => p.id === raw || p.slug === raw);
-    const slug = match?.slug?.trim() ? match.slug.trim() : undefined;
-    return `/patients/${slug ?? raw}`;
+    const match = patients.find(
+      (p) => p.id === raw || normalizePatientSlug(p.slug) === raw
+    );
+    const slug = match?.slug ? normalizePatientSlug(match.slug) : undefined;
+    const segment = slug || raw;
+    return `/patients/${segment}`;
   }, [patientId, patients]);
 
   const [formValues, setFormValues] = useState<FormValues>(() =>

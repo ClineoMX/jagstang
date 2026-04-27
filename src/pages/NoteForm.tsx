@@ -52,6 +52,7 @@ import { useNotes } from '../hooks/useNotes';
 import PatientClinicalSummary from '../components/PatientClinicalSummary';
 import CollapsibleSideCard from '../components/CollapsibleSideCard';
 import { apiService } from '../services/api';
+import { normalizePatientSlug } from '../utils/patientSlug';
 import { useAuth } from '../contexts/AuthContext';
 import PageHead from '../components/PageHead';
 import {
@@ -92,8 +93,10 @@ const NoteForm: React.FC = () => {
 
   const { patient, loading: patientLoading } = usePatient(patientId);
   const patientPathBase = useMemo(() => {
-    const cleanParam = patientSlug?.trim() ? patientSlug.trim().replace(/^#/, '') : undefined;
-    const slug = patient?.slug?.trim() || cleanParam || patientId;
+    const slug =
+      normalizePatientSlug(patient?.slug) ||
+      normalizePatientSlug(patientSlug) ||
+      patientId;
     return slug ? `/patients/${slug}` : '/patients';
   }, [patient?.slug, patientSlug, patientId]);
 

@@ -11,7 +11,6 @@ interface LibraryTab {
 
 const TABS: LibraryTab[] = [
   { id: 'documents', label: 'Documentos', path: '/library/documents' },
-  { id: 'templates', label: 'Plantillas de notas', path: '/library/templates' },
   { id: 'forms', label: 'Formularios', path: '/library/forms' },
 ];
 
@@ -69,7 +68,7 @@ const Library: React.FC = () => {
     <PageShell
       crumbs="Cuenta"
       title="Biblioteca"
-      sub="Documentos, plantillas de notas y formularios reutilizables, en un solo lugar."
+      sub="Documentos y formularios reutilizables, en un solo lugar."
       toolbar={toolbar}
     >
       <Outlet />

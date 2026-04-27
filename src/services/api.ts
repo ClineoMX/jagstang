@@ -869,6 +869,19 @@ class ApiService {
   }
 
   /**
+   * GET /doctor/compliance/overall_score/
+   * Score agregado de cumplimiento NOM del doctor.
+   */
+  async getDoctorComplianceOverallScore() {
+    return this.request<{
+      doctor_id: string;
+      overall_score: number;
+      patient_count: number;
+      computed_at: string;
+    }>('/doctor/compliance/overall_score/');
+  }
+
+  /**
    * List all notes for a patient
    */
   async listNotes(patientId: string, params?: { page?: number; limit?: number }) {

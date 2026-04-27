@@ -20,9 +20,7 @@ import {
   useBreakpointValue,
   Icon,
   IconButton,
-  Tooltip,
   Checkbox,
-  Heading,
 } from '@chakra-ui/react';
 import {
   FiPlus,

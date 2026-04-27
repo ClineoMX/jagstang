@@ -90,6 +90,7 @@ import FormDrawer from '../components/FormDrawer';
 import StatusBadge from '../components/StatusBadge';
 import NoteAttachmentsList from '../components/NoteAttachmentsList';
 import { mergeNoteBodyForEditor } from '../utils/noteReceta';
+import { normalizePatientSlug } from '../utils/patientSlug';
 import InterrogationFormDrawer from '../components/InterrogationFormDrawer';
 import PatientFormModal from '../components/PatientFormModal';
 import { usePatientNotesSummary } from '../hooks/usePatientNotesSummary';
@@ -171,7 +172,10 @@ const PatientDetail: React.FC = () => {
   const notesSummary = usePatientNotesSummary(patientId);
 
   const patientPathBase = useMemo(() => {
-    const slug = patient?.slug ?? patientSlug?.replace(/^#/, '') ?? patientId;
+    const slug =
+      normalizePatientSlug(patient?.slug) ||
+      normalizePatientSlug(patientSlug) ||
+      patientId;
     return slug ? `/patients/${slug}` : '/patients';
   }, [patient?.slug, patientSlug, patientId]);
 

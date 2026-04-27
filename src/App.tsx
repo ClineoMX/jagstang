@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import theme from './theme';
+import { renderAppToast } from './components/AppToast';
 
 // Pages
 import Login from './pages/Login';
@@ -19,8 +20,6 @@ import FormNoteForm from './pages/FormNoteForm';
 import DoctorProfile from './pages/DoctorProfile';
 import Library from './pages/Library';
 import DocumentsList from './pages/library/DocumentsList';
-import TemplatesList from './pages/library/TemplatesList';
-import TemplateEditor from './pages/library/TemplateEditor';
 import FormsList from './pages/library/FormsList';
 import FormEditor from './pages/library/FormEditor';
 import Compliance from './pages/Compliance';
@@ -216,28 +215,19 @@ const AppRoutes: React.FC = () => {
       >
         <Route index element={<Navigate to="/library/documents" replace />} />
         <Route path="documents" element={<DocumentsList />} />
-        <Route path="templates" element={<TemplatesList />} />
+        <Route
+          path="templates"
+          element={<Navigate to="/library/documents" replace />}
+        />
         <Route path="forms" element={<FormsList />} />
       </Route>
       <Route
         path="/library/templates/new"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <TemplateEditor />
-            </Layout>
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/library/documents" replace />}
       />
       <Route
         path="/library/templates/:id"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <TemplateEditor />
-            </Layout>
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/library/documents" replace />}
       />
       <Route
         path="/library/forms/new"
@@ -314,7 +304,17 @@ const App: React.FC = () => {
   return (
     <>
       <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-      <ChakraProvider theme={theme}>
+      <ChakraProvider
+        theme={theme}
+        toastOptions={{
+          defaultOptions: {
+            position: 'bottom-right',
+            duration: 4000,
+            isClosable: true,
+            render: renderAppToast,
+          },
+        }}
+      >
         <AuthProvider>
           <BrowserRouter>
             <AppRoutes />
