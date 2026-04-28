@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -300,27 +300,58 @@ const AppRoutes: React.FC = () => {
   );
 };
 
+/** Matches Chakra theme `md` (48em): compact viewports get top-right toasts. */
+const MD_UP_MEDIA = '(min-width: 48em)';
+
+const ChakraAppShell: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [toastPosition, setToastPosition] = useState<
+    'top-right' | 'bottom-right'
+  >(() => {
+    if (typeof window === 'undefined') return 'bottom-right';
+    return window.matchMedia(MD_UP_MEDIA).matches
+      ? 'bottom-right'
+      : 'top-right';
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia(MD_UP_MEDIA);
+    const sync = () =>
+      setToastPosition(mq.matches ? 'bottom-right' : 'top-right');
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  return (
+    <ChakraProvider
+      theme={theme}
+      toastOptions={{
+        defaultOptions: {
+          position: toastPosition,
+          duration: 4000,
+          isClosable: true,
+          render: renderAppToast,
+        },
+      }}
+    >
+      {children}
+    </ChakraProvider>
+  );
+};
+
 const App: React.FC = () => {
   return (
     <>
       <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-      <ChakraProvider
-        theme={theme}
-        toastOptions={{
-          defaultOptions: {
-            position: 'bottom-right',
-            duration: 4000,
-            isClosable: true,
-            render: renderAppToast,
-          },
-        }}
-      >
+      <ChakraAppShell>
         <AuthProvider>
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
         </AuthProvider>
-      </ChakraProvider>
+      </ChakraAppShell>
     </>
   );
 };
