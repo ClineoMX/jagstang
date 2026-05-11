@@ -142,23 +142,53 @@ const PatientDetail: React.FC = () => {
         : selectedNote.createdAt
           ? `Creada el ${format(new Date(selectedNote.createdAt), "d 'de' MMM yyyy, HH:mm", { locale: es })}`
           : '';
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-    if (!printWindow) {
-      toast({
-        title: 'No se pudo abrir la ventana de impresión',
-        description: 'Activa las ventanas emergentes para imprimir o guardar en PDF.',
-        status: 'warning',
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
     const esc = (s: string) =>
       s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const titleEsc = esc(rawTitle);
     const metaEsc = esc(meta);
-    printWindow.document.open();
-    printWindow.document.write(`<!DOCTYPE html>
+
+    /** Evita `window.open` + `noopener` (devuelve null pero igual abre pestaña en blanco) y bloqueadores de popups. */
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('title', 'Impresión de nota');
+    iframe.style.cssText =
+      'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+    document.body.appendChild(iframe);
+
+    const win = iframe.contentWindow;
+    const doc = iframe.contentDocument ?? win?.document;
+    if (!win || !doc) {
+      document.body.removeChild(iframe);
+      toast({
+        title: 'No se pudo preparar la impresión',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const remove = () => {
+      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    };
+
+    const runPrint = () => {
+      try {
+        win.focus();
+        win.print();
+      } catch {
+        toast({
+          title: 'Error al abrir el diálogo de impresión',
+          status: 'error',
+          duration: 4000,
+          isClosable: true,
+        });
+      }
+      win.addEventListener('afterprint', remove, { once: true });
+      window.setTimeout(remove, 90_000);
+    };
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
@@ -183,10 +213,13 @@ const PatientDetail: React.FC = () => {
   <h1 class="note-title">${titleEsc}</h1>
   ${meta ? `<p class="note-meta">${metaEsc}</p>` : ''}
   <main>${html}</main>
-  <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print();},150);});</script>
 </body>
 </html>`);
-    printWindow.document.close();
+    doc.close();
+
+    requestAnimationFrame(() => {
+      window.setTimeout(runPrint, 150);
+    });
   }, [selectedNote, toast]);
 
   const { patients, loading: patientsLoading } = usePatients();
@@ -1288,7 +1321,7 @@ const PatientDetail: React.FC = () => {
                     }
                     loadingText="Generando…"
                   >
-                    Imprimir / PDF
+                    Imprimir
                   </Button>
                 )}
                 {selectedNote?.status !== 'signed' && (
