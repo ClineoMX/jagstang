@@ -45,7 +45,7 @@ import {
   FiChevronDown,
   FiEdit,
   FiEdit3,
-  FiDownload,
+  FiPrinter,
   FiFileText,
   FiUser,
   FiClipboard,
@@ -121,6 +121,73 @@ const PatientDetail: React.FC = () => {
   const [selectedNote, setSelectedNote] = useState<any>(null);
   const formNoteViewerRef = React.useRef<FormNoteViewerHandle>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+
+  const notePreviewDocumentOk = useMemo(() => {
+    if (!selectedNote || selectedNote.type !== 'document') return false;
+    try {
+      const parsed = JSON.parse(String(selectedNote.content || '{}'));
+      return Boolean(parsed?.formId && Array.isArray(parsed?.fields));
+    } catch {
+      return false;
+    }
+  }, [selectedNote]);
+
+  const handlePrintClinicalNotePdf = useCallback(() => {
+    if (!selectedNote) return;
+    const html = mergeNoteBodyForEditor(String(selectedNote.content || ''));
+    const rawTitle = String(selectedNote.title || 'Nota');
+    const meta =
+      selectedNote.status === 'signed' && selectedNote.signedAt
+        ? `Firmada el ${format(new Date(selectedNote.signedAt), "d 'de' MMM yyyy, HH:mm", { locale: es })}`
+        : selectedNote.createdAt
+          ? `Creada el ${format(new Date(selectedNote.createdAt), "d 'de' MMM yyyy, HH:mm", { locale: es })}`
+          : '';
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+    if (!printWindow) {
+      toast({
+        title: 'No se pudo abrir la ventana de impresión',
+        description: 'Activa las ventanas emergentes para imprimir o guardar en PDF.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    const esc = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const titleEsc = esc(rawTitle);
+    const metaEsc = esc(meta);
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<title>${titleEsc}</title>
+<style>
+  @page { margin: 16mm; }
+  body { font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace; font-size: 11pt; line-height: 1.6; color: #111827; max-width: 720px; margin: 0 auto; padding: 8px; }
+  h1.note-title { font-size: 20pt; font-weight: 600; margin: 0 0 10pt; letter-spacing: -0.02em; }
+  p.note-meta { font-size: 9pt; color: #4b5563; margin: 0 0 18pt; }
+  main :where(h1) { font-size: 17pt; font-weight: 600; margin: 18pt 0 10pt; }
+  main :where(h2) { font-size: 14pt; font-weight: 600; margin: 16pt 0 8pt; }
+  main :where(h3) { font-size: 9pt; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin: 16pt 0 8pt; }
+  main :where(p) { margin: 0 0 10pt; }
+  main :where(ul, ol) { margin: 0 0 12pt 1.25em; padding-left: 0.5em; }
+  main :where(li) { margin-bottom: 4pt; }
+  main :where(a) { color: #2563eb; }
+  main :where(blockquote) { border-left: 3px solid #d1d5db; margin: 12pt 0; padding-left: 12pt; color: #4b5563; }
+  main :where(hr) { border: none; border-top: 1px solid #e5e7eb; margin: 16pt 0; }
+</style>
+</head>
+<body>
+  <h1 class="note-title">${titleEsc}</h1>
+  ${meta ? `<p class="note-meta">${metaEsc}</p>` : ''}
+  <main>${html}</main>
+  <script>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print();},150);});</script>
+</body>
+</html>`);
+    printWindow.document.close();
+  }, [selectedNote, toast]);
 
   const { patients, loading: patientsLoading } = usePatients();
   const patientId = useMemo(() => {
@@ -1192,6 +1259,38 @@ const PatientDetail: React.FC = () => {
                 Cerrar
               </Button>
               <HStack spacing={2}>
+                {(notePreviewDocumentOk ||
+                  (selectedNote && selectedNote.type !== 'document')) && (
+                  <Button
+                    size="sm"
+                    h="36px"
+                    variant="outline"
+                    leftIcon={<FiPrinter />}
+                    borderColor="line.strong"
+                    color="text.strong"
+                    bg={cardBg}
+                    _hover={{ borderColor: 'paper.600' }}
+                    onClick={async () => {
+                      if (!selectedNote) return;
+                      if (selectedNote.type === 'document') {
+                        setIsDownloading(true);
+                        try {
+                          await formNoteViewerRef.current?.download();
+                        } finally {
+                          setIsDownloading(false);
+                        }
+                      } else {
+                        handlePrintClinicalNotePdf();
+                      }
+                    }}
+                    isLoading={
+                      selectedNote?.type === 'document' ? isDownloading : false
+                    }
+                    loadingText="Generando…"
+                  >
+                    Imprimir / PDF
+                  </Button>
+                )}
                 {selectedNote?.status !== 'signed' && (
                   <Button
                     size="sm"
@@ -1212,31 +1311,6 @@ const PatientDetail: React.FC = () => {
                     Editar borrador
                   </Button>
                 )}
-                {selectedNote?.status === 'signed' &&
-                  selectedNote?.type === 'document' && (
-                    <Button
-                      size="sm"
-                      h="36px"
-                      variant="outline"
-                      leftIcon={<FiDownload />}
-                      borderColor="line.strong"
-                      color="text.strong"
-                      bg={cardBg}
-                      _hover={{ borderColor: 'paper.600' }}
-                      onClick={async () => {
-                        setIsDownloading(true);
-                        try {
-                          await formNoteViewerRef.current?.download();
-                        } finally {
-                          setIsDownloading(false);
-                        }
-                      }}
-                      isLoading={isDownloading}
-                      loadingText="Generando…"
-                    >
-                      Descargar PDF
-                    </Button>
-                  )}
                 {selectedNote?.status === 'signed' && (
                   <Button
                     size="sm"

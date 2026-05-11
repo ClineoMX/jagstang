@@ -134,7 +134,32 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
   }, []);
 
   const handleDownload = useCallback(async () => {
-    if (!pdfBlob || fieldsWithPosition.length === 0) return;
+    if (!pdfBlob) {
+      toast({
+        title: 'El PDF aún no está listo',
+        status: 'info',
+        duration: 2500,
+      });
+      return;
+    }
+
+    const safeFilename = `${(title || 'documento').replace(/[^a-zA-Z0-9áéíóúñÑ\s-]/g, '').trim() || 'documento'}.pdf`;
+
+    if (fieldsWithPosition.length === 0) {
+      try {
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = safeFilename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: 'PDF descargado', status: 'success', duration: 2000 });
+      } catch {
+        toast({ title: 'Error al generar el PDF', status: 'error', duration: 3000 });
+      }
+      return;
+    }
+
     try {
       const doc = await PDFDocument.load(await pdfBlob.arrayBuffer());
       const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -171,7 +196,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${(title || 'documento').replace(/[^a-zA-Z0-9áéíóúñÑ\s-]/g, '')}.pdf`;
+      a.download = safeFilename;
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: 'PDF descargado', status: 'success', duration: 2000 });
