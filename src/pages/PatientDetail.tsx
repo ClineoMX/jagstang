@@ -1308,7 +1308,7 @@ const PatientDetail: React.FC = () => {
                       if (selectedNote.type === 'document') {
                         setIsDownloading(true);
                         try {
-                          await formNoteViewerRef.current?.download();
+                          await formNoteViewerRef.current?.printPdf();
                         } finally {
                           setIsDownloading(false);
                         }
