@@ -11,6 +11,7 @@ import {
   VStack,
   HStack,
   Text,
+  Heading,
   Spinner,
   useColorModeValue,
   useDisclosure,
@@ -113,6 +114,9 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
   const borderColor = useColorModeValue('line.light', 'line.dark');
   const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
   const mutedColor = useColorModeValue('paper.600', 'paper.400');
+  const inkStrong = useColorModeValue('paper.900', 'paper.50');
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  const modalBodyBg = useColorModeValue('paper.50', 'paper.900');
   const fieldRowHoverBg = useColorModeValue('paper.50', 'whiteAlpha.50');
   const filledFieldBg = 'statusSoft.okBg';
   const filledFieldBorder = 'statusSoft.okBorder';
@@ -537,22 +541,65 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
         {!hideFieldsList && <Box>{fieldsListSection}</Box>}
       </Box>
 
-      <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>{activeField?.name ?? 'Campo'}</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={4}>
+      <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered scrollBehavior="inside">
+        <ModalOverlay bg="blackAlpha.400" />
+        <ModalContent
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="10px"
+          boxShadow="0 20px 60px -20px rgba(15, 23, 42, 0.25)"
+          overflow="hidden"
+        >
+          <ModalCloseButton
+            top="14px"
+            right="14px"
+            color="text.muted"
+            _hover={{ color: 'text.strong', bg: 'surface.hover' }}
+          />
+          <ModalHeader
+            px={6}
+            pt={5}
+            pb={4}
+            pr={12}
+            borderBottom="1px solid"
+            borderColor={borderColor}
+          >
+            <Text
+              as="span"
+              display="block"
+              fontFamily="mono"
+              fontSize="11px"
+              color={labelColor}
+              letterSpacing="0.08em"
+              textTransform="uppercase"
+              fontWeight={500}
+              mb={2}
+            >
+              Campo del formulario
+              {activeField?.required ? ' · Obligatorio' : ''}
+            </Text>
+            <Heading as="h2" fontSize="xl" fontWeight={600} letterSpacing="-0.02em" color={inkStrong}>
+              {activeField?.name ?? 'Campo'}
+            </Heading>
+            {activeField && (
+              <Text fontSize="sm" color={mutedColor} mt={2}>
+                Tipo: {activeField.type}
+              </Text>
+            )}
+          </ModalHeader>
+          <ModalBody px={6} py={5} bg={modalBodyBg}>
             {activeField && (
               <FormControl>
-                <FormLabel fontSize="sm" color={mutedColor}>
-                  {activeField.type.toUpperCase()} {activeField.required && '(requerido)'}
+                <FormLabel fontSize="sm" fontWeight={500} color={inkStrong} mb={3}>
+                  Valor
                 </FormLabel>
                 {activeFieldType === 'checkbox' ? (
                   <ChakraCheckbox
                     isChecked={modalValue === 'true'}
                     onChange={(e) => setModalValue(e.target.checked ? 'true' : 'false')}
                     size="lg"
+                    colorScheme="brand"
                   >
                     {activeField.name}
                   </ChakraCheckbox>
@@ -561,7 +608,11 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
                     type="date"
                     value={modalValue}
                     onChange={(e) => setModalValue(e.target.value)}
-                    size="lg"
+                    size="md"
+                    borderColor={borderColor}
+                    bg={cardBg}
+                    _hover={{ borderColor: 'paper.400' }}
+                    _focusVisible={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                     autoFocus
                   />
                 ) : activeFieldType === 'number' ? (
@@ -570,7 +621,11 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
                     value={modalValue}
                     onChange={(e) => setModalValue(e.target.value)}
                     placeholder={`Ingresa ${activeField.name.toLowerCase()}`}
-                    size="lg"
+                    size="md"
+                    borderColor={borderColor}
+                    bg={cardBg}
+                    _hover={{ borderColor: 'paper.400' }}
+                    _focusVisible={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                     autoFocus
                   />
                 ) : (
@@ -578,16 +633,49 @@ const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
                     value={modalValue}
                     onChange={(e) => setModalValue(e.target.value)}
                     placeholder={`Ingresa ${activeField.name.toLowerCase()}`}
-                    size="lg"
+                    size="md"
+                    borderColor={borderColor}
+                    bg={cardBg}
+                    _hover={{ borderColor: 'paper.400' }}
+                    _focusVisible={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                     autoFocus
                   />
                 )}
               </FormControl>
             )}
           </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>Cancelar</Button>
-            <Button colorScheme="brand" onClick={saveFieldValue}>Guardar</Button>
+          <ModalFooter
+            px={6}
+            py={4}
+            borderTop="1px solid"
+            borderColor={borderColor}
+            bg={cardBg}
+          >
+            <HStack justify="flex-end" w="full" spacing={2}>
+              <Button
+                variant="outline"
+                size="sm"
+                h="36px"
+                borderColor="line.strong"
+                color="text.strong"
+                bg={cardBg}
+                _hover={{ borderColor: 'paper.600' }}
+                onClick={onClose}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                h="36px"
+                colorScheme="brand"
+                bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
+                onClick={saveFieldValue}
+              >
+                Guardar
+              </Button>
+            </HStack>
           </ModalFooter>
         </ModalContent>
       </Modal>

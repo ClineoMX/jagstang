@@ -376,7 +376,7 @@ const PatientDetail: React.FC = () => {
       title: n.title,
       body:
         n.type === 'document'
-          ? 'Documento / formulario'
+          ? 'Formulario'
           : stripHtml(n.content).slice(0, 180),
       onClick: () => {
         if (n.status === 'draft') {

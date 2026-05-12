@@ -65,6 +65,8 @@ const TemplateFillForm: React.FC = () => {
   const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
   const mutedColor = useColorModeValue('paper.600', 'paper.400');
   const labelColor = useColorModeValue('paper.500', 'paper.400');
+  const inkStrong = useColorModeValue('paper.900', 'paper.50');
+  const previewBodyBg = useColorModeValue('paper.50', 'paper.900');
 
   const state = location.state as {
     template?: TemplateItem;
@@ -418,11 +420,59 @@ const TemplateFillForm: React.FC = () => {
         size="4xl"
         scrollBehavior="inside"
       >
-        <ModalOverlay />
-        <ModalContent maxH="90vh">
-          <ModalHeader>Vista previa del formulario</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
+        <ModalOverlay bg="blackAlpha.400" />
+        <ModalContent
+          maxH="90vh"
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="10px"
+          boxShadow="0 20px 60px -20px rgba(15, 23, 42, 0.25)"
+          overflow="hidden"
+        >
+          <ModalCloseButton
+            top="14px"
+            right="14px"
+            color="text.muted"
+            _hover={{ color: 'text.strong', bg: 'surface.hover' }}
+          />
+          <ModalHeader
+            px={7}
+            pt={6}
+            pb={4}
+            pr={14}
+            borderBottom="1px solid"
+            borderColor={borderColor}
+          >
+            <Text
+              as="span"
+              display="block"
+              fontFamily="mono"
+              fontSize="11px"
+              color={labelColor}
+              letterSpacing="0.08em"
+              textTransform="uppercase"
+              fontWeight={500}
+              mb={2}
+            >
+              Vista previa
+            </Text>
+            <Heading
+              as="h2"
+              fontSize="22px"
+              fontWeight={600}
+              letterSpacing="-0.015em"
+              lineHeight="1.25"
+              color={inkStrong}
+            >
+              {template.name}
+            </Heading>
+            <Text fontSize="sm" color={mutedColor} mt={2}>
+              Revisá cómo quedan los datos antes de enviar.
+            </Text>
+          </ModalHeader>
+          <ModalBody px={0} py={0} bg={previewBodyBg}>
+            <Box px={7} py={6}>
             {pdfUrl && hasPositionedFields && numPages != null ? (
               <Box
                 ref={previewContainerRef}
@@ -430,6 +480,8 @@ const TemplateFillForm: React.FC = () => {
                 maxH="75vh"
                 bg={pdfPanelBg}
                 borderRadius="lg"
+                borderWidth="1px"
+                borderColor={borderColor}
                 p={2}
               >
                 <Document file={pdfUrl}>
@@ -471,51 +523,124 @@ const TemplateFillForm: React.FC = () => {
                 </Document>
               </Box>
             ) : (
-              <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
-                <CardBody>
-                  <Text fontSize="sm" color={mutedColor} mb={4}>
-                    Resumen del formulario llenado:
-                  </Text>
-                  <VStack align="stretch" spacing={3}>
-                    {template.fields.map((f) => (
-                      <Box key={f.id} borderBottomWidth="1px" borderColor={borderColor} pb={2}>
-                        <Text fontSize="xs" color={labelColor} fontWeight="medium">
-                          {f.name}
-                        </Text>
-                        <Text fontSize="md">
-                          {formatValueForPreview(f.id, formValues[f.id] as string | number | boolean)}
-                        </Text>
-                      </Box>
-                    ))}
-                  </VStack>
-                </CardBody>
-              </Card>
+              <Box
+                bg={cardBg}
+                borderWidth="1px"
+                borderColor={borderColor}
+                borderRadius="lg"
+                p={5}
+              >
+                <Text fontSize="sm" color={mutedColor} mb={4}>
+                  Resumen del formulario llenado:
+                </Text>
+                <VStack align="stretch" spacing={3}>
+                  {template.fields.map((f) => (
+                    <Box key={f.id} borderBottomWidth="1px" borderColor={borderColor} pb={2}>
+                      <Text fontSize="xs" color={labelColor} fontWeight="medium">
+                        {f.name}
+                      </Text>
+                      <Text fontSize="md" color={inkStrong}>
+                        {formatValueForPreview(f.id, formValues[f.id] as string | number | boolean)}
+                      </Text>
+                    </Box>
+                  ))}
+                </VStack>
+              </Box>
             )}
+            </Box>
           </ModalBody>
-          <ModalFooter>
-            <Button colorScheme="brand" onClick={() => setPreviewModalOpen(false)}>
-              Cerrar
-            </Button>
+          <ModalFooter
+            px={7}
+            py={4}
+            borderTop="1px solid"
+            borderColor={borderColor}
+            bg={cardBg}
+          >
+            <HStack justify="flex-end" w="full">
+              <Button
+                size="sm"
+                h="36px"
+                variant="outline"
+                borderColor="line.strong"
+                color="text.strong"
+                bg={cardBg}
+                _hover={{ borderColor: 'paper.600' }}
+                onClick={() => setPreviewModalOpen(false)}
+              >
+                Cerrar
+              </Button>
+            </HStack>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
       {/* Modal con resumen al enviar */}
-      <Modal isOpen={submitModalOpen} onClose={() => setSubmitModalOpen(false)} size="md">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Formulario enviado</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Text mb={4}>Datos registrados (PoC):</Text>
-            <VStack align="stretch" spacing={2} maxH="300px" overflowY="auto">
+      <Modal
+        isOpen={submitModalOpen}
+        onClose={() => setSubmitModalOpen(false)}
+        size="md"
+        isCentered
+        scrollBehavior="inside"
+      >
+        <ModalOverlay bg="blackAlpha.400" />
+        <ModalContent
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="10px"
+          boxShadow="0 20px 60px -20px rgba(15, 23, 42, 0.25)"
+          overflow="hidden"
+        >
+          <ModalCloseButton
+            top="14px"
+            right="14px"
+            color="text.muted"
+            _hover={{ color: 'text.strong', bg: 'surface.hover' }}
+          />
+          <ModalHeader
+            px={6}
+            pt={5}
+            pb={4}
+            pr={12}
+            borderBottom="1px solid"
+            borderColor={borderColor}
+          >
+            <Text
+              as="span"
+              display="block"
+              fontFamily="mono"
+              fontSize="11px"
+              color={labelColor}
+              letterSpacing="0.08em"
+              textTransform="uppercase"
+              fontWeight={500}
+              mb={2}
+            >
+              Resumen
+            </Text>
+            <Heading as="h2" fontSize="xl" fontWeight={600} letterSpacing="-0.02em" color={inkStrong}>
+              Formulario enviado
+            </Heading>
+            <Text fontSize="sm" color={mutedColor} mt={2}>
+              Datos registrados (PoC con mock).
+            </Text>
+          </ModalHeader>
+          <ModalBody px={6} py={5} bg={previewBodyBg}>
+            <VStack align="stretch" spacing={2} maxH="320px" overflowY="auto">
               {lastSubmitted &&
                 template.fields.map((f) => (
-                  <Box key={f.id} fontSize="sm">
-                    <Text as="span" fontWeight="semibold" color={mutedColor}>
-                      {f.name}:
-                    </Text>{' '}
-                    <Text as="span">
+                  <Box
+                    key={f.id}
+                    fontSize="sm"
+                    py={2}
+                    borderBottomWidth="1px"
+                    borderColor={borderColor}
+                    _last={{ borderBottomWidth: 0 }}
+                  >
+                    <Text as="span" fontWeight="semibold" color={labelColor}>
+                      {f.name}
+                    </Text>
+                    <Text as="span" color={inkStrong} ml={1}>
                       {typeof lastSubmitted[f.id] === 'boolean'
                         ? lastSubmitted[f.id]
                           ? 'Sí'
@@ -526,18 +651,39 @@ const TemplateFillForm: React.FC = () => {
                 ))}
             </VStack>
           </ModalBody>
-          <ModalFooter>
-            <Button colorScheme="brand" onClick={() => setSubmitModalOpen(false)}>
-              Cerrar
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() =>
-                patientPathBase ? navigate(patientPathBase) : navigate('/profile')
-              }
-            >
-              Volver
-            </Button>
+          <ModalFooter
+            px={6}
+            py={4}
+            borderTop="1px solid"
+            borderColor={borderColor}
+            bg={cardBg}
+          >
+            <HStack justify="space-between" w="full" flexWrap="wrap" gap={2}>
+              <Button
+                size="sm"
+                h="36px"
+                variant="outline"
+                borderColor="line.strong"
+                color="text.strong"
+                bg={cardBg}
+                _hover={{ borderColor: 'paper.600' }}
+                onClick={() => setSubmitModalOpen(false)}
+              >
+                Cerrar
+              </Button>
+              <Button
+                size="sm"
+                h="36px"
+                variant="ghost"
+                color="text.strong"
+                _hover={{ bg: 'surface.hover' }}
+                onClick={() =>
+                  patientPathBase ? navigate(patientPathBase) : navigate('/profile')
+                }
+              >
+                Volver al paciente
+              </Button>
+            </HStack>
           </ModalFooter>
         </ModalContent>
       </Modal>
