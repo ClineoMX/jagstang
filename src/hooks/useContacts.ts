@@ -18,7 +18,7 @@ export const useContacts = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiService.listContacts({ limit: 500 });
+      const response = await apiService.listContacts({ size: 500 });
       if (signal?.aborted) return;
 
       const transformed: Contact[] = response.results.map((c) => ({

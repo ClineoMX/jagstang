@@ -28,7 +28,7 @@ export function usePatientConsents(patientId: string | undefined) {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiService.listPatientConsents(patientId, { limit: 100 });
+      const res = await apiService.listPatientConsents(patientId, { size: 100 });
       setConsents(
         res.results.map((r) => ({
           id: r.id,

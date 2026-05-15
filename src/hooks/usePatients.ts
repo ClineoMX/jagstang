@@ -117,7 +117,7 @@ export const usePatients = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiService.listPatientsTable({ limit: 500 });
+      const response = await apiService.listPatientsTable({ size: 500 });
       if (signal?.aborted) return;
       const nowIso = new Date().toISOString();
       setPatients(response.results.map((row) => mapTableRowToPatient(row, nowIso)));

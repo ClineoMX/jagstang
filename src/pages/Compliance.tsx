@@ -104,7 +104,7 @@ const Compliance: React.FC = () => {
     let cancelled = false;
     Promise.all([
       apiService.getDoctorCompliance(),
-      apiService.listPatients({ limit: 200 }),
+      apiService.listPatients({ size: 200 }),
     ])
       .then(([compliance, patients]) => {
         if (cancelled) return;

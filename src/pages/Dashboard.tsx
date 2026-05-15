@@ -100,7 +100,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     apiService
-      .getDoctorNotesRecent({ limit: 500 })
+      .getDoctorNotesRecent({ size: 500 })
       .then((res) => {
         if (cancelled) return;
         setNotesCount(res.count);

@@ -19,7 +19,7 @@ export const useAppointments = () => {
     setError(null);
     try {
       const response = await apiService.listAppointments({
-        limit: 500,
+        size: 500,
       });
       if (signal?.aborted) return;
 

@@ -276,10 +276,10 @@ class ApiService {
   /**
    * List all patients with pagination
    */
-  async listPatients(params?: { page?: number; limit?: number }) {
+  async listPatients(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -300,10 +300,10 @@ class ApiService {
   /**
    * Enriched patient rows for the patients table UI (see api.md GET /patients/table/).
    */
-  async listPatientsTable(params?: { page?: number; limit?: number }) {
+  async listPatientsTable(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       count: number;
@@ -463,10 +463,10 @@ class ApiService {
    * List contacts for the current doctor
    * GET /doctor/contacts/
    */
-  async listContacts(params?: { page?: number; limit?: number }) {
+  async listContacts(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -576,10 +576,10 @@ class ApiService {
    * List appointments for the current doctor
    * GET /doctor/appointments/
    */
-  async listAppointments(params?: { page?: number; limit?: number }) {
+  async listAppointments(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -663,10 +663,10 @@ class ApiService {
    * Get doctor notes (recent, this month)
    * GET /doctor/notes/recent/
    */
-  async getDoctorNotesRecent(params?: { page?: number; limit?: number }) {
+  async getDoctorNotesRecent(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       results: Array<{
@@ -884,10 +884,10 @@ class ApiService {
   /**
    * List all notes for a patient
    */
-  async listNotes(patientId: string, params?: { page?: number; limit?: number }) {
+  async listNotes(patientId: string, params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -1208,11 +1208,11 @@ class ApiService {
    */
   async listPatientAssets(
     patientId: string,
-    params?: { page?: number; limit?: number }
+    params?: { page?: number; size?: number }
   ) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
 
     return this.request<{
@@ -1264,11 +1264,11 @@ class ApiService {
    */
   async listPatientConsents(
     patientId: string,
-    params?: { page?: number; limit?: number }
+    params?: { page?: number; size?: number }
   ) {
     const queryParams = new URLSearchParams();
     if (params?.page != null) queryParams.append('page', params.page.toString());
-    if (params?.limit != null) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       results: Array<{
