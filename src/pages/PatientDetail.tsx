@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   Box,
   ButtonGroup,
@@ -52,12 +52,13 @@ import {
   FiPhone,
   FiPlus,
   FiMoreVertical,
+  FiUpload,
 } from 'react-icons/fi';
 import { FaWandMagicSparkles } from 'react-icons/fa6';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { usePatient, usePatients } from '../hooks/usePatients';
+import { usePatient, usePatients, usePatientAssets } from '../hooks/usePatients';
 import { useNotes } from '../hooks/useNotes';
 import { useAppointments } from '../hooks/useAppointments';
 import {
@@ -90,6 +91,7 @@ import NoteAttachmentsList from '../components/NoteAttachmentsList';
 import { mergeNoteBodyForEditor } from '../utils/noteReceta';
 import { normalizePatientSlug } from '../utils/patientSlug';
 import InterrogationFormDrawer from '../components/InterrogationFormDrawer';
+import PatientDocuments from '../components/PatientDocuments';
 import PatientFormModal from '../components/PatientFormModal';
 import { usePatientNotesSummary } from '../hooks/usePatientNotesSummary';
 import StreamingMarkdown from '../components/StreamingMarkdown';
@@ -116,6 +118,9 @@ const PatientDetail: React.FC = () => {
   const descriptionColor = useColorModeValue('paper.600', 'paper.300');
   /** Alinea divisores entre columnas (icono + título vs solo título) y con el borde 1px del card. */
   const cardSectionHeaderMinH = '48px';
+
+  const [activeTab, setActiveTab] = useState<'expediente' | 'documentos'>('expediente');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedNote, setSelectedNote] = useState<any>(null);
@@ -267,6 +272,7 @@ const PatientDetail: React.FC = () => {
     setBloodType,
   } = usePatientVitals(patientId);
 
+  const { assets, loading: assetsLoading, refetch: refetchAssets } = usePatientAssets(patientId);
   const notesSummary = usePatientNotesSummary(patientId);
 
   const patientPathBase = useMemo(() => {
@@ -726,53 +732,67 @@ const PatientDetail: React.FC = () => {
                 </Tooltip>
               </>
             )}
-            <ButtonGroup isAttached size="sm" variant="solid">
+            {activeTab === 'documentos' ? (
               <Button
-                leftIcon={<FiPlus />}
+                leftIcon={<FiUpload />}
+                size="sm"
                 h="36px"
                 bg="brand.600"
                 color="white"
                 _hover={{ bg: 'brand.700' }}
-                borderRightRadius={0}
-                onClick={() => navigate(`${patientPathBase}/notes/new`)}
+                onClick={() => fileInputRef.current?.click()}
               >
-                Nueva nota
+                Subir documento
               </Button>
-              <Menu placement="bottom-end">
-                <MenuButton
-                  as={IconButton}
-                  aria-label="Tipo de nota"
-                  icon={<FiChevronDown />}
+            ) : (
+              <ButtonGroup isAttached size="sm" variant="solid">
+                <Button
+                  leftIcon={<FiPlus />}
                   h="36px"
-                  minW="32px"
                   bg="brand.600"
                   color="white"
                   _hover={{ bg: 'brand.700' }}
-                  _active={{ bg: 'brand.700' }}
-                  borderLeft="1px solid"
-                  borderColor="brand.700"
-                  borderLeftRadius={0}
-                />
-                <MenuList>
-                  <MenuItem
-                    icon={<FiEdit3 />}
-                    onClick={() =>
-                      navigate(`${patientPathBase}/notes/new`)
-                    }
-                  >
-                    Nota de texto
-                  </MenuItem>
-                  <MenuItem
-                    icon={<FiFileText />}
-                    onClick={() =>
-                      navigate(`${patientPathBase}/notes/new-form`)
-                    }
-                  >
-                    Formulario
-                  </MenuItem>
-                </MenuList>
-              </Menu>
-            </ButtonGroup>
+                  borderRightRadius={0}
+                  onClick={() => navigate(`${patientPathBase}/notes/new`)}
+                >
+                  Nueva nota
+                </Button>
+                <Menu placement="bottom-end">
+                  <MenuButton
+                    as={IconButton}
+                    aria-label="Tipo de nota"
+                    icon={<FiChevronDown />}
+                    h="36px"
+                    minW="32px"
+                    bg="brand.600"
+                    color="white"
+                    _hover={{ bg: 'brand.700' }}
+                    _active={{ bg: 'brand.700' }}
+                    borderLeft="1px solid"
+                    borderColor="brand.700"
+                    borderLeftRadius={0}
+                  />
+                  <MenuList>
+                    <MenuItem
+                      icon={<FiEdit3 />}
+                      onClick={() =>
+                        navigate(`${patientPathBase}/notes/new`)
+                      }
+                    >
+                      Nota de texto
+                    </MenuItem>
+                    <MenuItem
+                      icon={<FiFileText />}
+                      onClick={() =>
+                        navigate(`${patientPathBase}/notes/new-form`)
+                      }
+                    >
+                      Formulario
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </ButtonGroup>
+            )}
             <Menu>
               <MenuButton
                 as={IconButton}
@@ -1015,27 +1035,69 @@ const PatientDetail: React.FC = () => {
 
         <Box pt="1px">
           <HStack
-            spacing={2}
+            spacing={0}
             minH={cardSectionHeaderMinH}
-            py={3}
-            mb={4}
-            align="center"
+            align="stretch"
             borderBottom="1px solid"
             borderColor={borderColor}
+            mb={4}
           >
-            <Heading
-              as="h2"
+            <Box
+              as="button"
+              type="button"
+              px={1}
+              py={3}
+              mr={5}
               fontSize="14px"
               fontWeight={600}
               letterSpacing="-0.01em"
               lineHeight="1.25"
-              m={0}
+              color={activeTab === 'expediente' ? inkStrong : labelColor}
+              borderBottom="2px solid"
+              borderColor={activeTab === 'expediente' ? 'brand.600' : 'transparent'}
+              mb="-1px"
+              cursor="pointer"
+              bg="transparent"
+              _hover={{ color: inkStrong }}
+              transition="color 0.15s, border-color 0.15s"
+              onClick={() => setActiveTab('expediente')}
             >
               Expediente clínico
-            </Heading>
+            </Box>
+            <Box
+              as="button"
+              type="button"
+              px={1}
+              py={3}
+              fontSize="14px"
+              fontWeight={600}
+              letterSpacing="-0.01em"
+              lineHeight="1.25"
+              color={activeTab === 'documentos' ? inkStrong : labelColor}
+              borderBottom="2px solid"
+              borderColor={activeTab === 'documentos' ? 'brand.600' : 'transparent'}
+              mb="-1px"
+              cursor="pointer"
+              bg="transparent"
+              _hover={{ color: inkStrong }}
+              transition="color 0.15s, border-color 0.15s"
+              onClick={() => setActiveTab('documentos')}
+            >
+              Documentos
+            </Box>
           </HStack>
 
-          <Timeline items={timelineItems} />
+          {activeTab === 'expediente' ? (
+            <Timeline items={timelineItems} />
+          ) : (
+            <PatientDocuments
+              assets={assets}
+              loading={assetsLoading}
+              patientId={patientId}
+              refetch={refetchAssets}
+              fileInputRef={fileInputRef}
+            />
+          )}
         </Box>
       </Box>
 

@@ -121,7 +121,7 @@ const LandingPage: React.FC = () => {
       icon: FiLock,
       title: 'Seguridad Total',
       description:
-        'Tus datos protegidos con encriptación de nivel médico. Cumplimiento total con HIPAA y estándares internacionales.',
+        'Tus datos protegidos con encriptación de nivel médico, en cumplimiento con estándares internacionales de seguridad.',
       color: 'error',
     },
   ];
