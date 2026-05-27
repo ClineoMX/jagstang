@@ -992,6 +992,19 @@ class ApiService {
   }
 
   /**
+   * Update the date of a medical note (draft only)
+   */
+  async updateNoteDate(patientId: string, noteId: string, customDate: string) {
+    return this.request<{ custom_date: string }>(
+      `/patients/${patientId}/notes/${noteId}/date/`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ custom_date: customDate }),
+      }
+    );
+  }
+
+  /**
    * Sign a medical note
    */
   async signNote(patientId: string, noteId: string, save_anyway = false) {

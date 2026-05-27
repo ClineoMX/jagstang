@@ -37,6 +37,7 @@ import {
   FiAlertCircle,
   FiChevronDown,
   FiChevronUp,
+  FiEdit3,
 } from 'react-icons/fi';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -116,6 +117,7 @@ const NoteForm: React.FC = () => {
   const {
     createNote,
     updateNote,
+    updateNoteDate,
     signNote,
     getNoteAnalysis,
     notes,
@@ -151,6 +153,47 @@ const NoteForm: React.FC = () => {
   const [noteStatus, setNoteStatus] = useState<'new' | 'draft' | 'signed'>(
     'new'
   );
+  const [noteCreatedAt, setNoteCreatedAt] = useState<string | null>(null);
+  const [isEditingDate, setIsEditingDate] = useState(false);
+  const [editingDateValue, setEditingDateValue] = useState('');
+  const [isUpdatingDate, setIsUpdatingDate] = useState(false);
+
+  const handleStartEditDate = () => {
+    if (!noteCreatedAt) return;
+    const d = new Date(noteCreatedAt);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setEditingDateValue(local);
+    setIsEditingDate(true);
+  };
+
+  const handleConfirmDateChange = async () => {
+    if (!currentNoteId || !patientId || !editingDateValue) return;
+    setIsUpdatingDate(true);
+    try {
+      const isoDate = new Date(editingDateValue).toISOString();
+      await updateNoteDate(currentNoteId, isoDate);
+      setNoteCreatedAt(isoDate);
+      toast({
+        title: 'Fecha actualizada',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      setIsEditingDate(false);
+    } catch (err: any) {
+      toast({
+        title: 'Error al actualizar fecha',
+        description: err?.message || 'No se pudo actualizar la fecha',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setIsUpdatingDate(false);
+    }
+  };
 
   const {
     isOpen: isSignModalOpen,
@@ -239,6 +282,7 @@ const NoteForm: React.FC = () => {
       setSavedType(note.type);
       setCurrentNoteId(note.id);
       setNoteStatus(note.status);
+      setNoteCreatedAt(note.createdAt);
       if (
         note.status === 'draft' &&
         note.id &&
@@ -797,6 +841,78 @@ const NoteForm: React.FC = () => {
                       </option>
                     ))}
                   </Select>
+                </>
+              )}
+              {isDraft && noteCreatedAt && (
+                <>
+                  <Box w="1px" h="14px" bg={softBorder} />
+                  <Text
+                    fontFamily="mono"
+                    letterSpacing="0.04em"
+                    color={labelColor}
+                  >
+                    Fecha
+                  </Text>
+                  {isEditingDate ? (
+                    <HStack spacing={2}>
+                      <Input
+                        type="datetime-local"
+                        size="xs"
+                        w="190px"
+                        fontFamily="mono"
+                        fontSize="12px"
+                        value={editingDateValue}
+                        onChange={(e) => setEditingDateValue(e.target.value)}
+                        bg={cardBg}
+                        borderColor={softBorder}
+                      />
+                      <Button
+                        size="xs"
+                        colorScheme="brand"
+                        bg="brand.600"
+                        color="white"
+                        _hover={{ bg: 'brand.700' }}
+                        onClick={handleConfirmDateChange}
+                        isLoading={isUpdatingDate}
+                        loadingText="…"
+                      >
+                        OK
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setIsEditingDate(false)}
+                        isDisabled={isUpdatingDate}
+                      >
+                        ✕
+                      </Button>
+                    </HStack>
+                  ) : (
+                    <HStack
+                      spacing={1}
+                      cursor="pointer"
+                      onClick={handleStartEditDate}
+                      role="group"
+                      _hover={{ color: 'brand.600' }}
+                    >
+                      <Text
+                        fontFamily="mono"
+                        fontSize="12px"
+                        color={subColor}
+                        _groupHover={{ color: 'brand.600' }}
+                      >
+                        {format(new Date(noteCreatedAt), "d 'de' MMM, yyyy · HH:mm", { locale: es })}
+                      </Text>
+                      <Icon
+                        as={FiEdit3}
+                        boxSize="11px"
+                        color={labelColor}
+                        opacity={0}
+                        _groupHover={{ opacity: 1, color: 'brand.600' }}
+                        transition="opacity 0.15s"
+                      />
+                    </HStack>
+                  )}
                 </>
               )}
             </HStack>

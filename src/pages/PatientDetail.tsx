@@ -127,6 +127,47 @@ const PatientDetail: React.FC = () => {
   const formNoteViewerRef = React.useRef<FormNoteViewerHandle>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  const [isEditingDate, setIsEditingDate] = useState(false);
+  const [editingDateValue, setEditingDateValue] = useState('');
+  const [isUpdatingDate, setIsUpdatingDate] = useState(false);
+
+  const handleStartEditDate = () => {
+    if (!selectedNote?.createdAt) return;
+    const d = new Date(selectedNote.createdAt);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setEditingDateValue(local);
+    setIsEditingDate(true);
+  };
+
+  const handleConfirmDateChange = async () => {
+    if (!selectedNote?.id || !editingDateValue) return;
+    setIsUpdatingDate(true);
+    try {
+      const isoDate = new Date(editingDateValue).toISOString();
+      await updateNoteDate(selectedNote.id, isoDate);
+      setSelectedNote((prev: any) => prev ? { ...prev, createdAt: isoDate } : prev);
+      toast({
+        title: 'Fecha actualizada',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      setIsEditingDate(false);
+    } catch (err: any) {
+      toast({
+        title: 'Error al actualizar fecha',
+        description: err?.message || 'No se pudo actualizar la fecha',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setIsUpdatingDate(false);
+    }
+  };
+
   const notePreviewDocumentOk = useMemo(() => {
     if (!selectedNote || selectedNote.type !== 'document') return false;
     try {
@@ -245,7 +286,7 @@ const PatientDetail: React.FC = () => {
     error: patientError,
     refetch: refetchPatient,
   } = usePatient(patientId);
-  const { notes, loading: notesLoading, createNote } = useNotes(patientId);
+  const { notes, loading: notesLoading, createNote, updateNoteDate } = useNotes(patientId);
   const { appointments } = useAppointments();
   const {
     consents: patientConsents,
@@ -370,6 +411,7 @@ const PatientDetail: React.FC = () => {
 
   const handleViewNote = (note: any) => {
     setSelectedNote(note);
+    setIsEditingDate(false);
     onOpen();
   };
 
@@ -1196,27 +1238,90 @@ const PatientDetail: React.FC = () => {
                 {selectedNote?.title}
               </Heading>
               {selectedNote && (
-                <Text
-                  fontFamily="mono"
-                  fontSize="11.5px"
-                  color={labelColor}
-                  letterSpacing="0.04em"
-                  mt={2}
-                >
-                  {selectedNote?.status === 'signed' && selectedNote?.signedAt
-                    ? `Firmada · ${format(
-                        new Date(selectedNote.signedAt),
-                        "d 'de' MMM, yyyy · HH:mm",
-                        { locale: es }
-                      )}`
-                    : selectedNote?.createdAt
-                      ? `Creada · ${format(
-                          new Date(selectedNote.createdAt),
-                          "d 'de' MMM, yyyy · HH:mm",
-                          { locale: es }
-                        )}`
-                      : null}
-                </Text>
+                <HStack spacing={2} mt={2} align="center">
+                  {selectedNote?.status === 'signed' ? (
+                    <Text
+                      fontFamily="mono"
+                      fontSize="11.5px"
+                      color={labelColor}
+                      letterSpacing="0.04em"
+                    >
+                      {selectedNote?.signedAt
+                        ? `Firmada · ${format(
+                            new Date(selectedNote.signedAt),
+                            "d 'de' MMM, yyyy · HH:mm",
+                            { locale: es }
+                          )}`
+                        : selectedNote?.createdAt
+                          ? `Creada · ${format(
+                              new Date(selectedNote.createdAt),
+                              "d 'de' MMM, yyyy · HH:mm",
+                              { locale: es }
+                            )}`
+                          : null}
+                    </Text>
+                  ) : isEditingDate ? (
+                    <HStack spacing={2}>
+                      <Input
+                        type="datetime-local"
+                        size="xs"
+                        w="210px"
+                        fontFamily="mono"
+                        fontSize="11.5px"
+                        value={editingDateValue}
+                        onChange={(e) => setEditingDateValue(e.target.value)}
+                        borderColor={borderColor}
+                      />
+                      <Button
+                        size="xs"
+                        colorScheme="brand"
+                        bg="brand.600"
+                        color="white"
+                        _hover={{ bg: 'brand.700' }}
+                        onClick={handleConfirmDateChange}
+                        isLoading={isUpdatingDate}
+                        loadingText="…"
+                      >
+                        Guardar
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setIsEditingDate(false)}
+                        isDisabled={isUpdatingDate}
+                      >
+                        Cancelar
+                      </Button>
+                    </HStack>
+                  ) : (
+                    <HStack
+                      spacing={1.5}
+                      cursor="pointer"
+                      onClick={handleStartEditDate}
+                      role="group"
+                      _hover={{ color: 'brand.600' }}
+                      transition="color 0.15s"
+                    >
+                      <Icon as={FiCalendar} boxSize="12px" color={labelColor} _groupHover={{ color: 'brand.600' }} />
+                      <Text
+                        fontFamily="mono"
+                        fontSize="11.5px"
+                        color={labelColor}
+                        letterSpacing="0.04em"
+                        _groupHover={{ color: 'brand.600' }}
+                      >
+                        {selectedNote?.createdAt
+                          ? `Creada · ${format(
+                              new Date(selectedNote.createdAt),
+                              "d 'de' MMM, yyyy · HH:mm",
+                              { locale: es }
+                            )}`
+                          : 'Sin fecha'}
+                      </Text>
+                      <Icon as={FiEdit} boxSize="11px" color={labelColor} opacity={0} _groupHover={{ opacity: 1, color: 'brand.600' }} transition="opacity 0.15s" />
+                    </HStack>
+                  )}
+                </HStack>
               )}
             </Box>
           </ModalHeader>

@@ -27,6 +27,8 @@ import {
   useToast,
 } from '@chakra-ui/react';
 import { useLocation, useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import {
   FiArrowLeft,
   FiCalendar,
@@ -126,6 +128,7 @@ const FormNoteForm: React.FC = () => {
     loading: notesLoading,
     createNote,
     updateNote,
+    updateNoteDate,
     signNote,
   } = useNotes(patientId);
 
@@ -151,6 +154,48 @@ const FormNoteForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const fillerRef = useRef<FormNoteFillerHandle | null>(null);
+
+  const [noteCreatedAt, setNoteCreatedAt] = useState<string | null>(null);
+  const [isEditingDate, setIsEditingDate] = useState(false);
+  const [editingDateValue, setEditingDateValue] = useState('');
+  const [isUpdatingDate, setIsUpdatingDate] = useState(false);
+
+  const handleStartEditDate = () => {
+    if (!noteCreatedAt) return;
+    const d = new Date(noteCreatedAt);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setEditingDateValue(local);
+    setIsEditingDate(true);
+  };
+
+  const handleConfirmDateChange = async () => {
+    if (!currentNoteId || !patientId || !editingDateValue) return;
+    setIsUpdatingDate(true);
+    try {
+      const isoDate = new Date(editingDateValue).toISOString();
+      await updateNoteDate(currentNoteId, isoDate);
+      setNoteCreatedAt(isoDate);
+      toast({
+        title: 'Fecha actualizada',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      setIsEditingDate(false);
+    } catch (err: any) {
+      toast({
+        title: 'Error al actualizar fecha',
+        description: err?.message || 'No se pudo actualizar la fecha',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setIsUpdatingDate(false);
+    }
+  };
 
   const fieldHoverBg = useColorModeValue('paper.50', 'whiteAlpha.50');
   const fieldFilledBg = 'statusSoft.okBg';
@@ -236,6 +281,7 @@ const FormNoteForm: React.FC = () => {
     if (restoredFormId) setSelectedFormId(restoredFormId);
     setCurrentNoteId(note.id);
     setNoteStatus(note.status);
+    setNoteCreatedAt(note.createdAt);
     setIsLoadingNote(false);
   }, [noteId, patientId, notes, notesLoading]);
 
@@ -669,6 +715,72 @@ const FormNoteForm: React.FC = () => {
                 <Text>
                   {patient.firstName} {patient.lastName}
                 </Text>
+                {isDraft && noteCreatedAt && (
+                  <>
+                    <Box w="1px" h="14px" bg={softBorder} />
+                    {isEditingDate ? (
+                      <HStack spacing={2}>
+                        <Input
+                          type="datetime-local"
+                          size="xs"
+                          w="190px"
+                          fontFamily="mono"
+                          fontSize="12px"
+                          value={editingDateValue}
+                          onChange={(e) => setEditingDateValue(e.target.value)}
+                          bg={cardBg}
+                          borderColor={softBorder}
+                        />
+                        <Button
+                          size="xs"
+                          colorScheme="brand"
+                          bg="brand.600"
+                          color="white"
+                          _hover={{ bg: 'brand.700' }}
+                          onClick={handleConfirmDateChange}
+                          isLoading={isUpdatingDate}
+                          loadingText="…"
+                        >
+                          OK
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => setIsEditingDate(false)}
+                          isDisabled={isUpdatingDate}
+                        >
+                          ✕
+                        </Button>
+                      </HStack>
+                    ) : (
+                      <HStack
+                        spacing={1}
+                        cursor="pointer"
+                        onClick={handleStartEditDate}
+                        role="group"
+                        _hover={{ color: 'brand.600' }}
+                      >
+                        <Icon as={FiCalendar} boxSize="12px" color={labelColor} _groupHover={{ color: 'brand.600' }} />
+                        <Text
+                          fontFamily="mono"
+                          fontSize="12px"
+                          color={subColor}
+                          _groupHover={{ color: 'brand.600' }}
+                        >
+                          {format(new Date(noteCreatedAt), "d 'de' MMM, yyyy · HH:mm", { locale: es })}
+                        </Text>
+                        <Icon
+                          as={FiEdit3}
+                          boxSize="11px"
+                          color={labelColor}
+                          opacity={0}
+                          _groupHover={{ opacity: 1, color: 'brand.600' }}
+                          transition="opacity 0.15s"
+                        />
+                      </HStack>
+                    )}
+                  </>
+                )}
               </HStack>
               <HStack spacing={2}>
                 <HStack

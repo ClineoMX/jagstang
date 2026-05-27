@@ -129,6 +129,12 @@ export const useNotes = (patientId: string | undefined) => {
     return await apiService.getNoteAnalysis(patientId, noteId);
   };
 
+  const updateNoteDate = async (noteId: string, customDate: string) => {
+    if (!patientId) throw new Error('Patient ID is required');
+    await apiService.updateNoteDate(patientId, noteId, customDate);
+    await reloadNotes();
+  };
+
   return {
     notes,
     loading,
@@ -137,5 +143,6 @@ export const useNotes = (patientId: string | undefined) => {
     updateNote,
     signNote,
     getNoteAnalysis,
+    updateNoteDate,
   };
 };
