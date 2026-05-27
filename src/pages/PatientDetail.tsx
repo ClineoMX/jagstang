@@ -1239,28 +1239,7 @@ const PatientDetail: React.FC = () => {
               </Heading>
               {selectedNote && (
                 <HStack spacing={2} mt={2} align="center">
-                  {selectedNote?.status === 'signed' ? (
-                    <Text
-                      fontFamily="mono"
-                      fontSize="11.5px"
-                      color={labelColor}
-                      letterSpacing="0.04em"
-                    >
-                      {selectedNote?.signedAt
-                        ? `Firmada · ${format(
-                            new Date(selectedNote.signedAt),
-                            "d 'de' MMM, yyyy · HH:mm",
-                            { locale: es }
-                          )}`
-                        : selectedNote?.createdAt
-                          ? `Creada · ${format(
-                              new Date(selectedNote.createdAt),
-                              "d 'de' MMM, yyyy · HH:mm",
-                              { locale: es }
-                            )}`
-                          : null}
-                    </Text>
-                  ) : isEditingDate ? (
+                  {isEditingDate ? (
                     <HStack spacing={2}>
                       <Input
                         type="datetime-local"
@@ -1310,13 +1289,19 @@ const PatientDetail: React.FC = () => {
                         letterSpacing="0.04em"
                         _groupHover={{ color: 'brand.600' }}
                       >
-                        {selectedNote?.createdAt
-                          ? `Creada · ${format(
-                              new Date(selectedNote.createdAt),
+                        {selectedNote?.status === 'signed' && selectedNote?.signedAt
+                          ? `Firmada · ${format(
+                              new Date(selectedNote.signedAt),
                               "d 'de' MMM, yyyy · HH:mm",
                               { locale: es }
                             )}`
-                          : 'Sin fecha'}
+                          : selectedNote?.createdAt
+                            ? `Creada · ${format(
+                                new Date(selectedNote.createdAt),
+                                "d 'de' MMM, yyyy · HH:mm",
+                                { locale: es }
+                              )}`
+                            : 'Sin fecha'}
                       </Text>
                       <Icon as={FiEdit} boxSize="11px" color={labelColor} opacity={0} _groupHover={{ opacity: 1, color: 'brand.600' }} transition="opacity 0.15s" />
                     </HStack>
