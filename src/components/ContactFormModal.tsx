@@ -45,6 +45,50 @@ const INPUT_STYLES = {
   },
 };
 
+interface SectionProps {
+  title: string;
+  bg: string;
+  borderColor: string;
+  labelColor: string;
+  children: React.ReactNode;
+}
+
+/**
+ * Defined at module scope (not inside the form component) so its identity stays
+ * stable across renders. Defining it inline caused React to remount the whole
+ * subtree on every keystroke, which made the drawer's focus trap snap focus
+ * back to the first input.
+ */
+const Section: React.FC<SectionProps> = ({
+  title,
+  bg,
+  borderColor,
+  labelColor,
+  children,
+}) => (
+  <Box bg={bg} border="1px solid" borderColor={borderColor} borderRadius="8px" p={4}>
+    <HStack
+      spacing={2}
+      mb={3}
+      pb={2}
+      borderBottom="1px solid"
+      borderColor={borderColor}
+    >
+      <Text
+        fontFamily="mono"
+        fontSize="10.5px"
+        letterSpacing="0.1em"
+        textTransform="uppercase"
+        color={labelColor}
+        fontWeight={500}
+      >
+        {title}
+      </Text>
+    </HStack>
+    {children}
+  </Box>
+);
+
 /**
  * Drawer-based contact form. Name/props preserved for API compatibility; the
  * previous 4xl centered modal has been replaced by a right-side drawer per
@@ -189,39 +233,6 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
     }
   };
 
-  const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
-    title,
-    children,
-  }) => (
-    <Box
-      bg={sectionBg}
-      border="1px solid"
-      borderColor={sectionBorder}
-      borderRadius="8px"
-      p={4}
-    >
-      <HStack
-        spacing={2}
-        mb={3}
-        pb={2}
-        borderBottom="1px solid"
-        borderColor={sectionBorder}
-      >
-        <Text
-          fontFamily="mono"
-          fontSize="10.5px"
-          letterSpacing="0.1em"
-          textTransform="uppercase"
-          color={labelColor}
-          fontWeight={500}
-        >
-          {title}
-        </Text>
-      </HStack>
-      {children}
-    </Box>
-  );
-
   return (
     <FormDrawer
       isOpen={isOpen}
@@ -240,7 +251,12 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
       isSubmitting={isSubmitting}
     >
       <VStack spacing={4} align="stretch">
-        <Section title="Información básica">
+        <Section
+          title="Información básica"
+          bg={sectionBg}
+          borderColor={sectionBorder}
+          labelColor={labelColor}
+        >
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
             <FormControl isRequired>
               <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
@@ -297,7 +313,12 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
           </SimpleGrid>
         </Section>
 
-        <Section title="Información de contacto">
+        <Section
+          title="Información de contacto"
+          bg={sectionBg}
+          borderColor={sectionBorder}
+          labelColor={labelColor}
+        >
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
             <FormControl>
               <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
@@ -320,7 +341,12 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
           </SimpleGrid>
         </Section>
 
-        <Section title="Información profesional">
+        <Section
+          title="Información profesional"
+          bg={sectionBg}
+          borderColor={sectionBorder}
+          labelColor={labelColor}
+        >
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
             <FormControl>
               <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
@@ -348,7 +374,12 @@ const ContactFormModal: React.FC<ContactFormModalProps> = ({
           </SimpleGrid>
         </Section>
 
-        <Section title="Notas">
+        <Section
+          title="Notas"
+          bg={sectionBg}
+          borderColor={sectionBorder}
+          labelColor={labelColor}
+        >
           <FormControl>
             <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
               Notas adicionales
