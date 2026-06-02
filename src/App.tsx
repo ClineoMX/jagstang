@@ -29,6 +29,7 @@ import TemplateFillForm from './pages/TemplateFillForm';
 
 // Components
 import Layout from './components/Layout';
+import BetaPausedOverlay from './components/BetaPausedOverlay';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -350,6 +351,7 @@ const App: React.FC = () => {
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
+          <BetaPausedOverlay />
         </AuthProvider>
       </ChakraAppShell>
     </>

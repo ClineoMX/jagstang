@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL, AUTH_API_BASE_URL, API_KEY } from '../config/api';
+import { fetchWithTimeout, ApiTimeoutError } from '../utils/apiStatus';
 
 export interface ApiError {
   message: string;
@@ -231,7 +232,7 @@ class ApiService {
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         ...options,
         headers,
       });
@@ -261,6 +262,9 @@ class ApiService {
       }
       return {} as T;
     } catch (error) {
+      if (error instanceof ApiTimeoutError) {
+        throw { message: error.message, status: 0 } as ApiError;
+      }
       if (error && typeof error === 'object' && 'status' in error) {
         throw error;
       }
@@ -815,7 +819,7 @@ class ApiService {
    */
   async getDoctorAsset(assetId: string): Promise<Blob> {
     const url = `${API_BASE_URL}/doctor/assets/${assetId}/`;
-    const response = await fetch(url, { headers: this.getAuthHeaders() });
+    const response = await fetchWithTimeout(url, { headers: this.getAuthHeaders() });
     if (!response.ok) {
       throw { message: 'Error al descargar el asset', status: response.status } as ApiError;
     }
@@ -1047,7 +1051,7 @@ class ApiService {
     const { patientId, signal, onDelta, onDone, onError } = args;
     const url = `${API_BASE_URL}/patients/${patientId}/notes/summary/`;
 
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'GET',
       headers: {
         ...this.getAuthHeaders(),
@@ -1249,7 +1253,7 @@ class ApiService {
    */
   async getPatientAsset(patientId: string, assetId: string): Promise<Blob> {
     const url = `${API_BASE_URL}/patients/${patientId}/assets/${assetId}/`;
-    const response = await fetch(url, { headers: this.getAuthHeaders() });
+    const response = await fetchWithTimeout(url, { headers: this.getAuthHeaders() });
     if (!response.ok) {
       throw { message: 'Error al descargar el asset', status: response.status } as ApiError;
     }
@@ -1310,7 +1314,7 @@ class ApiService {
     const url = `${AUTH_API_BASE_URL}${endpoint}`;
 
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         ...options,
         headers: {
           ...this.getPublicHeaders(),
@@ -1334,6 +1338,9 @@ class ApiService {
       }
       return {} as T;
     } catch (error) {
+      if (error instanceof ApiTimeoutError) {
+        throw { message: error.message, status: 0 } as ApiError;
+      }
       if (error && typeof error === 'object' && 'status' in error) {
         throw error;
       }
