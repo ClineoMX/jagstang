@@ -4,12 +4,14 @@ import {
   Button,
   Flex,
   HStack,
+  Link,
   Text,
   VStack,
   useColorModeValue,
 } from '@chakra-ui/react';
 import ClineoLogo from './ClineoLogo';
 import { subscribeApiTimeout } from '../utils/apiStatus';
+import { getSupportMailto, SUPPORT_EMAIL } from '../config/support';
 
 /**
  * Ventana de disponibilidad de la beta: entre semana (lun–vie) de 11:00 a 20:00.
@@ -131,6 +133,19 @@ const BetaPausedOverlay: React.FC = () => {
               </HStack>
             </VStack>
           </Box>
+
+          <Text fontSize="12.5px" color={subColor} textAlign="center">
+            En caso de necesitar acceso urgente{' '}
+            <Link
+              href={getSupportMailto()}
+              isExternal
+              fontWeight={600}
+              aria-label={`Contacte a soporte (${SUPPORT_EMAIL})`}
+            >
+              contacte a soporte
+            </Link>
+            .
+          </Text>
 
           {withinWindow && (
             <Text fontSize="12.5px" color={subColor} textAlign="center">

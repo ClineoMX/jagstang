@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
 import { AuthField, PasswordField } from '../components/AuthField';
+import { getSupportMailto, SUPPORT_EMAIL } from '../config/support';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -67,9 +68,15 @@ const Login: React.FC = () => {
         <HStack justify="space-between" px={1}>
           <Text fontSize="12px" color={subColor}>
             ¿Problemas para acceder?{' '}
-            <Text as="span" color="brand.600" fontWeight={500}>
+            <Link
+              href={getSupportMailto()}
+              color="brand.600"
+              fontWeight={500}
+              isExternal
+              aria-label={`Contactar a soporte (${SUPPORT_EMAIL})`}
+            >
               Contacta al soporte
-            </Text>
+            </Link>
           </Text>
         </HStack>
       }
