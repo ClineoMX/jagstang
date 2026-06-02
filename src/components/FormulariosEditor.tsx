@@ -16,13 +16,6 @@ import {
   ListIcon,
   IconButton,
   useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
   FormControl,
   FormLabel,
   Input,
@@ -39,7 +32,6 @@ import {
   AlertDialogHeader,
   AlertDialogContent,
   AlertDialogOverlay,
-  ButtonGroup,
   Tooltip,
 } from '@chakra-ui/react';
 import {
@@ -54,7 +46,6 @@ import {
   FiCheckSquare,
   FiEdit3,
   FiSave,
-  FiArrowLeft,
 } from 'react-icons/fi';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -62,6 +53,9 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import type { TemplateItem, TemplateField, TemplateFieldType } from '../types';
 import { apiService } from '../services/api';
 import FormulariosList from './FormulariosList';
+import FormDrawer from './FormDrawer';
+
+import { FiInfo } from 'react-icons/fi';
 
 const pdfWorkerSrc =
   typeof import.meta.env?.VITE_PDF_WORKER === 'string'
@@ -141,12 +135,15 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
   onBack,
 }) => {
   const toast = useToast();
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const dropZoneBg = useColorModeValue('gray.50', 'gray.900');
-  const listItemHoverBg = useColorModeValue('gray.50', 'gray.700');
-  const listItemPlacingBg = useColorModeValue('brand.50', 'whiteAlpha.200');
-  const requiredFieldBg = useColorModeValue('yellow.100', 'yellow.900');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'line.dark');
+  const dropZoneBg = useColorModeValue('paper.50', 'paper.900');
+  const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
+  const listItemHoverBg = useColorModeValue('paper.100', 'whiteAlpha.50');
+  const listItemPlacingBg = useColorModeValue('brand.50', 'whiteAlpha.100');
+  const mutedColor = useColorModeValue('paper.600', 'paper.400');
+  const labelColor = useColorModeValue('paper.500', 'paper.400');
+  const requiredFieldBg = 'statusSoft.warnBg';
 
   const [template, setTemplate] = useState<TemplateItem>(INITIAL_TEMPLATE);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -178,15 +175,10 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
         setTemplate((prev) => ({ ...prev, fields }));
       })
       .catch(() => {
-        if (!cancelled) {
-          toast({
-            title: 'No se pudieron cargar los campos',
-            description: 'Revisa la conexión.',
-            status: 'warning',
-            duration: 4000,
-            isClosable: true,
-          });
-        }
+        // Silenciado a propósito: si el endpoint falla mostramos el editor con
+        // la lista de campos vacía. Antes había un toast de "No se pudieron
+        // cargar los campos" que era engañoso porque los campos no son
+        // críticos para empezar a diseñar el formulario.
       })
       .finally(() => {
         if (!cancelled) setFieldsLoading(false);
@@ -194,7 +186,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [toast]);
+  }, []);
 
   // Inicializar cuando formId es null (nuevo formulario)
   useEffect(() => {
@@ -684,54 +676,74 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
       {formLoading && (
         <HStack justify="center" py={4}>
           <Spinner size="lg" colorScheme="brand" />
-          <Text color="gray.500">Cargando formulario…</Text>
+          <Text color={mutedColor}>Cargando formulario…</Text>
         </HStack>
       )}
 
       <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
         <CardHeader>
-          <HStack justify="space-between" flexWrap="wrap" gap={4}>
-            <HStack spacing={3}>
-              <IconButton
-                aria-label="Volver"
-                icon={<FiArrowLeft />}
-                variant="ghost"
-                size="sm"
-                onClick={onBack}
-              />
-              <FormControl flex={1} minW="400px" maxW="160rem">
-                <Input
-                  value={template.name}
-                  onChange={(e) => setTemplate((t) => ({ ...t, name: e.target.value }))}
-                  placeholder="Nombre del formulario"
-                  variant="flushed"
-                  fontWeight="medium"
-                  fontSize="lg"
-                />
-              </FormControl>
-            </HStack>
-            <HStack spacing={3}>
-              <ButtonGroup size="sm" isAttached variant="outline">
-                <Tooltip label="Guardar formulario">
-                  <IconButton
-                    aria-label="Guardar formulario"
-                    icon={<FiSave />}
-                    colorScheme="brand"
-                    onClick={handleSaveForm}
+          <HStack spacing={3} flex={1} minW={0} align="center">
+            <Box flex={1} minW={0} maxW="640px">
+              <Text
+                fontFamily="mono"
+                fontSize="10.5px"
+                letterSpacing="0.08em"
+                textTransform="uppercase"
+                color="text.label"
+                fontWeight={500}
+                mb="2px"
+              >
+                Nombre del formulario
+              </Text>
+              <FormControl>
+                <Box
+                  role="group"
+                  position="relative"
+                  border="1px solid"
+                  borderColor="line.light"
+                  borderRadius="8px"
+                  bg={cardBg}
+                  transition="border-color 0.15s ease, box-shadow 0.15s ease"
+                  _hover={{ borderColor: 'line.strong' }}
+                  _focusWithin={{
+                    borderColor: 'brand.500',
+                    boxShadow: '0 0 0 3px rgba(76, 183, 215, 0.18)',
+                  }}
+                >
+                  <Input
+                    value={template.name}
+                    onChange={(e) =>
+                      setTemplate((t) => ({ ...t, name: e.target.value }))
+                    }
+                    placeholder="Sin nombre"
+                    variant="unstyled"
+                    fontWeight={600}
+                    fontSize="lg"
+                    color="text.strong"
+                    px={3}
+                    pr="40px"
+                    h="42px"
+                    _placeholder={{ color: 'text.label' }}
                   />
-                </Tooltip>
-                {formId && (
-                  <Tooltip label="Eliminar formulario">
-                    <IconButton
-                      aria-label="Eliminar formulario"
-                      icon={<FiTrash2 />}
-                      colorScheme="red"
-                      onClick={onDeleteOpen}
-                    />
-                  </Tooltip>
-                )}
-              </ButtonGroup>
-            </HStack>
+                  <Box
+                    position="absolute"
+                    right="10px"
+                    top="50%"
+                    transform="translateY(-50%)"
+                    color="text.label"
+                    pointerEvents="none"
+                    transition="color 0.15s ease, opacity 0.15s ease"
+                    opacity={0.7}
+                    _groupHover={{ color: 'text.strong', opacity: 1 }}
+                    _groupFocusWithin={{ color: 'brand.600', opacity: 1 }}
+                    display="inline-flex"
+                    alignItems="center"
+                  >
+                    <FiEdit3 size={14} />
+                  </Box>
+                </Box>
+              </FormControl>
+            </Box>
           </HStack>
         </CardHeader>
         <CardBody pt={0}>
@@ -748,7 +760,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                 borderColor={borderColor}
                 borderRadius="lg"
                 overflow="auto"
-                bg="gray.100"
+                bg={pdfPanelBg}
                 h="70vh"
                 minH="320px"
                 onDragOver={handleDragOver}
@@ -761,6 +773,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                     position="absolute"
                     inset={0}
                     bg="brand.50"
+                    _dark={{ bg: 'whiteAlpha.100' }}
                     opacity={0.9}
                     zIndex={10}
                     display="flex"
@@ -790,7 +803,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                   >
                     <VStack spacing={4}>
                       <Spinner size="xl" colorScheme="brand" thickness="3px" />
-                      <Text fontSize="sm" color="gray.500">Cargando PDF…</Text>
+                      <Text fontSize="sm" color={labelColor}>Cargando PDF…</Text>
                     </VStack>
                   </Box>
                 )}
@@ -850,7 +863,7 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                               h={`${field.position!.height}%`}
                               borderWidth="2px"
                               borderColor="brand.400"
-                              bg={field.required ? requiredFieldBg : 'brand.50'}
+                              bg={field.required ? requiredFieldBg : 'statusSoft.infoBg'}
                               opacity={0.85}
                               borderRadius="sm"
                               pointerEvents="auto"
@@ -913,20 +926,20 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
-                bg={isDragging ? 'brand.50' : dropZoneBg}
+                bg={isDragging ? 'statusSoft.infoBg' : dropZoneBg}
                 transition="all 0.2s"
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
                 <VStack spacing={4}>
-                  <Icon as={isDragging ? FiUpload : FiFileText} boxSize={12} color={isDragging ? 'brand.400' : 'gray.400'} />
-                  <Text color={isDragging ? 'brand.600' : 'gray.500'} textAlign="center" fontWeight={isDragging ? 'medium' : 'normal'}>
+                  <Icon as={isDragging ? FiUpload : FiFileText} boxSize={12} color={isDragging ? 'brand.400' : 'paper.400'} />
+                  <Text color={isDragging ? 'brand.fg' : labelColor} textAlign="center" fontWeight={isDragging ? 'medium' : 'normal'}>
                     {isDragging ? 'Suelta el PDF aquí' : 'Arrastra un PDF aquí'}
                   </Text>
                   {!isDragging && (
                     <>
-                      <Text fontSize="sm" color="gray.400">o</Text>
+                      <Text fontSize="sm" color="paper.400">o</Text>
                       <Button
                         leftIcon={<Icon as={FiUpload} />}
                         size="sm"
@@ -950,171 +963,337 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
             )}
             </Box>
 
-            <Box>
+            <Box
+              display="flex"
+              flexDirection="column"
+              minH={{ base: 'auto', lg: '70vh' }}
+            >
               <HStack justify="space-between" mb={3}>
                 <Heading size="sm">Campos</Heading>
-              <Button
-                leftIcon={<Icon as={FiPlus} />}
-                size="sm"
-                colorScheme="brand"
-                onClick={openAddField}
-              >
-                Agregar campo
-              </Button>
+                <Button
+                  leftIcon={<Icon as={FiPlus} />}
+                  size="sm"
+                  colorScheme="brand"
+                  onClick={openAddField}
+                >
+                  Agregar campo
+                </Button>
               </HStack>
-              <Text fontSize="sm" color="gray.500" mb={3}>
+              <Text fontSize="sm" color={labelColor} mb={3}>
                 Define los campos que se completarán sobre el PDF.
               </Text>
-            {fieldsLoading ? (
-              <VStack py={8} spacing={2}>
-                <Spinner size="md" colorScheme="brand" />
-                <Text fontSize="sm" color="gray.500">Cargando campos…</Text>
-              </VStack>
-            ) : template.fields.length === 0 ? (
-              <Alert status="info" borderRadius="lg">
-                <AlertIcon />
-                <Box>
-                  <Text fontWeight="medium">Sin campos</Text>
-                  <Text fontSize="sm">Agrega al menos un campo para usar este template como formulario.</Text>
-                </Box>
-              </Alert>
-            ) : (
-              <List spacing={2}>
-                {template.fields.map((field, index) => (
-                  <ListItem key={field.id || `field-${index}`}>
-                    <HStack
-                      p={3}
-                      borderRadius="lg"
-                      borderWidth={placingFieldId === String(field.id) ? '2px' : '1px'}
-                      borderColor={placingFieldId === String(field.id) ? 'brand.400' : borderColor}
-                      bg={placingFieldId === String(field.id) ? listItemPlacingBg : undefined}
-                      justify="space-between"
-                      align="center"
-                      _hover={{ bg: placingFieldId === String(field.id) ? listItemPlacingBg : listItemHoverBg }}
-                      cursor={pdfSource ? 'pointer' : 'default'}
-                      onClick={
-                        pdfSource
-                          ? () =>
-                              setPlacingFieldId((id) =>
-                                id === String(field.id) ? null : String(field.id)
-                              )
-                          : undefined
-                      }
-                    >
-                      <HStack spacing={3} flex={1} minW={0}>
-                        <ListIcon
-                          as={FIELD_TYPE_ICONS[field.type]}
-                          color="brand.500"
-                          boxSize={4}
-                        />
-                        <Box minW={0}>
-                          <Text fontWeight="medium" fontSize="sm" noOfLines={1}>
-                            {field.name}
-                          </Text>
-                          <HStack spacing={2} mt={0.5} flexWrap="wrap">
-                            <Badge size="sm" colorScheme="gray" fontSize="xs">
-                              {FIELD_TYPE_LABELS[field.type]}
-                            </Badge>
-                            {field.required && (
-                              <Badge size="sm" colorScheme="orange" fontSize="xs">
-                                Requerido
-                              </Badge>
+              <Box flex={1} minH={0} overflowY="auto">
+                {fieldsLoading ? (
+                  <VStack py={8} spacing={2}>
+                    <Spinner size="md" colorScheme="brand" />
+                    <Text fontSize="sm" color={labelColor}>
+                      Cargando campos…
+                    </Text>
+                  </VStack>
+                ) : template.fields.length === 0 ? (
+                  <Box
+                    border="1px solid"
+                    borderColor="statusSoft.infoBorder"
+                    borderRadius="12px"
+                    bg="white"
+                    _dark={{ bg: 'paper.800' }}
+                    overflow="hidden"
+                  >
+                    <HStack spacing={3} px={4} py={3} align="flex-start">
+                      <Box
+                        flexShrink={0}
+                        mt="2px"
+                        w="26px"
+                        h="26px"
+                        borderRadius="8px"
+                        bg="white"
+                        _dark={{ bg: 'paper.800' }}
+                        display="inline-flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        color="brand.700"
+                      >
+                        <Icon as={FiInfo} boxSize={4} />
+                      </Box>
+                      <Box minW={0}>
+                        <Text
+                          fontFamily="mono"
+                          fontSize="10.5px"
+                          letterSpacing="0.08em"
+                          textTransform="uppercase"
+                          color="text.label"
+                          fontWeight={500}
+                          mb="2px"
+                        >
+                          Campos
+                        </Text>
+                        <Text fontSize="14px" fontWeight={600} color="text.strong">
+                          Sin campos
+                        </Text>
+                        <Text fontSize="12.5px" color="text.body" mt="2px">
+                          Agrega al menos un campo para usar este template como formulario.
+                        </Text>
+                      </Box>
+                    </HStack>
+                  </Box>
+                ) : (
+                  <List spacing={2}>
+                    {template.fields.map((field, index) => (
+                      <ListItem key={field.id || `field-${index}`}>
+                        <HStack
+                          p={3}
+                          borderRadius="lg"
+                          borderWidth={
+                            placingFieldId === String(field.id) ? '2px' : '1px'
+                          }
+                          borderColor={
+                            placingFieldId === String(field.id)
+                              ? 'brand.400'
+                              : borderColor
+                          }
+                          bg={
+                            placingFieldId === String(field.id)
+                              ? listItemPlacingBg
+                              : undefined
+                          }
+                          justify="space-between"
+                          align="center"
+                          _hover={{
+                            bg:
+                              placingFieldId === String(field.id)
+                                ? listItemPlacingBg
+                                : listItemHoverBg,
+                          }}
+                          cursor={pdfSource ? 'pointer' : 'default'}
+                          onClick={
+                            pdfSource
+                              ? () =>
+                                  setPlacingFieldId((id) =>
+                                    id === String(field.id)
+                                      ? null
+                                      : String(field.id)
+                                  )
+                              : undefined
+                          }
+                        >
+                          <HStack spacing={3} flex={1} minW={0}>
+                            <ListIcon
+                              as={FIELD_TYPE_ICONS[field.type]}
+                              color="brand.500"
+                              boxSize={4}
+                            />
+                            <Box minW={0}>
+                              <Text
+                                fontWeight="medium"
+                                fontSize="sm"
+                                noOfLines={1}
+                              >
+                                {field.name}
+                              </Text>
+                              <HStack spacing={2} mt={0.5} flexWrap="wrap">
+                                <Badge size="sm" colorScheme="gray" fontSize="xs">
+                                  {FIELD_TYPE_LABELS[field.type]}
+                                </Badge>
+                                {field.required && (
+                                  <Badge
+                                    size="sm"
+                                    colorScheme="orange"
+                                    fontSize="xs"
+                                  >
+                                    Requerido
+                                  </Badge>
+                                )}
+                              </HStack>
+                            </Box>
+                          </HStack>
+                          <HStack spacing={1}>
+                            {field.position && (
+                              <Tooltip label="Quitar del PDF">
+                                <IconButton
+                                  aria-label="Quitar del PDF"
+                                  icon={<FiX />}
+                                  size="xs"
+                                  variant="ghost"
+                                  colorScheme="gray"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveFromPdf(String(field.id));
+                                  }}
+                                />
+                              </Tooltip>
+                            )}
+                            {!field.tag && (
+                              <Tooltip label="Quitar campo">
+                                <IconButton
+                                  aria-label="Quitar campo"
+                                  icon={<FiTrash2 />}
+                                  size="xs"
+                                  variant="ghost"
+                                  colorScheme="red"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveFieldLocal(String(field.id));
+                                  }}
+                                />
+                              </Tooltip>
                             )}
                           </HStack>
-                        </Box>
-                      </HStack>
-                      <HStack spacing={1}>
-                        {field.position && (
-                          <Tooltip label="Quitar del PDF">
-                            <IconButton
-                              aria-label="Quitar del PDF"
-                              icon={<FiX />}
-                              size="xs"
-                              variant="ghost"
-                              colorScheme="gray"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveFromPdf(String(field.id));
-                              }}
-                            />
-                          </Tooltip>
-                        )}
-                        {!field.tag && (
-                          <Tooltip label="Quitar campo">
-                            <IconButton
-                              aria-label="Quitar campo"
-                              icon={<FiTrash2 />}
-                              size="xs"
-                              variant="ghost"
-                              colorScheme="red"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveFieldLocal(String(field.id));
-                              }}
-                            />
-                          </Tooltip>
-                        )}
-                      </HStack>
-                    </HStack>
-                  </ListItem>
-                ))}
-              </List>
-            )}
+                        </HStack>
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
+              </Box>
+              <VStack
+                align="stretch"
+                spacing={2}
+                pt={4}
+                mt="auto"
+                borderTop="1px solid"
+                borderColor={borderColor}
+              >
+                {formId && (
+                  <Button
+                    leftIcon={<FiTrash2 />}
+                    size="sm"
+                    h="36px"
+                    variant="outline"
+                    borderColor="statusSoft.critBorder"
+                    color="statusSoft.critFg"
+                    bg="statusSoft.critBg"
+                    _hover={{
+                      bg: 'statusSoft.critBg',
+                      borderColor: 'statusSoft.critFg',
+                    }}
+                    onClick={onDeleteOpen}
+                  >
+                    Eliminar formulario
+                  </Button>
+                )}
+                <Button
+                  leftIcon={<FiSave />}
+                  size="sm"
+                  h="36px"
+                  bg="brand.600"
+                  color="white"
+                  _hover={{ bg: 'brand.700' }}
+                  onClick={handleSaveForm}
+                >
+                  Guardar formulario
+                </Button>
+              </VStack>
             </Box>
           </Box>
         </CardBody>
       </Card>
 
-      <Modal isOpen={isOpen} onClose={onClose} size="md">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Agregar campo</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <VStack spacing={4} align="stretch">
-              <FormControl isRequired>
-                <FormLabel>Nombre del campo</FormLabel>
-                <Input
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Ej: Nombre del paciente"
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Tipo de campo</FormLabel>
-                <Select
-                  value={formType}
-                  onChange={(e) => setFormType(e.target.value as TemplateFieldType)}
-                >
-                  {(Object.entries(FIELD_TYPE_LABELS) as [TemplateFieldType, string][]).map(
-                    ([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    )
-                  )}
-                </Select>
-              </FormControl>
-              <FormControl>
-                <Checkbox
-                  isChecked={formRequired}
-                  onChange={(e) => setFormRequired(e.target.checked)}
-                >
-                  Campo requerido
-                </Checkbox>
-              </FormControl>
-            </VStack>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button colorScheme="brand" onClick={handleAddFieldLocal} isDisabled={!(formName ?? '').trim()}>
-              Agregar
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <FormDrawer
+        isOpen={isOpen}
+        onClose={onClose}
+        crumb="Formularios"
+        title="Agregar campo"
+        sub="Define el campo que se completará sobre el PDF."
+        size="sm"
+        submitLabel="Agregar"
+        isSubmitDisabled={!(formName ?? '').trim()}
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleAddFieldLocal();
+        }}
+        cancelLabel="Cancelar"
+        bodyFillHeight
+      >
+        <VStack spacing={5} align="stretch" flex={1} minH={0}>
+          <FormControl isRequired>
+            <FormLabel
+              fontSize="11px"
+              fontFamily="mono"
+              letterSpacing="0.08em"
+              textTransform="uppercase"
+              color={labelColor}
+              fontWeight={500}
+              mb={1.5}
+            >
+              Nombre del campo
+            </FormLabel>
+            <Input
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              placeholder="Ej: Nombre del paciente"
+              size="sm"
+              h="36px"
+              borderColor="line.strong"
+              _hover={{ borderColor: 'paper.600' }}
+              _focus={{
+                borderColor: 'brand.500',
+                boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+              }}
+            />
+          </FormControl>
+          <FormControl>
+            <FormLabel
+              fontSize="11px"
+              fontFamily="mono"
+              letterSpacing="0.08em"
+              textTransform="uppercase"
+              color={labelColor}
+              fontWeight={500}
+              mb={1.5}
+            >
+              Tipo de campo
+            </FormLabel>
+            <Select
+              value={formType}
+              onChange={(e) => setFormType(e.target.value as TemplateFieldType)}
+              size="sm"
+              h="36px"
+              borderColor="line.strong"
+              _hover={{ borderColor: 'paper.600' }}
+              _focus={{
+                borderColor: 'brand.500',
+                boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+              }}
+            >
+              {(Object.entries(FIELD_TYPE_LABELS) as [TemplateFieldType, string][]).map(
+                ([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                )
+              )}
+            </Select>
+          </FormControl>
+          <FormControl>
+            <Checkbox
+              isChecked={formRequired}
+              onChange={(e) => setFormRequired(e.target.checked)}
+              borderColor="line.strong"
+              colorScheme="brand"
+              sx={{
+                '.chakra-checkbox__control': {
+                  borderColor: 'line.strong',
+                },
+                '.chakra-checkbox__control[data-checked]': {
+                  bg: 'brand.600',
+                  borderColor: 'brand.600',
+                },
+                '.chakra-checkbox__control[data-focus]': {
+                  boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+                },
+              }}
+            >
+              <Text
+                fontSize="13px"
+                fontWeight={500}
+                color="text.strong"
+                lineHeight="1.4"
+              >
+                Campo requerido
+              </Text>
+            </Checkbox>
+          </FormControl>
+        </VStack>
+      </FormDrawer>
     </VStack>
   );
 };

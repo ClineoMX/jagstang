@@ -2,30 +2,23 @@ import React, { useState } from 'react';
 import {
   Box,
   Button,
-  Container,
-  FormControl,
-  FormLabel,
-  Input,
   VStack,
-  Heading,
+  HStack,
   Text,
   useToast,
-  InputGroup,
-  InputRightElement,
-  IconButton,
-  useColorModeValue,
-  Card,
-  CardBody,
   Link,
   Icon,
-  HStack,
   PinInput,
   PinInputField,
+  FormControl,
+  FormLabel,
+  useColorModeValue,
 } from '@chakra-ui/react';
-import { FiArrowLeft, FiEye, FiEyeOff, FiLock } from 'react-icons/fi';
+import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { apiService } from '../services/api';
-import ClineoLogo from '../components/ClineoLogo';
+import AuthLayout from '../components/AuthLayout';
+import { AuthField, PasswordField } from '../components/AuthField';
 
 const ResetPassword: React.FC = () => {
   const location = useLocation();
@@ -35,17 +28,14 @@ const ResetPassword: React.FC = () => {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const navigate = useNavigate();
   const toast = useToast();
 
-  const bgColor = useColorModeValue('background.light', 'background.dark');
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const inputBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const labelColor = useColorModeValue('paper.700', 'paper.400');
+  const metaColor = useColorModeValue('paper.600', 'paper.500');
+  const pinBg = useColorModeValue('white', 'paper.900');
 
   const handleResendCode = async () => {
     if (!email) {
@@ -62,7 +52,6 @@ const ResetPassword: React.FC = () => {
     setIsResending(true);
     try {
       await apiService.requestOtp(email);
-
       toast({
         title: 'Código reenviado',
         description: 'Revisa tu correo electrónico',
@@ -129,7 +118,8 @@ const ResetPassword: React.FC = () => {
 
       toast({
         title: 'Contraseña actualizada',
-        description: 'Tu contraseña ha sido cambiada exitosamente. Inicia sesión con tu nueva contraseña.',
+        description:
+          'Tu contraseña ha sido cambiada exitosamente. Inicia sesión con tu nueva contraseña.',
         status: 'success',
         duration: 5000,
         isClosable: true,
@@ -139,7 +129,9 @@ const ResetPassword: React.FC = () => {
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo cambiar la contraseña. Verifica el código e intenta de nuevo.',
+        description:
+          error.message ||
+          'No se pudo cambiar la contraseña. Verifica el código e intenta de nuevo.',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -150,190 +142,142 @@ const ResetPassword: React.FC = () => {
   };
 
   return (
-    <Box bg={bgColor} minH="100vh">
-      <Box
-        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
-        color="white"
-        px={8}
-        py={12}
-      >
-        <Container maxW="container.xl">
-          <VStack spacing={4} align="center">
-            <ClineoLogo variant="vertical" color="white" height={56} />
-            <Icon as={FiLock} boxSize={8} opacity={0.9} />
-            <Heading size="xl" fontWeight="bold" textAlign="center">
-              Nueva Contraseña
-            </Heading>
-            <Text fontSize="lg" opacity={0.9} textAlign="center">
-              Ingresa el código y tu nueva contraseña
+    <AuthLayout
+      crumbs="Restablecer contraseña"
+      title="Verifica e ingresa tu nueva contraseña"
+      sub={
+        emailFromState ? (
+          <>
+            Te enviamos un código de 6 dígitos a{' '}
+            <Text as="span" fontWeight={600} color="text.strong">
+              {emailFromState}
             </Text>
-          </VStack>
-        </Container>
-      </Box>
+            .
+          </>
+        ) : (
+          'Ingresa el código de verificación que recibiste por correo electrónico y establece una nueva contraseña.'
+        )
+      }
+      footer={
+        <HStack justify="center">
+          <Link
+            as={RouterLink}
+            to="/login"
+            fontSize="13px"
+            color="brand.600"
+            fontWeight={500}
+            display="inline-flex"
+            alignItems="center"
+            gap={1.5}
+          >
+            <Icon as={FiArrowLeft} />
+            Volver a iniciar sesión
+          </Link>
+        </HStack>
+      }
+    >
+      <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+        <VStack spacing={4} align="stretch">
+          {!emailFromState && (
+            <AuthField
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="tu@email.com"
+              autoComplete="email"
+              isRequired
+            />
+          )}
 
-      <Container maxW="md" py={12}>
-        <Card
-          bg={cardBg}
-          borderRadius="2xl"
-          boxShadow="xl"
-          borderWidth="1px"
-          borderColor={borderColor}
-        >
-          <CardBody p={8}>
-            <VStack spacing={6} align="stretch">
-              <VStack spacing={2} align="start">
-                <Heading size="lg">Restablecer Contraseña</Heading>
-                <Text color="gray.500" fontSize="sm">
-                  Ingresa el código de verificación que recibiste por correo
-                  electrónico y establece tu nueva contraseña.
-                </Text>
-              </VStack>
+          <FormControl isRequired>
+            <FormLabel
+              fontFamily="mono"
+              fontSize="10.5px"
+              letterSpacing="0.08em"
+              textTransform="uppercase"
+              color={labelColor}
+              mb={1.5}
+              requiredIndicator={<></>}
+            >
+              Código de verificación
+            </FormLabel>
+            <HStack spacing={2} justify="space-between">
+              <PinInput value={code} onChange={setCode} otp size="lg">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <PinInputField
+                    key={i}
+                    bg={pinBg}
+                    borderColor="line.strong"
+                    borderRadius="6px"
+                    fontFamily="mono"
+                    fontSize="18px"
+                    h="48px"
+                    w="48px"
+                    _hover={{ borderColor: 'paper.600' }}
+                    _focus={{
+                      borderColor: 'brand.500',
+                      boxShadow: '0 0 0 3px rgba(76,183,215,0.18)',
+                    }}
+                  />
+                ))}
+              </PinInput>
+            </HStack>
+            <Box mt={2} textAlign="right">
+              <Button
+                variant="link"
+                size="xs"
+                color="brand.600"
+                fontWeight={500}
+                onClick={handleResendCode}
+                isLoading={isResending}
+                loadingText="Reenviando..."
+              >
+                ¿No recibiste el código? Reenviar
+              </Button>
+            </Box>
+          </FormControl>
 
-              <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-                <VStack spacing={5} align="stretch">
-                  {!emailFromState && (
-                    <FormControl isRequired>
-                      <FormLabel>Email</FormLabel>
-                      <Input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="tu@email.com"
-                        size="lg"
-                        autoComplete="email"
-                        bg={inputBg}
-                      />
-                    </FormControl>
-                  )}
+          <PasswordField
+            label="Nueva contraseña"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mínimo 8 caracteres"
+            autoComplete="new-password"
+            isRequired
+          />
 
-                  {emailFromState && (
-                    <Box>
-                      <Text fontSize="sm" color="gray.500">
-                        Código enviado a
-                      </Text>
-                      <Text fontWeight="medium">{emailFromState}</Text>
-                    </Box>
-                  )}
+          <PasswordField
+            label="Confirmar contraseña"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Repite tu nueva contraseña"
+            autoComplete="new-password"
+            isRequired
+          />
 
-                  <FormControl isRequired>
-                    <FormLabel>Código de Verificación</FormLabel>
-                    <HStack justify="center">
-                      <PinInput
-                        size="lg"
-                        value={code}
-                        onChange={setCode}
-                        otp
-                      >
-                        <PinInputField bg={inputBg} />
-                        <PinInputField bg={inputBg} />
-                        <PinInputField bg={inputBg} />
-                        <PinInputField bg={inputBg} />
-                        <PinInputField bg={inputBg} />
-                        <PinInputField bg={inputBg} />
-                      </PinInput>
-                    </HStack>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      color="brand.500"
-                      mt={2}
-                      onClick={handleResendCode}
-                      isLoading={isResending}
-                      loadingText="Reenviando..."
-                    >
-                      ¿No recibiste el código? Reenviar
-                    </Button>
-                  </FormControl>
+          <Button
+            type="submit"
+            size="md"
+            h="40px"
+            w="full"
+            colorScheme="brand"
+            bg="brand.600"
+            color="white"
+            _hover={{ bg: 'brand.700' }}
+            isLoading={isLoading}
+            loadingText="Cambiando contraseña..."
+            mt={1}
+          >
+            Cambiar contraseña
+          </Button>
 
-                  <FormControl isRequired>
-                    <FormLabel>Nueva Contraseña</FormLabel>
-                    <InputGroup size="lg">
-                      <Input
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Mínimo 8 caracteres"
-                        autoComplete="new-password"
-                        bg={inputBg}
-                      />
-                      <InputRightElement>
-                        <IconButton
-                          aria-label={
-                            showPassword
-                              ? 'Ocultar contraseña'
-                              : 'Mostrar contraseña'
-                          }
-                          icon={showPassword ? <FiEyeOff /> : <FiEye />}
-                          onClick={() => setShowPassword(!showPassword)}
-                          variant="ghost"
-                          size="sm"
-                        />
-                      </InputRightElement>
-                    </InputGroup>
-                  </FormControl>
-
-                  <FormControl isRequired>
-                    <FormLabel>Confirmar Contraseña</FormLabel>
-                    <InputGroup size="lg">
-                      <Input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Repite tu nueva contraseña"
-                        autoComplete="new-password"
-                        bg={inputBg}
-                      />
-                      <InputRightElement>
-                        <IconButton
-                          aria-label={
-                            showConfirmPassword
-                              ? 'Ocultar contraseña'
-                              : 'Mostrar contraseña'
-                          }
-                          icon={showConfirmPassword ? <FiEyeOff /> : <FiEye />}
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          variant="ghost"
-                          size="sm"
-                        />
-                      </InputRightElement>
-                    </InputGroup>
-                  </FormControl>
-
-                  <Button
-                    type="submit"
-                    colorScheme="brand"
-                    size="lg"
-                    width="full"
-                    isLoading={isLoading}
-                    loadingText="Cambiando contraseña..."
-                    mt={2}
-                  >
-                    Cambiar Contraseña
-                  </Button>
-                </VStack>
-              </form>
-
-              <Box pt={4} borderTop="1px" borderColor={borderColor}>
-                <Link
-                  as={RouterLink}
-                  to="/login"
-                  fontSize="sm"
-                  color="brand.500"
-                  fontWeight="medium"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  gap={1}
-                >
-                  <Icon as={FiArrowLeft} />
-                  Volver a Iniciar Sesión
-                </Link>
-              </Box>
-            </VStack>
-          </CardBody>
-        </Card>
-      </Container>
-    </Box>
+          <Text fontSize="11.5px" color={metaColor} textAlign="center" pt={1}>
+            Tu contraseña debe tener al menos 8 caracteres.
+          </Text>
+        </VStack>
+      </form>
+    </AuthLayout>
   );
 };
 

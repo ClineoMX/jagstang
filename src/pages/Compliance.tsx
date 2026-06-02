@@ -1,23 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Container,
-  Heading,
-  SimpleGrid,
-  Card,
-  CardHeader,
-  CardBody,
-  VStack,
   HStack,
+  VStack,
   Text,
+  Heading,
   Progress,
-  Badge,
-  Icon,
-  useColorModeValue,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
   Spinner,
   Accordion,
   AccordionItem,
@@ -25,19 +14,29 @@ import {
   AccordionPanel,
   AccordionIcon,
   Avatar,
+  useColorModeValue,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Icon,
+  Button,
+  SimpleGrid,
 } from '@chakra-ui/react';
 import {
   FiCheckCircle,
   FiAlertTriangle,
   FiXCircle,
-  FiTrendingUp,
-  FiUsers,
-  FiShield,
+  FiSearch,
+  FiDownload,
 } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
+import PageHead from '../components/PageHead';
+import StatusBadge from '../components/StatusBadge';
+import type { StatusBadgeTone } from '../components/StatusBadge';
+import { usePatients } from '../hooks/usePatients';
 
 const METRIC_LABELS: Record<string, string> = {
   profile_completeness: 'Completitud del perfil',
@@ -59,7 +58,13 @@ type ComplianceReport = {
     alert_level: 'ok' | 'warning' | 'critical';
     metrics: Record<
       string,
-      { name: string; score: number; detail: string; items: number; passing: number }
+      {
+        name: string;
+        score: number;
+        detail: string;
+        items: number;
+        passing: number;
+      }
     >;
     computed_at: string;
   }>;
@@ -67,22 +72,39 @@ type ComplianceReport = {
 
 type PatientNameMap = Record<string, { name: string; lastname: string }>;
 
+type AlertFilter = 'all' | 'ok' | 'warning' | 'critical';
+
 const Compliance: React.FC = () => {
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const subtleBg = useColorModeValue('gray.50', 'gray.700');
   const navigate = useNavigate();
+  const { patients } = usePatients();
+  const slugById = useMemo(
+    () =>
+      new Map(
+        patients
+          .filter((p) => !!p.slug?.trim())
+          .map((p) => [p.id, p.slug!.trim()] as const)
+      ),
+    [patients]
+  );
+
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const subColor = useColorModeValue('paper.700', 'paper.400');
+  const metaColor = useColorModeValue('paper.600', 'paper.500');
+  const rowHoverBg = useColorModeValue('paper.100', 'whiteAlpha.50');
+  const stripBg = useColorModeValue('paper.50', 'whiteAlpha.50');
 
   const [report, setReport] = useState<ComplianceReport | null>(null);
   const [patientNames, setPatientNames] = useState<PatientNameMap>({});
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<AlertFilter>('all');
 
   useEffect(() => {
     let cancelled = false;
-
     Promise.all([
       apiService.getDoctorCompliance(),
-      apiService.listPatients({ limit: 200 }),
+      apiService.listPatients({ size: 200 }),
     ])
       .then(([compliance, patients]) => {
         if (cancelled) return;
@@ -113,22 +135,29 @@ const Compliance: React.FC = () => {
     return 'error';
   };
 
-  const scoreStatus = (score: number) => {
-    if (score >= 0.9) return 'Cumple';
-    if (score >= 0.7) return 'En Riesgo';
-    return 'No Cumple';
-  };
-
-  const alertLevelBadge = (level: string) => {
+  const alertTone = (level: string): StatusBadgeTone => {
     switch (level) {
       case 'ok':
-        return { color: 'green', label: 'Cumple', icon: FiCheckCircle };
+        return 'signed';
       case 'warning':
-        return { color: 'orange', label: 'Alerta', icon: FiAlertTriangle };
+        return 'pending';
       case 'critical':
-        return { color: 'red', label: 'Crítico', icon: FiXCircle };
+        return 'cancel';
       default:
-        return { color: 'gray', label: level, icon: FiShield };
+        return 'neutral';
+    }
+  };
+
+  const alertLabel = (level: string) => {
+    switch (level) {
+      case 'ok':
+        return 'Cumple';
+      case 'warning':
+        return 'Alerta';
+      case 'critical':
+        return 'Crítico';
+      default:
+        return level;
     }
   };
 
@@ -142,398 +171,451 @@ const Compliance: React.FC = () => {
     return format(d, "d 'de' MMMM 'de' yyyy, HH:mm", { locale: es });
   };
 
+  const filteredPatients = useMemo(() => {
+    if (!report) return [];
+    const q = search.trim().toLowerCase();
+    return report.patients.filter((p) => {
+      if (filter !== 'all' && p.alert_level !== filter) return false;
+      if (!q) return true;
+      const info = patientNames[p.patient_id];
+      const fullName = info ? `${info.name} ${info.lastname}` : p.patient_id;
+      return fullName.toLowerCase().includes(q);
+    });
+  }, [report, patientNames, search, filter]);
+
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minH="60vh">
-        <Spinner size="xl" color="success.500" thickness="4px" />
-      </Box>
+      <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
+        <PageHead crumbs="Cumplimiento" title="NOM‑004" />
+        <Box display="flex" justifyContent="center" alignItems="center" py={16}>
+          <Spinner size="xl" color="brand.500" thickness="3px" />
+        </Box>
+      </Container>
     );
   }
 
   if (!report) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minH="60vh">
-        <Text color="gray.500" fontSize="lg">
-          No se pudo cargar el reporte de cumplimiento.
-        </Text>
-      </Box>
+      <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
+        <PageHead crumbs="Cumplimiento" title="NOM‑004" />
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          p={10}
+          textAlign="center"
+        >
+          <Text color={subColor} fontSize="sm">
+            No se pudo cargar el reporte de cumplimiento.
+          </Text>
+        </Box>
+      </Container>
     );
   }
 
   const lastUpdate = computedAtFormatted();
 
-  return (
-    <Box>
-      {/* Header */}
+  const FilterPill: React.FC<{
+    value: AlertFilter;
+    label: string;
+    count?: number;
+  }> = ({ value, label, count }) => {
+    const active = filter === value;
+    return (
       <Box
-        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
-        color="white"
-        px={8}
-        py={8}
+        as="button"
+        onClick={() => setFilter(value)}
+        px="10px"
+        py="5px"
+        borderRadius="999px"
+        border="1px solid"
+        borderColor={active ? 'text.strong' : 'border.default'}
+        bg={active ? 'text.strong' : 'transparent'}
+        color={active ? 'surface.card' : 'text.body'}
+        fontFamily="mono"
+        fontSize="11px"
+        letterSpacing="0.06em"
+        textTransform="uppercase"
+        transition="all .12s"
+        _hover={{ borderColor: active ? 'text.strong' : 'border.strong' }}
       >
-        <Container maxW="container.xl">
-          <VStack spacing={4} align="stretch">
-            <VStack align="start" spacing={2}>
-              <Heading size="xl">Cumplimiento NOM-004</Heading>
-              <Text fontSize="md" opacity={0.9}>
-                Expediente Clínico Electrónico
+        {label}
+        {typeof count === 'number' && (
+          <Text as="span" ml={1.5} opacity={0.7}>
+            · {count}
+          </Text>
+        )}
+      </Box>
+    );
+  };
+
+  return (
+    <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
+      <PageHead
+        crumbs="Cumplimiento"
+        title="NOM‑004 · Expediente clínico"
+        sub={lastUpdate ? `Última actualización · ${lastUpdate}` : undefined}
+        actions={
+          <Button
+            size="sm"
+            h="36px"
+            variant="outline"
+            borderColor="line.strong"
+            color="text.strong"
+            bg={cardBg}
+            leftIcon={<FiDownload />}
+            _hover={{ borderColor: 'paper.600' }}
+          >
+            Exportar
+          </Button>
+        }
+      />
+
+      {/* Top stats strip */}
+      <Box
+        bg={stripBg}
+        border="1px solid"
+        borderColor={borderColor}
+        borderRadius="8px"
+        mb={5}
+        overflow="hidden"
+      >
+        <SimpleGrid
+          columns={{ base: 2, md: 4 }}
+          spacing={0}
+          sx={{
+            '> div + div': {
+              borderLeft: { md: '1px solid' },
+              borderLeftColor: { md: borderColor },
+              borderTop: { base: '1px solid', md: 'none' },
+              borderTopColor: { base: borderColor, md: 'transparent' },
+            },
+          }}
+        >
+          <StatCell
+            label="Cumplimiento global"
+            value={`${pct(report.overall_score)}%`}
+            sub={
+              <Box mt={2}>
+                <Progress
+                  value={pct(report.overall_score)}
+                  size="xs"
+                  colorScheme={scoreColor(report.overall_score)}
+                  borderRadius="full"
+                  bg="paper.200"
+                />
+              </Box>
+            }
+          />
+          <StatCell
+            label="Pacientes evaluados"
+            value={report.patient_count}
+            sub={
+              <Text as="span" color={metaColor} fontSize="11.5px">
+                Métrica más baja ·{' '}
+                {METRIC_LABELS[report.worst_metric] ?? report.worst_metric}
               </Text>
-            </VStack>
-            {lastUpdate && (
-              <Text fontSize="sm" opacity={0.9}>
-                Última actualización: {lastUpdate}
-              </Text>
-            )}
-          </VStack>
-        </Container>
+            }
+          />
+          <StatCell
+            label="En alerta"
+            value={report.alert_breakdown.warning}
+            sub={
+              <StatusBadge tone="pending" showDot>
+                Atención sugerida
+              </StatusBadge>
+            }
+          />
+          <StatCell
+            label="Críticos"
+            value={report.alert_breakdown.critical}
+            sub={
+              <StatusBadge
+                tone={report.alert_breakdown.critical > 0 ? 'cancel' : 'signed'}
+              >
+                {report.alert_breakdown.critical > 0
+                  ? 'Acción requerida'
+                  : 'Sin pendientes'}
+              </StatusBadge>
+            }
+          />
+        </SimpleGrid>
       </Box>
 
-      <Container maxW="container.xl" py={8}>
-        <VStack spacing={8} align="stretch">
-          {/* Top Metric Cards */}
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-            {/* Overall Score */}
-            <Card
-              bg={cardBg}
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor={borderColor}
-              position="relative"
-              overflow="hidden"
-              transition="all 0.3s"
-              _hover={{ transform: 'translateY(-8px)', shadow: '2xl' }}
+      {/* Patient list card */}
+      <Box
+        bg={cardBg}
+        border="1px solid"
+        borderColor={borderColor}
+        borderRadius="8px"
+        overflow="hidden"
+      >
+        <HStack
+          justify="space-between"
+          px={{ base: 4, md: 5 }}
+          py={4}
+          borderBottom="1px solid"
+          borderColor={borderColor}
+          flexWrap={{ base: 'wrap', md: 'nowrap' }}
+          gap={3}
+        >
+          <HStack spacing={3} flexWrap="wrap">
+            <Heading
+              as="h3"
+              fontSize="14px"
+              fontWeight={600}
+              letterSpacing="-0.005em"
             >
-              <Box
-                position="absolute"
-                top="-60px"
-                right="-60px"
-                w="180px"
-                h="180px"
-                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
-                borderRadius="full"
-                opacity={0.1}
-                pointerEvents="none"
-              />
-              <CardBody p={8}>
-                <Stat>
-                  <StatLabel>
-                    <HStack spacing={3} mb={3}>
-                      <Box
-                        bg="success.50"
-                        p={3}
-                        borderRadius="xl"
-                        color="success.600"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                      >
-                        <Icon as={FiTrendingUp} boxSize={6} />
-                      </Box>
-                      <Text fontSize="md" fontWeight="semibold">
-                        Cumplimiento Global
-                      </Text>
-                    </HStack>
-                  </StatLabel>
-                  <StatNumber fontSize="5xl" fontWeight="bold" mb={2}>
-                    {pct(report.overall_score)}%
-                  </StatNumber>
-                  <StatHelpText>
-                    <Badge
-                      colorScheme={scoreColor(report.overall_score)}
-                      fontSize="sm"
-                      px={3}
-                      py={1}
-                      borderRadius="full"
-                    >
-                      {scoreStatus(report.overall_score)}
-                    </Badge>
-                  </StatHelpText>
-                  <Progress
-                    value={pct(report.overall_score)}
-                    colorScheme={scoreColor(report.overall_score)}
-                    size="lg"
-                    mt={4}
-                    borderRadius="full"
-                  />
-                </Stat>
-              </CardBody>
-            </Card>
-
-            {/* Patient Count */}
-            <Card
-              bg={cardBg}
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor={borderColor}
-              position="relative"
-              overflow="hidden"
-              transition="all 0.3s"
-              _hover={{ transform: 'translateY(-8px)', shadow: '2xl' }}
+              Cumplimiento por paciente
+            </Heading>
+            <Text
+              fontFamily="mono"
+              fontSize="11px"
+              color={metaColor}
+              letterSpacing="0.06em"
             >
-              <Box
-                position="absolute"
-                top="-60px"
-                right="-60px"
-                w="180px"
-                h="180px"
-                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
-                borderRadius="full"
-                opacity={0.1}
-                pointerEvents="none"
-              />
-              <CardBody p={8}>
-                <Stat>
-                  <StatLabel>
-                    <HStack spacing={3} mb={3}>
-                      <Box
-                        bg="blue.50"
-                        p={3}
-                        borderRadius="xl"
-                        color="blue.500"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                      >
-                        <Icon as={FiUsers} boxSize={6} />
-                      </Box>
-                      <Text fontSize="md" fontWeight="semibold">
-                        Pacientes Evaluados
-                      </Text>
-                    </HStack>
-                  </StatLabel>
-                  <StatNumber fontSize="5xl" fontWeight="bold" mb={2}>
-                    {report.patient_count}
-                  </StatNumber>
-                  <StatHelpText>
-                    <Text fontSize="sm" color="gray.500">
-                      Métrica más baja: {METRIC_LABELS[report.worst_metric] ?? report.worst_metric}
-                    </Text>
-                  </StatHelpText>
-                </Stat>
-              </CardBody>
-            </Card>
+              · {filteredPatients.length} DE {report.patients.length}
+            </Text>
+          </HStack>
 
-            {/* Alert Breakdown */}
-            <Card
-              bg={cardBg}
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor={borderColor}
-              position="relative"
-              overflow="hidden"
-              transition="all 0.3s"
-              _hover={{ transform: 'translateY(-8px)', shadow: '2xl' }}
-            >
-              <Box
-                position="absolute"
-                top="-60px"
-                right="-60px"
-                w="180px"
-                h="180px"
-                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
-                borderRadius="full"
-                opacity={0.1}
-                pointerEvents="none"
+          <HStack spacing={3} flexWrap="wrap">
+            <HStack spacing={1.5}>
+              <FilterPill
+                value="all"
+                label="Todos"
+                count={report.patients.length}
               />
-              <CardBody p={8}>
-                <Stat>
-                  <StatLabel>
-                    <HStack spacing={3} mb={3}>
-                      <Box
-                        bg="orange.50"
-                        p={3}
-                        borderRadius="xl"
-                        color="orange.500"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                      >
-                        <Icon as={FiShield} boxSize={6} />
-                      </Box>
-                      <Text fontSize="md" fontWeight="semibold">
-                        Estado de Alertas
-                      </Text>
-                    </HStack>
-                  </StatLabel>
-                  <HStack spacing={6} mt={4}>
-                    <VStack spacing={1}>
-                      <Text fontSize="3xl" fontWeight="bold" color="green.500">
-                        {report.alert_breakdown.ok}
-                      </Text>
-                      <Badge colorScheme="green" borderRadius="full" px={2}>
-                        Cumple
-                      </Badge>
-                    </VStack>
-                    <VStack spacing={1}>
-                      <Text fontSize="3xl" fontWeight="bold" color="orange.500">
-                        {report.alert_breakdown.warning}
-                      </Text>
-                      <Badge colorScheme="orange" borderRadius="full" px={2}>
-                        Alerta
-                      </Badge>
-                    </VStack>
-                    <VStack spacing={1}>
-                      <Text fontSize="3xl" fontWeight="bold" color="red.500">
-                        {report.alert_breakdown.critical}
-                      </Text>
-                      <Badge colorScheme="red" borderRadius="full" px={2}>
-                        Crítico
-                      </Badge>
-                    </VStack>
-                  </HStack>
-                </Stat>
-              </CardBody>
-            </Card>
-          </SimpleGrid>
+              <FilterPill
+                value="ok"
+                label="Cumple"
+                count={report.alert_breakdown.ok}
+              />
+              <FilterPill
+                value="warning"
+                label="Alerta"
+                count={report.alert_breakdown.warning}
+              />
+              <FilterPill
+                value="critical"
+                label="Crítico"
+                count={report.alert_breakdown.critical}
+              />
+            </HStack>
+            <InputGroup size="sm" w={{ base: 'full', md: '220px' }}>
+              <InputLeftElement pointerEvents="none" h="32px">
+                <Icon as={FiSearch} color={metaColor} />
+              </InputLeftElement>
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar paciente"
+                h="32px"
+                fontSize="13px"
+                borderRadius="6px"
+                borderColor="line.strong"
+                _focus={{
+                  borderColor: 'brand.500',
+                  boxShadow: '0 0 0 3px rgba(76,183,215,0.18)',
+                }}
+              />
+            </InputGroup>
+          </HStack>
+        </HStack>
 
-          {/* Per-Patient Compliance */}
-          <Card
-            bg={cardBg}
-            borderRadius="2xl"
-            borderWidth="1px"
-            borderColor={borderColor}
-          >
-            <CardHeader bg={subtleBg} borderTopRadius="2xl">
-              <HStack spacing={3}>
-                <Box
-                  bg="blue.50"
-                  p={2}
-                  borderRadius="lg"
-                  color="blue.500"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
+        {filteredPatients.length === 0 ? (
+          <Box p={10} textAlign="center">
+            <Text color={subColor} fontSize="sm">
+              {report.patients.length === 0
+                ? 'No hay pacientes evaluados.'
+                : 'Ningún paciente coincide con los filtros aplicados.'}
+            </Text>
+          </Box>
+        ) : (
+          <Accordion allowMultiple>
+            {filteredPatients.map((patient) => {
+              const info = patientNames[patient.patient_id];
+              const fullName = info
+                ? `${info.name} ${info.lastname}`
+                : patient.patient_id;
+              const metrics = Object.values(patient.metrics);
+              const score = pct(patient.overall_score);
+
+              return (
+                <AccordionItem
+                  key={patient.patient_id}
+                  border="none"
+                  borderBottom="1px solid"
+                  borderBottomColor={borderColor}
+                  sx={{ '&:last-child': { borderBottom: 'none' } }}
                 >
-                  <Icon as={FiUsers} boxSize={5} />
-                </Box>
-                <Heading size="md">Cumplimiento por Paciente</Heading>
-              </HStack>
-            </CardHeader>
-            <CardBody p={0}>
-              {report.patients.length === 0 ? (
-                <Text color="gray.500" py={8} textAlign="center">
-                  No hay pacientes evaluados.
-                </Text>
-              ) : (
-                <Accordion allowMultiple>
-                  {report.patients.map((patient) => {
-                    const info = patientNames[patient.patient_id];
-                    const fullName = info
-                      ? `${info.name} ${info.lastname}`
-                      : patient.patient_id;
-                    const badge = alertLevelBadge(patient.alert_level);
-                    const metrics = Object.values(patient.metrics);
-
-                    return (
-                      <AccordionItem key={patient.patient_id} border="none">
-                        <AccordionButton
-                          px={6}
-                          py={4}
-                          _hover={{ bg: subtleBg }}
+                  <AccordionButton
+                    px={{ base: 4, md: 5 }}
+                    py={3}
+                    _hover={{ bg: rowHoverBg }}
+                  >
+                    <HStack flex="1" spacing={3} minW={0}>
+                      <Avatar
+                        size="sm"
+                        name={fullName}
+                        bg="paper.200"
+                        color="text.strong"
+                        fontWeight={600}
+                      />
+                      <Box minW={0} textAlign="left">
+                        <Text
+                          fontWeight={500}
+                          fontSize="14px"
+                          color="text.strong"
+                          noOfLines={1}
+                          cursor="pointer"
+                          _hover={{ textDecoration: 'underline' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(
+                              `/patients/${slugById.get(patient.patient_id) ?? patient.patient_id}`
+                            );
+                          }}
                         >
-                          <HStack flex="1" spacing={4}>
-                            <Avatar
-                              size="sm"
-                              name={fullName}
-                              bg="blue.100"
-                              color="blue.600"
-                              sx={{
-                                '& span': {
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  width: '100%',
-                                  height: '100%',
-                                },
-                              }}
-                            />
-                            <Text
-                              fontWeight="semibold"
-                              cursor="pointer"
-                              _hover={{ textDecoration: 'underline' }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/patients/${patient.patient_id}`);
-                              }}
-                            >
-                              {fullName}
-                            </Text>
-                            <Badge
-                              colorScheme={badge.color}
-                              borderRadius="full"
-                              px={2}
-                              fontSize="xs"
-                            >
-                              <HStack spacing={1}>
-                                <Icon as={badge.icon} boxSize={3} />
-                                <Text>{badge.label}</Text>
-                              </HStack>
-                            </Badge>
-                          </HStack>
+                          {fullName}
+                        </Text>
+                        <Text fontSize="12px" color={metaColor} mt="1px">
+                          {Object.keys(patient.metrics).length} métricas
+                          evaluadas
+                        </Text>
+                      </Box>
+                    </HStack>
 
-                          <HStack spacing={4}>
-                            <Text fontWeight="bold" fontSize="lg" color={`${scoreColor(patient.overall_score)}.500`}>
-                              {pct(patient.overall_score)}%
-                            </Text>
-                            <AccordionIcon />
-                          </HStack>
-                        </AccordionButton>
+                    <HStack spacing={4} flexShrink={0}>
+                      <StatusBadge tone={alertTone(patient.alert_level)}>
+                        {alertLabel(patient.alert_level)}
+                      </StatusBadge>
+                      <Text
+                        fontFamily="mono"
+                        fontSize="14px"
+                        fontWeight={600}
+                        color={`${scoreColor(patient.overall_score)}.600`}
+                        minW="44px"
+                        textAlign="right"
+                      >
+                        {score}%
+                      </Text>
+                      <AccordionIcon color={metaColor} />
+                    </HStack>
+                  </AccordionButton>
 
-                        <AccordionPanel px={6} pb={6}>
-                          <VStack spacing={4} align="stretch">
-                            {metrics.map((m) => (
-                              <Box key={m.name}>
-                                <HStack justify="space-between" mb={2}>
-                                  <HStack spacing={2}>
-                                    <Icon
-                                      as={m.score >= 0.9 ? FiCheckCircle : m.score >= 0.7 ? FiAlertTriangle : FiXCircle}
-                                      color={
-                                        m.score >= 0.9
-                                          ? 'success.500'
-                                          : m.score >= 0.7
-                                          ? 'warning.500'
-                                          : 'error.500'
-                                      }
-                                      boxSize={4}
-                                    />
-                                    <Text fontSize="sm" fontWeight="medium">
-                                      {METRIC_LABELS[m.name] ?? m.name}
-                                    </Text>
-                                  </HStack>
-                                  <HStack spacing={3}>
-                                    <Text fontSize="xs" color="gray.500">
-                                      {m.passing}/{m.items}
-                                    </Text>
-                                    <Text fontSize="sm" fontWeight="bold" color={`${scoreColor(m.score)}.600`}>
-                                      {pct(m.score)}%
-                                    </Text>
-                                  </HStack>
-                                </HStack>
-                                <Progress
-                                  value={pct(m.score)}
-                                  size="sm"
-                                  colorScheme={scoreColor(m.score)}
-                                  borderRadius="full"
+                  <AccordionPanel px={{ base: 4, md: 5 }} pb={5} pt={1}>
+                    <VStack spacing={4} align="stretch">
+                      {metrics.map((m) => {
+                        const mPct = pct(m.score);
+                        const MetricIcon =
+                          m.score >= 0.9
+                            ? FiCheckCircle
+                            : m.score >= 0.7
+                              ? FiAlertTriangle
+                              : FiXCircle;
+                        const iconColor =
+                          m.score >= 0.9
+                            ? 'success.500'
+                            : m.score >= 0.7
+                              ? 'warning.500'
+                              : 'error.500';
+                        return (
+                          <Box key={m.name}>
+                            <HStack justify="space-between" mb={1.5}>
+                              <HStack spacing={2}>
+                                <Icon
+                                  as={MetricIcon}
+                                  color={iconColor}
+                                  boxSize={4}
                                 />
-                                <Text fontSize="xs" color="gray.500" mt={1}>
-                                  {m.detail}
-                                  {m.name === 'note_quality_average' && (
-                                    <> Las notas basadas en formularios no se evalúan.</>
-                                  )}
+                                <Text fontSize="13px" fontWeight={500}>
+                                  {METRIC_LABELS[m.name] ?? m.name}
                                 </Text>
-                              </Box>
-                            ))}
-                          </VStack>
-                        </AccordionPanel>
-                      </AccordionItem>
-                    );
-                  })}
-                </Accordion>
-              )}
-            </CardBody>
-          </Card>
-        </VStack>
-      </Container>
+                              </HStack>
+                              <HStack spacing={3}>
+                                <Text
+                                  fontFamily="mono"
+                                  fontSize="11px"
+                                  color={metaColor}
+                                  letterSpacing="0.04em"
+                                >
+                                  {m.passing}/{m.items}
+                                </Text>
+                                <Text
+                                  fontFamily="mono"
+                                  fontSize="13px"
+                                  fontWeight={600}
+                                  color={`${scoreColor(m.score)}.600`}
+                                  minW="40px"
+                                  textAlign="right"
+                                >
+                                  {mPct}%
+                                </Text>
+                              </HStack>
+                            </HStack>
+                            <Progress
+                              value={mPct}
+                              size="xs"
+                              colorScheme={scoreColor(m.score)}
+                              borderRadius="full"
+                              bg="paper.200"
+                            />
+                            <Text fontSize="11.5px" color={metaColor} mt={1.5}>
+                              {m.detail}
+                              {m.name === 'note_quality_average' && (
+                                <>
+                                  {' '}
+                                  Las notas basadas en formularios no se
+                                  evalúan.
+                                </>
+                              )}
+                            </Text>
+                          </Box>
+                        );
+                      })}
+                    </VStack>
+                  </AccordionPanel>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        )}
+      </Box>
+    </Container>
+  );
+};
+
+interface StatCellProps {
+  label: string;
+  value: React.ReactNode;
+  sub?: React.ReactNode;
+}
+
+const StatCell: React.FC<StatCellProps> = ({ label, value, sub }) => {
+  const labelColor = useColorModeValue('paper.700', 'paper.400');
+  return (
+    <Box px={{ base: 4, md: 5 }} py={4}>
+      <Text
+        fontFamily="mono"
+        fontSize="10.5px"
+        letterSpacing="0.08em"
+        textTransform="uppercase"
+        color={labelColor}
+        mb={1.5}
+      >
+        {label}
+      </Text>
+      <Text
+        fontSize="26px"
+        fontWeight={600}
+        letterSpacing="-0.015em"
+        lineHeight="1.1"
+        color="text.strong"
+      >
+        {value}
+      </Text>
+      {sub && <Box mt={2}>{sub}</Box>}
     </Box>
   );
 };

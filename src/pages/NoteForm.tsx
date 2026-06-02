@@ -1,14 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Box,
   Container,
-  Heading,
   HStack,
   VStack,
   Text,
   Button,
-  FormControl,
-  FormLabel,
   Input,
   Select,
   IconButton,
@@ -17,15 +14,9 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
-  Card,
-  CardBody,
   useColorModeValue,
   Spinner,
-  SimpleGrid,
-  Progress,
-  List,
-  ListItem,
-  ListIcon,
+  Collapse,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -35,11 +26,19 @@ import {
   ModalCloseButton,
   useDisclosure,
   Checkbox,
-  Divider,
   Icon,
-  Tooltip,
+  Avatar,
+  Link as ChakraLink,
 } from '@chakra-ui/react';
-import { FiUpload, FiX, FiArrowLeft, FiCheckCircle, FiAlertCircle, FiEdit } from 'react-icons/fi';
+import {
+  FiX,
+  FiCheck,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiChevronDown,
+  FiChevronUp,
+  FiEdit3,
+} from 'react-icons/fi';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -48,150 +47,264 @@ import RichTextEditor from '../components/RichTextEditor';
 import FormNoteFiller from '../components/FormNoteFiller';
 import type { FormFieldValue } from '../components/FormNoteFiller';
 import type { NoteType, NoteCompletenessAnalysis } from '../types';
-import { usePatient } from '../hooks/usePatients';
+import { usePatient, usePatients } from '../hooks/usePatients';
+import { usePatientVitals } from '../hooks/usePatientVitals';
 import { useNotes } from '../hooks/useNotes';
+import PatientClinicalSummary from '../components/PatientClinicalSummary';
+import CollapsibleSideCard from '../components/CollapsibleSideCard';
 import { apiService } from '../services/api';
+import { normalizePatientSlug } from '../utils/patientSlug';
 import { useAuth } from '../contexts/AuthContext';
-
-const RECETA_DELIMITER = '<!-- ___RECETA___ -->';
+import PageHead from '../components/PageHead';
+import {
+  mergeNoteBodyForEditor,
+  serializeNoteBodyForApi,
+} from '../utils/noteReceta';
 
 const NoteForm: React.FC = () => {
-  const { patientId, noteId } = useParams<{ patientId: string; noteId?: string }>();
+  const { patientSlug, noteId } = useParams<{
+    patientSlug: string;
+    noteId?: string;
+  }>();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
   const { doctor } = useAuth();
 
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const paperBg = useColorModeValue('paper.100', 'whiteAlpha.50');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const softBorder = useColorModeValue('line.strong', 'whiteAlpha.300');
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  const subColor = useColorModeValue('paper.700', 'paper.400');
+  const inkStrong = useColorModeValue('paper.900', 'paper.50');
+  const bodyColor = useColorModeValue('paper.700', 'paper.400');
 
-  // Usar hook para cargar paciente y notas
+  const { patients } = usePatients();
+  const patientId = useMemo(() => {
+    const raw = (patientSlug ?? '').trim().replace(/^#/, '');
+    if (!raw) return undefined;
+    const match = patients.find((p) => p.slug === raw || p.id === raw);
+    if (match?.id) return match.id;
+    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      raw
+    );
+    return looksLikeUuid ? raw : undefined;
+  }, [patients, patientSlug]);
+
   const { patient, loading: patientLoading } = usePatient(patientId);
-  const { createNote, updateNote, signNote, getNoteAnalysis, notes, loading: notesLoading } = useNotes(patientId);
+  const patientPathBase = useMemo(() => {
+    const slug =
+      normalizePatientSlug(patient?.slug) ||
+      normalizePatientSlug(patientSlug) ||
+      patientId;
+    return slug ? `/patients/${slug}` : '/patients';
+  }, [patient?.slug, patientSlug, patientId]);
+
+  // Replace /patients/{id}/... with /patients/{slug}/... once slug is available.
+  useEffect(() => {
+    const slug = patient?.slug?.trim();
+    const raw = (patientSlug ?? '').trim().replace(/^#/, '');
+    if (!slug || !raw || raw === slug) return;
+    if (location.pathname.startsWith(`/patients/${raw}`)) {
+      navigate(location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`), {
+        replace: true,
+        state: location.state,
+      });
+    }
+  }, [location.pathname, location.state, navigate, patient?.slug, patientSlug]);
+  const { vitals, loading: vitalsLoading } = usePatientVitals(patientId);
+  const {
+    createNote,
+    updateNote,
+    updateNoteDate,
+    signNote,
+    getNoteAnalysis,
+    notes,
+    loading: notesLoading,
+  } = useNotes(patientId);
 
   const [title, setTitle] = useState('');
   const [noteType, setNoteType] = useState<NoteType>('evolution');
   const [content, setContent] = useState('');
-  const [receta, setReceta] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingNote, setIsLoadingNote] = useState(false);
-  const [completenessAnalysis, setCompletenessAnalysis] = useState<NoteCompletenessAnalysis | null>(null);
+  const [completenessAnalysis, setCompletenessAnalysis] =
+    useState<NoteCompletenessAnalysis | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isNomOpen, setIsNomOpen] = useState(false);
 
-  // Form-based note mode
   const [useFormMode, setUseFormMode] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
-  const [doctorForms, setDoctorForms] = useState<Array<{ id: string; name: string }>>([]);
+  const [doctorForms, setDoctorForms] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [formsLoading, setFormsLoading] = useState(false);
   const [formFieldValues, setFormFieldValues] = useState<FormFieldValue[]>([]);
-  
-  // Estados para detectar cambios
+
   const [savedTitle, setSavedTitle] = useState('');
   const [savedContent, setSavedContent] = useState('');
-  const [, setSavedReceta] = useState('');
   const [savedType, setSavedType] = useState<NoteType>('evolution');
-  const [currentNoteId, setCurrentNoteId] = useState<string | null>(noteId || null);
-  const [noteStatus, setNoteStatus] = useState<'new' | 'draft' | 'signed'>('new');
-  
-  // Modal states
-  const { isOpen: isSignModalOpen, onOpen: onSignModalOpen, onClose: onSignModalClose } = useDisclosure();
-  const { isOpen: isIncompleteWarningOpen, onOpen: onIncompleteWarningOpen, onClose: onIncompleteWarningClose } = useDisclosure();
-  const { isOpen: isConfirmSignOpen, onOpen: onConfirmSignOpen, onClose: onConfirmSignClose } = useDisclosure();
+  const [currentNoteId, setCurrentNoteId] = useState<string | null>(
+    noteId || null
+  );
+  const [noteStatus, setNoteStatus] = useState<'new' | 'draft' | 'signed'>(
+    'new'
+  );
+  const [noteCreatedAt, setNoteCreatedAt] = useState<string | null>(null);
+  const [isEditingDate, setIsEditingDate] = useState(false);
+  const [editingDateValue, setEditingDateValue] = useState('');
+  const [isUpdatingDate, setIsUpdatingDate] = useState(false);
+
+  const handleStartEditDate = () => {
+    if (!noteCreatedAt) return;
+    const d = new Date(noteCreatedAt);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    setEditingDateValue(local);
+    setIsEditingDate(true);
+  };
+
+  const handleConfirmDateChange = async () => {
+    if (!currentNoteId || !patientId || !editingDateValue) return;
+    setIsUpdatingDate(true);
+    try {
+      const isoDate = new Date(editingDateValue).toISOString();
+      await updateNoteDate(currentNoteId, isoDate);
+      setNoteCreatedAt(isoDate);
+      toast({
+        title: 'Fecha actualizada',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      setIsEditingDate(false);
+    } catch (err: any) {
+      toast({
+        title: 'Error al actualizar fecha',
+        description: err?.message || 'No se pudo actualizar la fecha',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setIsUpdatingDate(false);
+    }
+  };
+
+  const {
+    isOpen: isSignModalOpen,
+    onOpen: onSignModalOpen,
+    onClose: onSignModalClose,
+  } = useDisclosure();
+  const {
+    isOpen: isIncompleteWarningOpen,
+    onOpen: onIncompleteWarningOpen,
+    onClose: onIncompleteWarningClose,
+  } = useDisclosure();
+  const {
+    isOpen: isConfirmSignOpen,
+    onOpen: onConfirmSignOpen,
+    onClose: onConfirmSignClose,
+  } = useDisclosure();
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
-  // Refs para comparar cambios
   const isLoadingAnalysisAfterSaveRef = useRef(false);
   const followUpLoadedRef = useRef(false);
 
   const role = (doctor?.role ?? '').toUpperCase();
   const isWellness = role === 'WELLNESS';
-  const templatesForRole = isWellness ? mockWellnessNoteTemplates : mockNoteTemplates;
+  const templatesForRole = isWellness
+    ? mockWellnessNoteTemplates
+    : mockNoteTemplates;
 
-  // Detectar si hay cambios
   const hasChanges = () => {
-    if (useFormMode) {
-      return title !== savedTitle || content !== savedContent;
-    }
+    if (useFormMode) return title !== savedTitle || content !== savedContent;
     return (
-      title !== savedTitle ||
-      content !== savedContent ||
-      noteType !== savedType
+      title !== savedTitle || content !== savedContent || noteType !== savedType
     );
   };
 
-  // Cargar nota existente si es edición
+  // Load existing note when editing
   useEffect(() => {
     if (!noteId || !patientId) {
       setIsLoadingNote(false);
       return;
     }
-
-    // Si las notas aún se están cargando, esperar
-    if (notesLoading) {
-      return;
-    }
+    if (notesLoading) return;
 
     setIsLoadingNote(true);
     const note = notes.find((n) => n.id === noteId);
-    
+
     if (note) {
       const rawContent = note.content || '';
-
-      // Detectar si es una nota basada en formulario (content es JSON con formId + fields)
       let isFormNote = false;
-      let parsedFormValues: FormFieldValue[] = [];
-      let restoredFormId: string | null = null;
       try {
         const parsed = JSON.parse(rawContent);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.formId && Array.isArray(parsed.fields)) {
+        if (
+          parsed &&
+          typeof parsed === 'object' &&
+          !Array.isArray(parsed) &&
+          parsed.formId &&
+          Array.isArray(parsed.fields)
+        ) {
           isFormNote = true;
-          parsedFormValues = parsed.fields;
-          restoredFormId = parsed.formId;
-        } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name && parsed[0].type) {
+        } else if (
+          Array.isArray(parsed) &&
+          parsed.length > 0 &&
+          parsed[0].name &&
+          parsed[0].type
+        ) {
           isFormNote = true;
-          parsedFormValues = parsed;
         }
-      } catch { /* not JSON */ }
-
-      if (isFormNote) {
-        setUseFormMode(true);
-        setContent(rawContent);
-        setFormFieldValues(parsedFormValues);
-        if (restoredFormId) setSelectedFormId(restoredFormId);
-      } else {
-        const recetaIdx = rawContent.indexOf(RECETA_DELIMITER);
-        const mainContent = recetaIdx >= 0 ? rawContent.slice(0, recetaIdx).trim() : rawContent;
-        const recetaContent = recetaIdx >= 0 ? rawContent.slice(recetaIdx + RECETA_DELIMITER.length).trim() : '';
-        setContent(mainContent);
-        setReceta(recetaContent);
+      } catch {
+        /* not JSON */
       }
 
+      if (isFormNote) {
+        // Las notas por formulario tienen su propio editor dedicado.
+        // Redirigimos para que el usuario vea siempre la misma UI al editarlas.
+        navigate(`${patientPathBase}/notes/${note.id}/edit-form`, {
+          replace: true,
+        });
+        return;
+      }
+
+      setContent(mergeNoteBodyForEditor(rawContent));
+
       setTitle(note.title);
-      setNoteType(isFormNote ? 'document' : note.type);
+      setNoteType(note.type);
       setSavedTitle(note.title);
-      setSavedContent(isFormNote ? rawContent : (rawContent.indexOf(RECETA_DELIMITER) >= 0 ? rawContent.slice(0, rawContent.indexOf(RECETA_DELIMITER)).trim() : rawContent));
-      setSavedReceta(isFormNote ? '' : (rawContent.indexOf(RECETA_DELIMITER) >= 0 ? rawContent.slice(rawContent.indexOf(RECETA_DELIMITER) + RECETA_DELIMITER.length).trim() : ''));
-      setSavedType(isFormNote ? 'document' : note.type);
+      setSavedContent(mergeNoteBodyForEditor(rawContent));
+      setSavedType(note.type);
       setCurrentNoteId(note.id);
       setNoteStatus(note.status);
-      
-      // Si es draft, cargar análisis (omitir si estamos recargando tras guardar o si es nota de formulario)
-      if (note.status === 'draft' && note.id && !isLoadingAnalysisAfterSaveRef.current && !isFormNote) {
+      setNoteCreatedAt(note.createdAt);
+      if (
+        note.status === 'draft' &&
+        note.id &&
+        !isLoadingAnalysisAfterSaveRef.current &&
+        !isFormNote
+      ) {
         loadCompletenessAnalysis(note.id).catch((error) => {
           console.error('Error loading completeness analysis:', error);
         });
       }
       setIsLoadingNote(false);
     } else {
-      // Nota no encontrada
       setIsLoadingNote(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noteId, notes, patientId, notesLoading]);
 
-  // Cargar última nota del paciente como plantilla para "Seguimiento" (notas firmadas)
+  // Follow-up from signed note
   useEffect(() => {
-    const followUpNoteId = (location.state as { followUpFromNoteId?: string } | null)?.followUpFromNoteId;
+    const followUpNoteId = (
+      location.state as { followUpFromNoteId?: string } | null
+    )?.followUpFromNoteId;
     if (!patientId || !followUpNoteId || noteId) return;
 
     let cancelled = false;
@@ -202,41 +315,49 @@ const NoteForm: React.FC = () => {
         if (cancelled) return;
         const rawContent = note.content || '';
 
-        // Detectar si es nota basada en formulario
         let isFormNote = false;
         let parsedFormValues: FormFieldValue[] = [];
         let restoredFormId: string | null = null;
         try {
           const parsed = JSON.parse(rawContent);
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.formId && Array.isArray(parsed.fields)) {
+          if (
+            parsed &&
+            typeof parsed === 'object' &&
+            !Array.isArray(parsed) &&
+            parsed.formId &&
+            Array.isArray(parsed.fields)
+          ) {
             isFormNote = true;
             parsedFormValues = parsed.fields;
             restoredFormId = parsed.formId;
           }
-        } catch { /* not JSON */ }
+        } catch {
+          /* not JSON */
+        }
 
         followUpLoadedRef.current = true;
+
+        if (isFormNote) {
+          // Las notas por formulario tienen su propio editor; el seguimiento
+          // simplemente abre el selector de formularios para que el usuario
+          // elija de nuevo (los valores de campos suelen requerir actualizarse).
+          void parsedFormValues;
+          void restoredFormId;
+          navigate(`${patientPathBase}/notes/new-form`, { replace: true });
+          return;
+        }
+
         setTitle(`Seguimiento - ${note.title || 'Nota anterior'}`);
         setNoteStatus('new');
 
-        if (isFormNote) {
-          setUseFormMode(true);
-          setNoteType('document');
-          setContent(rawContent);
-          setFormFieldValues(parsedFormValues);
-          if (restoredFormId) setSelectedFormId(restoredFormId);
-        } else {
-          const recetaIdx = rawContent.indexOf(RECETA_DELIMITER);
-          const mainContent = recetaIdx >= 0 ? rawContent.slice(0, recetaIdx).trim() : rawContent;
-          const recetaContent = recetaIdx >= 0 ? rawContent.slice(recetaIdx + RECETA_DELIMITER.length).trim() : '';
-          const noteTypeVal = (note.type || 'evolution') as NoteType;
-          setContent(mainContent);
-          setReceta(recetaContent);
-          setNoteType(noteTypeVal);
-        }
+        const noteTypeVal = (note.type || 'evolution') as NoteType;
+        setContent(mergeNoteBodyForEditor(rawContent));
+        setNoteType(noteTypeVal);
 
-        // Limpiar state para no re-aplicar al cambiar de tipo
-        navigate(`/patients/${patientId}/notes/new`, { replace: true, state: {} });
+        navigate(`${patientPathBase}/notes/new`, {
+          replace: true,
+          state: {},
+        });
       } catch {
         if (!cancelled) {
           toast({
@@ -256,51 +377,46 @@ const NoteForm: React.FC = () => {
     };
   }, [patientId, noteId, location.state, navigate, toast]);
 
-  // Cargar análisis de completitud. Si retryOn404, reintenta hasta que el análisis esté listo (tras actualizar nota)
   const loadCompletenessAnalysis = async (
     id: string,
     options?: { retryOn404?: boolean }
   ): Promise<void> => {
-    if (!id) {
-      console.warn('loadCompletenessAnalysis: No ID provided');
-      return;
-    }
-
+    if (!id) return;
     setIsLoadingAnalysis(true);
     setCompletenessAnalysis(null);
     const maxRetries = 15;
     const retryDelayMs = 2000;
-
     const tryFetch = async (): Promise<boolean> => {
       try {
         const analysis = await getNoteAnalysis(id);
         setCompletenessAnalysis(analysis);
         return true;
       } catch (error: unknown) {
-        const status = error && typeof error === 'object' && 'status' in error ? (error as { status: number }).status : 0;
-        if (status === 404 && options?.retryOn404) {
-          return false; // Retry
-        }
+        const status =
+          error && typeof error === 'object' && 'status' in error
+            ? (error as { status: number }).status
+            : 0;
+        if (status === 404 && options?.retryOn404) return false;
         setCompletenessAnalysis(null);
-        return true; // Done, no more retries
+        return true;
       }
     };
-
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const done = await tryFetch();
       if (done) break;
       await new Promise((r) => setTimeout(r, retryDelayMs));
     }
-
     setIsLoadingAnalysis(false);
   };
 
-  const loadCompletenessAnalysisWithContent = (id: string, retryOn404 = false) =>
-    loadCompletenessAnalysis(id, { retryOn404 });
+  const loadCompletenessAnalysisWithContent = (
+    id: string,
+    retryOn404 = false
+  ) => loadCompletenessAnalysis(id, { retryOn404 });
 
-  // Load template when note type changes (solo si es nota nueva, no Seguimiento, y no modo formulario)
   useEffect(() => {
-    if (noteStatus !== 'new' || followUpLoadedRef.current || useFormMode) return;
+    if (noteStatus !== 'new' || followUpLoadedRef.current || useFormMode)
+      return;
     const template = templatesForRole.find((t) => t.type === noteType);
     if (!template) return;
     const today = format(new Date(), "d 'de' MMM yyyy", { locale: es });
@@ -308,25 +424,24 @@ const NoteForm: React.FC = () => {
     setContent(template.content);
   }, [noteType, noteStatus, useFormMode, templatesForRole]);
 
-  // Ensure default type fits role
   useEffect(() => {
     if (!isWellness) return;
     if (noteStatus !== 'new') return;
     if (useFormMode) return;
-    // If current noteType isn't available for WELLNESS, force a valid default.
-    if (noteType !== 'psychology-interrogation' && noteType !== 'psychology-evolution') {
+    if (
+      noteType !== 'psychology-interrogation' &&
+      noteType !== 'psychology-evolution'
+    ) {
       setNoteType('psychology-evolution');
     }
   }, [isWellness, noteStatus, useFormMode, noteType]);
 
-  // Set initial note type from location state
   useEffect(() => {
     if (location.state?.type && noteStatus === 'new') {
       setNoteType(location.state.type);
     }
   }, [location.state, noteStatus]);
 
-  // Load doctor forms when form mode is activated
   useEffect(() => {
     if (!useFormMode) return;
     let cancelled = false;
@@ -337,14 +452,19 @@ const NoteForm: React.FC = () => {
         if (!cancelled) setDoctorForms(res.results);
       })
       .catch(() => {
-        if (!cancelled) {
-          toast({ title: 'No se pudieron cargar los formularios', status: 'warning', duration: 3000 });
-        }
+        if (!cancelled)
+          toast({
+            title: 'No se pudieron cargar los formularios',
+            status: 'warning',
+            duration: 3000,
+          });
       })
       .finally(() => {
         if (!cancelled) setFormsLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [useFormMode, toast]);
 
   const handleNoteTypeSelectChange = (value: string) => {
@@ -352,7 +472,6 @@ const NoteForm: React.FC = () => {
       setUseFormMode(true);
       setNoteType('document');
       setContent('');
-      setReceta('');
       setSelectedFormId(null);
       setFormFieldValues([]);
     } else {
@@ -370,17 +489,17 @@ const NoteForm: React.FC = () => {
     setFormFieldValues([]);
   };
 
-  const handleFormValuesChange = useCallback((vals: FormFieldValue[]) => {
-    setFormFieldValues(vals);
-    setContent(JSON.stringify({ formId: selectedFormId, fields: vals }));
-  }, [selectedFormId]);
-
-  // No actualizar análisis automáticamente mientras se edita
-  // Solo se actualiza cuando se guarda como borrador
+  const handleFormValuesChange = useCallback(
+    (vals: FormFieldValue[]) => {
+      setFormFieldValues(vals);
+      setContent(JSON.stringify({ formId: selectedFormId, fields: vals }));
+    },
+    [selectedFormId]
+  );
 
   if (patientLoading || isLoadingNote || (noteId && notesLoading)) {
     return (
-      <Container maxW="container.xl" py={8}>
+      <Container maxW="1280px" py={10}>
         <VStack spacing={4}>
           <Spinner size="xl" color="brand.500" />
           <Text>Cargando...</Text>
@@ -391,7 +510,7 @@ const NoteForm: React.FC = () => {
 
   if (!patient) {
     return (
-      <Container maxW="container.xl" py={8}>
+      <Container maxW="1280px" py={10}>
         <VStack spacing={4}>
           <Text fontSize="lg">Paciente no encontrado</Text>
           <Button onClick={() => navigate('/patients')}>
@@ -402,13 +521,6 @@ const NoteForm: React.FC = () => {
     );
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setAttachments([...attachments, ...newFiles]);
-    }
-  };
-
   const handleRemoveFile = (index: number) => {
     setAttachments(attachments.filter((_, i) => i !== index));
   };
@@ -418,12 +530,22 @@ const NoteForm: React.FC = () => {
 
     if (useFormMode) {
       if (!selectedFormId) {
-        toast({ title: 'Selecciona un formulario', status: 'warning', duration: 3000, isClosable: true });
+        toast({
+          title: 'Selecciona un formulario',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        });
         return;
       }
       const anyFilled = formFieldValues.some((f) => f.value.trim() !== '');
       if (!anyFilled) {
-        toast({ title: 'Completa al menos un campo del formulario', status: 'warning', duration: 3000, isClosable: true });
+        toast({
+          title: 'Completa al menos un campo del formulario',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        });
         return;
       }
     } else if (!content.trim()) {
@@ -443,28 +565,24 @@ const NoteForm: React.FC = () => {
       setIsLoadingAnalysis(true);
       setCompletenessAnalysis(null);
     }
-    const contentToSave = useFormMode ? content : content;
+    const contentToSave = useFormMode
+      ? content
+      : serializeNoteBodyForApi(content);
     try {
       if (currentNoteId) {
-        // Actualizar nota existente
         await updateNote(currentNoteId, {
           title,
           content: contentToSave,
           type: noteType,
         });
-        
-        // Actualizar valores guardados
         setSavedTitle(title);
         setSavedContent(content);
-        setSavedReceta(receta);
         setSavedType(noteType);
         setNoteStatus('draft');
-        
-        // Recargar análisis solo para notas normales
+        setLastSavedAt(new Date());
         if (currentNoteId && !useFormMode) {
           await loadCompletenessAnalysisWithContent(currentNoteId, true);
         }
-        
         toast({
           title: 'Borrador guardado',
           description: 'La nota se ha guardado como borrador',
@@ -473,34 +591,29 @@ const NoteForm: React.FC = () => {
           isClosable: true,
         });
       } else {
-        // Crear nueva nota (borrador)
         const newNote = await createNote({
           content: contentToSave,
           type: noteType,
           title: title || undefined,
           files: attachments.length > 0 ? attachments : undefined,
         });
-
         setCurrentNoteId(newNote.id);
         setSavedTitle(newNote.title ?? title);
         setSavedContent(content);
-        setSavedReceta(receta);
         if (newNote.title) setTitle(newNote.title);
         setSavedType(noteType);
         setNoteStatus('draft');
-        
-        // Cargar análisis solo para notas normales
+        setLastSavedAt(new Date());
         if (newNote.id && !useFormMode) {
           await loadCompletenessAnalysisWithContent(newNote.id, true);
         }
-
-      toast({
+        toast({
           title: 'Borrador guardado',
           description: 'La nota se ha guardado como borrador',
-        status: 'success',
+          status: 'success',
           duration: 3000,
           isClosable: true,
-      });
+        });
       }
     } catch (error: any) {
       toast({
@@ -518,33 +631,22 @@ const NoteForm: React.FC = () => {
 
   const handleSignNote = async () => {
     if (!patientId || !currentNoteId) return;
-
-    // Si hay cambios sin guardar, guardar primero
-    if (hasChanges()) {
-      await handleSaveDraft();
-    }
-
-    // Verificar completitud antes de firmar
+    if (hasChanges()) await handleSaveDraft();
     if (completenessAnalysis && completenessAnalysis.completeness_score < 80) {
-      // Mostrar advertencia de completitud incompleta (la firma se ejecuta al hacer clic en "Firmar de todos modos")
       onIncompleteWarningOpen();
       return;
     }
-
-    // Mostrar modal de confirmación; la firma se ejecuta solo al hacer clic en "Continuar"
     onConfirmSignOpen();
   };
 
   const proceedWithSigning = async (save_anyway = false) => {
     if (!patientId || !currentNoteId) return;
-
     onConfirmSignClose();
     onIncompleteWarningClose();
     setIsSubmitting(true);
     const skipAnalysis = save_anyway || useFormMode;
     try {
       await signNote(currentNoteId, skipAnalysis);
-      
       toast({
         title: 'Nota firmada',
         description: 'La nota médica ha sido firmada exitosamente',
@@ -552,14 +654,9 @@ const NoteForm: React.FC = () => {
         duration: 3000,
         isClosable: true,
       });
-
-      // Mostrar modal de confirmación post-firma
       const shouldShowModal = !localStorage.getItem('dontShowSignModal');
-      if (shouldShowModal) {
-        onSignModalOpen();
-      } else {
-        navigate(`/patients/${patientId}`);
-      }
+      if (shouldShowModal) onSignModalOpen();
+      else navigate(patientPathBase);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -574,11 +671,9 @@ const NoteForm: React.FC = () => {
   };
 
   const handleCloseSignModal = () => {
-    if (dontShowAgain) {
-      localStorage.setItem('dontShowSignModal', 'true');
-    }
+    if (dontShowAgain) localStorage.setItem('dontShowSignModal', 'true');
     onSignModalClose();
-    navigate(`/patients/${patientId}`);
+    navigate(patientPathBase);
   };
 
   const getMissingFields = (): string[] => {
@@ -589,504 +684,692 @@ const NoteForm: React.FC = () => {
       .filter(Boolean);
   };
 
-  const isFieldMissing = (key: string): boolean =>
-    (completenessAnalysis?.missing_fields ?? []).includes(key);
-
   const isDraft = noteStatus === 'draft';
-  const hasUnsavedChanges = hasChanges();
-  const showSignButton = isDraft && !hasUnsavedChanges;
-  // Mostrar panel de análisis solo si es draft, ya tiene ID, y NO es modo formulario
+  /** Borrador guardado y sin cambios locales → acción principal es Firmar; si no, Guardar borrador. */
+  const canSignPrimary = isDraft && currentNoteId !== null && !hasChanges();
   const showAnalysisPanel = isDraft && currentNoteId !== null && !useFormMode;
 
+  const saveStateLabel = (() => {
+    if (isSubmitting) return 'Guardando…';
+    if (lastSavedAt) {
+      const diff = Math.max(
+        0,
+        Math.floor((Date.now() - lastSavedAt.getTime()) / 1000)
+      );
+      return diff < 3 ? 'Guardado' : `Guardado hace ${diff}s`;
+    }
+    return 'Sin cambios';
+  })();
+
+  // Previous signed notes for this patient (for the "Notas anteriores" side card)
+  const previousNotes = notes
+    .filter((n) => n.id !== currentNoteId && n.status === 'signed')
+    .slice(0, 2);
+
   return (
-    <Box minH="100vh" display="flex" flexDirection="column" bg={useColorModeValue('gray.50', 'gray.900')}>
-      {/* Header - sticky */}
+    <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
+      <PageHead
+        crumbs={
+          <>
+            Pacientes · {patient.firstName} {patient.lastName}
+            {' · '}
+            {isDraft ? 'Editar nota' : 'Nueva nota'}
+          </>
+        }
+        title={isDraft ? 'Editar nota clínica' : 'Nueva nota clínica'}
+        actions={
+          <>
+            <HStack
+              spacing={2}
+              fontFamily="mono"
+              fontSize="11.5px"
+              color="statusSoft.okFg"
+              mr={2}
+            >
+              <Box w="6px" h="6px" borderRadius="full" bg="statusSoft.okFg" />
+              <Text>{saveStateLabel}</Text>
+            </HStack>
+            <Button
+              size="sm"
+              h="36px"
+              colorScheme="brand"
+              bg="brand.600"
+              color="white"
+              _hover={{ bg: 'brand.700' }}
+              onClick={canSignPrimary ? handleSignNote : handleSaveDraft}
+              isLoading={isSubmitting}
+              loadingText={canSignPrimary ? 'Firmando…' : 'Guardando…'}
+            >
+              {canSignPrimary ? 'Firmar' : 'Guardar borrador'}
+            </Button>
+          </>
+        }
+      />
+
       <Box
-        position="sticky"
-        top={0}
-        zIndex={10}
-        bg={cardBg}
-        borderBottom="1px"
-        borderColor={borderColor}
-        px={8}
-        py={4}
-        shadow="sm"
+        display="grid"
+        gridTemplateColumns={{ base: '1fr', lg: '1fr 300px' }}
+        gap={5}
+        alignItems="start"
       >
-        <Container maxW="container.xl">
-          <HStack spacing={4}>
-            <IconButton
-              aria-label="Volver"
-              icon={<FiArrowLeft />}
-              onClick={() => navigate(`/patients/${patientId}`)}
-              variant="ghost"
-            />
-            <VStack align="start" spacing={1} flex={1}>
-              <Heading size="lg">
-                {isDraft ? 'Editar Nota Médica' : 'Nueva Nota Médica'}
-              </Heading>
-              <Text color="gray.500">
-                {patient.firstName} {patient.lastName}
+        {/* Editor card */}
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          overflow="hidden"
+        >
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Título de la nota"
+            variant="unstyled"
+            px="24px"
+            pt="22px"
+            pb="4px"
+            fontSize="22px"
+            fontWeight={600}
+            letterSpacing="-0.01em"
+            _placeholder={{ color: 'paper.500' }}
+          />
+
+          <Box
+            px="18px"
+            py="8px"
+            bg={paperBg}
+            borderTop="1px solid"
+            borderBottom="1px solid"
+            borderColor={borderColor}
+            fontSize="12px"
+            color={subColor}
+          >
+            <HStack spacing={4}>
+              <Text fontFamily="mono" letterSpacing="0.04em" color={labelColor}>
+                Tipo
               </Text>
-            </VStack>
-            {isDraft && (() => {
-              const draftNote = notes.find((n) => n.id === currentNoteId);
-              const createdLabel = draftNote?.createdAt
-                ? `Borrador creado el ${format(new Date(draftNote.createdAt), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}`
-                : 'Borrador';
-              return (
-                <Tooltip label={createdLabel} placement="top" hasArrow>
-                  <Box as="span" display="inline-flex" color="orange.500" alignItems="center">
-                    <Icon as={FiEdit} boxSize={5} />
-                  </Box>
-                </Tooltip>
-              );
-            })()}
-          </HStack>
-        </Container>
-      </Box>
-
-      {/* Content - scrollable */}
-      <Box flex={1} overflowY="auto" py={6}>
-      <Container maxW="container.xl" pb={8}>
-        <form onSubmit={(e) => { e.preventDefault(); handleSaveDraft(); }}>
-          {showAnalysisPanel ? (
-            // Vista vertical para notas draft: análisis arriba, editor abajo
-            <VStack spacing={6} align="stretch">
-              {/* Panel de Análisis - Arriba */}
-              <Card bg={cardBg}>
-                <CardBody>
-          <VStack spacing={6} align="stretch">
-                    <Heading size="md">Análisis de Nota</Heading>
-                    
-                    {isLoadingAnalysis ? (
-                      <VStack spacing={4} py={10}>
-                        <Spinner size="xl" color="brand.500" thickness="3px" />
-                        <Text color="gray.600" fontWeight="medium">
-                          Analizando nota...
-                        </Text>
-                        <Text fontSize="sm" color="gray.400">
-                          Esperando análisis...
-                        </Text>
-                      </VStack>
-                    ) : completenessAnalysis ? (
-                      <>
-                        <Box>
-                          <HStack justify="space-between" mb={2}>
-                            <Text fontWeight="semibold">Completitud</Text>
-                            <Text fontWeight="bold" fontSize="xl" color="brand.500">
-                              {completenessAnalysis.completeness_score}%
-                            </Text>
-                          </HStack>
-                          <Progress
-                            value={completenessAnalysis.completeness_score}
-                            colorScheme={
-                              completenessAnalysis.completeness_score >= 90
-                                ? 'green'
-                                : completenessAnalysis.completeness_score >= 70
-                                ? 'yellow'
-                                : 'red'
-                            }
-                            size="lg"
-                            borderRadius="full"
-                          />
-                        </Box>
-
-                        <Divider />
-
-                        <Box>
-                          <Text fontWeight="semibold" mb={3}>
-                            Análisis por campo
-                          </Text>
-                          <List spacing={2}>
-                            {Object.entries(completenessAnalysis.reasoning).map(
-                              ([key, value]) => {
-                                const missing = isFieldMissing(key);
-                                return (
-                                  <ListItem key={key} display="flex" alignItems="flex-start" gap={2}>
-                                    <ListIcon
-                                      as={missing ? FiAlertCircle : FiCheckCircle}
-                                      color={missing ? 'orange.500' : 'green.500'}
-                                      mt={0.5}
-                                    />
-                                    <Text fontSize="sm" flex={1}>
-                                      {value || key.replace(/_/g, ' ')}
-                                    </Text>
-                                  </ListItem>
-                                );
-                              }
-                            )}
-                          </List>
-                        </Box>
-
-                        {getMissingFields().length > 0 && (
-                          <Alert status="warning" borderRadius="lg" mt={4}>
-              <AlertIcon />
-              <VStack align="start" spacing={1}>
-                              <AlertTitle fontSize="sm">Campos Faltantes</AlertTitle>
-                <AlertDescription fontSize="sm">
-                                {getMissingFields().join(', ')}
-                </AlertDescription>
-              </VStack>
-            </Alert>
-                        )}
-                      </>
-                    ) : (
-                      <Text color="gray.500" textAlign="center" py={4}>
-                        El análisis aparecerá aquí
-                      </Text>
-                    )}
-                  </VStack>
-                </CardBody>
-              </Card>
-
-              {/* Editor - Abajo */}
-              <Card bg={cardBg}>
-                <CardBody>
-                  <VStack spacing={6} align="stretch">
-                    <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                      <FormControl isRequired>
-                        <FormLabel>Tipo de Nota</FormLabel>
-                        <Select
-                          value={useFormMode ? 'form' : noteType}
-                          onChange={(e) => handleNoteTypeSelectChange(e.target.value)}
-                          size="lg"
-                        >
-                          {isWellness ? (
-                            <>
-                              <option value="psychology-interrogation">
-                                Historia Clínica Psicológica Inicial
-                              </option>
-                              <option value="psychology-evolution">
-                                Nota de Sesión Psicológica
-                              </option>
-                            </>
-                          ) : (
-                            <>
-                              <option value="interrogation">Interrogatorio</option>
-                              <option value="evolution">Nota de Evolución</option>
-                              <option value="exploration">Exploración Física</option>
-                            </>
-                          )}
-                          <option value="form">Usar formulario</option>
-                        </Select>
-                      </FormControl>
-                      {useFormMode ? (
-                        <FormControl isRequired>
-                          <FormLabel>Formulario</FormLabel>
-                          <Select
-                            value={selectedFormId ?? ''}
-                            onChange={(e) => handleFormSelect(e.target.value)}
-                            placeholder={formsLoading ? 'Cargando formularios…' : 'Selecciona un formulario'}
-                            size="lg"
-                            isDisabled={formsLoading}
-                          >
-                            {doctorForms.map((f) => (
-                              <option key={f.id} value={f.id}>{f.name}</option>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      ) : (
-                        <FormControl isRequired>
-                          <FormLabel>Título de la Nota</FormLabel>
-                          <Input
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Ej: Consulta de seguimiento - Enero 2024"
-                            size="lg"
-                          />
-                        </FormControl>
-                      )}
-                    </SimpleGrid>
-
-                    {useFormMode && selectedFormId ? (
-                      <FormNoteFiller formId={selectedFormId} initialValues={formFieldValues} onValuesChange={handleFormValuesChange} />
-                    ) : !useFormMode ? (
-                      <>
-                        <FormControl isRequired>
-                          <FormLabel>Contenido de la Nota</FormLabel>
-                          <RichTextEditor
-                            value={content}
-                            onChange={setContent}
-                            placeholder="Escribe el contenido de la nota médica..."
-                            minHeight="400px"
-                          />
-                        </FormControl>
-
-                        <FormControl flexShrink={0}>
-                          <FormLabel>Archivos Adjuntos</FormLabel>
-                          <VStack spacing={3} align="stretch">
-                            <Button
-                              as="label"
-                              leftIcon={<FiUpload />}
-                              variant="outline"
-                              cursor="pointer"
-                              htmlFor="file-upload-draft"
-                            >
-                              Seleccionar archivos
-                              <input
-                                id="file-upload-draft"
-                                type="file"
-                                multiple
-                                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.dcm,.hl7,.xml"
-                                onChange={handleFileChange}
-                                style={{ display: 'none' }}
-                              />
-                            </Button>
-
-                            {attachments.length > 0 && (
-                              <VStack spacing={2} align="stretch">
-                                {attachments.map((file, index) => (
-                                  <HStack
-                                    key={index}
-                                    p={3}
-                                    borderWidth="1px"
-                                    borderColor={borderColor}
-                                    borderRadius="lg"
-                                    justify="space-between"
-                                  >
-                                    <VStack align="start" spacing={0}>
-                                      <Text fontSize="sm" fontWeight="medium">
-                                        {file.name}
-                                      </Text>
-                                      <Text fontSize="xs" color="gray.500">
-                                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                                      </Text>
-                                    </VStack>
-                                    <IconButton
-                                      aria-label="Eliminar archivo"
-                                      icon={<FiX />}
-                                      size="sm"
-                                      variant="ghost"
-                                      colorScheme="red"
-                                      onClick={() => handleRemoveFile(index)}
-                                    />
-                                  </HStack>
-                                ))}
-                              </VStack>
-                            )}
-                          </VStack>
-                        </FormControl>
-                      </>
-                    ) : null}
-                  </VStack>
-                </CardBody>
-              </Card>
-            </VStack>
-          ) : (
-            // Vista normal para notas nuevas
-            <VStack spacing={6} align="stretch">
-            <Card bg={cardBg}>
-              <CardBody>
-                <VStack spacing={6} align="stretch">
-                  <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-                    <FormControl isRequired>
-                      <FormLabel>Tipo de Nota</FormLabel>
-                      <Select
-                        value={useFormMode ? 'form' : noteType}
-                        onChange={(e) => handleNoteTypeSelectChange(e.target.value)}
-                        size="lg"
+              <Select
+                value={useFormMode ? 'form' : noteType}
+                onChange={(e) => handleNoteTypeSelectChange(e.target.value)}
+                size="xs"
+                w="auto"
+                variant="outline"
+                bg={cardBg}
+                borderColor={softBorder}
+                sx={{ fontFamily: 'inherit' }}
+              >
+                {isWellness ? (
+                  <>
+                    <option value="psychology-interrogation">
+                      Historia Clínica Psicológica Inicial
+                    </option>
+                    <option value="psychology-evolution">
+                      Nota de Sesión Psicológica
+                    </option>
+                  </>
+                ) : (
+                  <>
+                    <option value="interrogation">Interrogatorio</option>
+                    <option value="evolution">Nota de Evolución</option>
+                    <option value="exploration">Exploración Física</option>
+                  </>
+                )}
+              </Select>
+              {useFormMode && (
+                <>
+                  <Box w="1px" h="14px" bg={softBorder} />
+                  <Text
+                    fontFamily="mono"
+                    letterSpacing="0.04em"
+                    color={labelColor}
+                  >
+                    Formulario
+                  </Text>
+                  <Select
+                    value={selectedFormId ?? ''}
+                    onChange={(e) => handleFormSelect(e.target.value)}
+                    placeholder={formsLoading ? 'Cargando…' : 'Seleccionar'}
+                    size="xs"
+                    w="auto"
+                    bg={cardBg}
+                    borderColor={softBorder}
+                    isDisabled={formsLoading}
+                  >
+                    {doctorForms.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </Select>
+                </>
+              )}
+              {isDraft && noteCreatedAt && (
+                <>
+                  <Box w="1px" h="14px" bg={softBorder} />
+                  <Text
+                    fontFamily="mono"
+                    letterSpacing="0.04em"
+                    color={labelColor}
+                  >
+                    Fecha
+                  </Text>
+                  {isEditingDate ? (
+                    <HStack spacing={2}>
+                      <Input
+                        type="datetime-local"
+                        size="xs"
+                        w="190px"
+                        fontFamily="mono"
+                        fontSize="12px"
+                        value={editingDateValue}
+                        onChange={(e) => setEditingDateValue(e.target.value)}
+                        bg={cardBg}
+                        borderColor={softBorder}
+                      />
+                      <Button
+                        size="xs"
+                        colorScheme="brand"
+                        bg="brand.600"
+                        color="white"
+                        _hover={{ bg: 'brand.700' }}
+                        onClick={handleConfirmDateChange}
+                        isLoading={isUpdatingDate}
+                        loadingText="…"
                       >
-                        {isWellness ? (
-                          <>
-                            <option value="psychology-interrogation">
-                              Historia Clínica Psicológica Inicial
-                            </option>
-                            <option value="psychology-evolution">
-                              Nota de Sesión Psicológica
-                            </option>
-                          </>
-                        ) : (
-                          <>
-                            <option value="interrogation">Interrogatorio</option>
-                            <option value="evolution">Nota de Evolución</option>
-                            <option value="exploration">Exploración Física</option>
-                          </>
-                        )}
-                        <option value="form">Usar formulario</option>
-                      </Select>
-                      {!useFormMode && (
-                        <Text fontSize="sm" color="gray.500" mt={2}>
-                          El template se cargará según el tipo de nota
-                        </Text>
-                      )}
-                    </FormControl>
-                    {useFormMode ? (
-                      <FormControl isRequired>
-                        <FormLabel>Formulario</FormLabel>
-                        <Select
-                          value={selectedFormId ?? ''}
-                          onChange={(e) => handleFormSelect(e.target.value)}
-                          placeholder={formsLoading ? 'Cargando formularios…' : 'Selecciona un formulario'}
-                          size="lg"
-                          isDisabled={formsLoading}
-                        >
-                          {doctorForms.map((f) => (
-                            <option key={f.id} value={f.id}>{f.name}</option>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    ) : (
-                      <FormControl isRequired>
-                        <FormLabel>Título de la Nota</FormLabel>
-                        <Input
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          placeholder="Ej: Consulta de seguimiento - Enero 2024"
-                          size="lg"
-                        />
-                      </FormControl>
-                    )}
-                  </SimpleGrid>
+                        OK
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setIsEditingDate(false)}
+                        isDisabled={isUpdatingDate}
+                      >
+                        ✕
+                      </Button>
+                    </HStack>
+                  ) : (
+                    <HStack
+                      spacing={1}
+                      cursor="pointer"
+                      onClick={handleStartEditDate}
+                      role="group"
+                      _hover={{ color: 'brand.600' }}
+                    >
+                      <Text
+                        fontFamily="mono"
+                        fontSize="12px"
+                        color={subColor}
+                        _groupHover={{ color: 'brand.600' }}
+                      >
+                        {format(new Date(noteCreatedAt), "d 'de' MMM, yyyy · HH:mm", { locale: es })}
+                      </Text>
+                      <Icon
+                        as={FiEdit3}
+                        boxSize="11px"
+                        color={labelColor}
+                        opacity={0}
+                        _groupHover={{ opacity: 1, color: 'brand.600' }}
+                        transition="opacity 0.15s"
+                      />
+                    </HStack>
+                  )}
+                </>
+              )}
+            </HStack>
+          </Box>
 
-                  {useFormMode && selectedFormId ? (
-                    <FormNoteFiller formId={selectedFormId} initialValues={formFieldValues} onValuesChange={handleFormValuesChange} />
-                  ) : !useFormMode ? (
-                    <>
-                      <FormControl isRequired>
-                        <FormLabel>Contenido de la Nota</FormLabel>
-                        <RichTextEditor
-                          value={content}
-                          onChange={setContent}
-                          placeholder="Escribe el contenido de la nota médica..."
-                          minHeight="400px"
-                        />
-                      </FormControl>
+          <Box px="16px" py="8px" minH="480px">
+            {useFormMode && selectedFormId ? (
+              <FormNoteFiller
+                formId={selectedFormId}
+                initialValues={formFieldValues}
+                onValuesChange={handleFormValuesChange}
+              />
+            ) : !useFormMode ? (
+              <RichTextEditor
+                value={content}
+                onChange={setContent}
+                placeholder="Escribe el contenido de la nota médica..."
+                minHeight="440px"
+                onAttachFiles={(files) =>
+                  setAttachments((prev) => [...prev, ...files])
+                }
+              />
+            ) : (
+              <Box p={6}>
+                <Text color={subColor}>
+                  Selecciona un formulario para comenzar.
+                </Text>
+              </Box>
+            )}
+          </Box>
 
-                      <FormControl>
-                        <FormLabel>Archivos Adjuntos</FormLabel>
-                        <VStack spacing={3} align="stretch">
-                          <Button
-                            as="label"
-                            leftIcon={<FiUpload />}
-                            variant="outline"
-                            cursor="pointer"
-                            htmlFor="file-upload"
-                          >
-                            Seleccionar archivos
-                            <input
-                              id="file-upload"
-                              type="file"
-                              multiple
-                              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.dcm,.hl7,.xml"
-                              onChange={handleFileChange}
-                              style={{ display: 'none' }}
-                            />
-                          </Button>
-
-                          {attachments.length > 0 && (
-                            <VStack spacing={2} align="stretch">
-                              {attachments.map((file, index) => (
-                                <HStack
-                                  key={index}
-                                  p={3}
-                                  borderWidth="1px"
-                                  borderColor={borderColor}
-                                  borderRadius="lg"
-                                  justify="space-between"
-                                >
-                                  <VStack align="start" spacing={0}>
-                                    <Text fontSize="sm" fontWeight="medium">
-                                      {file.name}
-                                    </Text>
-                                    <Text fontSize="xs" color="gray.500">
-                                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                                    </Text>
-                                  </VStack>
-                                  <IconButton
-                                    aria-label="Eliminar archivo"
-                                    icon={<FiX />}
-                                    size="sm"
-                                    variant="ghost"
-                                    colorScheme="red"
-                                    onClick={() => handleRemoveFile(index)}
-                                  />
-                                </HStack>
-                              ))}
-                            </VStack>
-                          )}
-
-                          <Text fontSize="xs" color="gray.500">
-                            Tipos de archivo aceptados: Imágenes, videos, audio,
-                            PDF, Word, Excel, PowerPoint, DICOM, HL7, XML
-                          </Text>
-                        </VStack>
-                      </FormControl>
-                    </>
-                  ) : null}
-                </VStack>
-              </CardBody>
-            </Card>
-            </VStack>
+          {!useFormMode && attachments.length > 0 && (
+            <Box
+              px="18px"
+              pt="10px"
+              pb="14px"
+              borderTop="1px solid"
+              borderColor={borderColor}
+              bg={paperBg}
+            >
+              <Text
+                fontSize="11px"
+                fontFamily="mono"
+                letterSpacing="0.08em"
+                textTransform="uppercase"
+                color={labelColor}
+                mb={2}
+              >
+                Pendientes de guardar
+              </Text>
+              <Text fontSize="11.5px" color={subColor} mb={2}>
+                Se subirán al guardar el borrador por primera vez. Añade más con
+                el clip del editor.
+              </Text>
+              <VStack spacing={1} align="stretch">
+                {attachments.map((file, index) => (
+                  <HStack
+                    key={`${file.name}-${index}`}
+                    p={2}
+                    borderWidth="1px"
+                    borderColor={borderColor}
+                    borderRadius="6px"
+                    bg={cardBg}
+                    justify="space-between"
+                  >
+                    <VStack align="start" spacing={0}>
+                      <Text fontSize="sm" fontWeight={500}>
+                        {file.name}
+                      </Text>
+                      <Text fontSize="xs" color={subColor}>
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </Text>
+                    </VStack>
+                    <IconButton
+                      aria-label="Eliminar archivo"
+                      icon={<FiX />}
+                      size="sm"
+                      variant="ghost"
+                      colorScheme="red"
+                      onClick={() => handleRemoveFile(index)}
+                    />
+                  </HStack>
+                ))}
+              </VStack>
+            </Box>
           )}
 
-            {/* Action Buttons */}
-          <HStack justify="flex-end" spacing={3} mt={6}>
+          <HStack
+            justify="space-between"
+            px="18px"
+            py="12px"
+            borderTop="1px solid"
+            borderColor={borderColor}
+            bg={paperBg}
+          >
+            <HStack
+              spacing={3}
+              fontFamily="mono"
+              fontSize="12px"
+              color={labelColor}
+            >
+              <HStack as="span" spacing={1}>
+                <Kbd>Cmd</Kbd>
+                <Text>+</Text>
+                <Kbd>S</Kbd>
+                <Text>guarda</Text>
+              </HStack>
+              <HStack as="span" spacing={1}>
+                <Kbd>Cmd</Kbd>
+                <Text>+</Text>
+                <Kbd>Enter</Kbd>
+                <Text>firma</Text>
+              </HStack>
+            </HStack>
+            <HStack spacing={2}>
               <Button
                 variant="ghost"
-                onClick={() => navigate(`/patients/${patientId}`)}
+                size="sm"
+                color="text.body"
+                onClick={() => navigate(patientPathBase)}
                 isDisabled={isSubmitting}
               >
                 Cancelar
               </Button>
-            {showSignButton ? (
               <Button
+                size="sm"
                 colorScheme="brand"
-                size="lg"
-                onClick={handleSignNote}
+                bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
+                onClick={canSignPrimary ? handleSignNote : handleSaveDraft}
                 isLoading={isSubmitting}
-                loadingText={isLoadingAnalysis ? 'Analizando...' : 'Firmando...'}
+                loadingText={canSignPrimary ? 'Firmando…' : 'Guardando…'}
               >
-                Firmar Nota
+                {canSignPrimary ? 'Firmar' : 'Guardar borrador'}
               </Button>
-            ) : (
-              <Button
-                type="submit"
-                colorScheme="brand"
-                size="lg"
-                isLoading={isSubmitting}
-                loadingText="Guardando..."
-              >
-                Guardar borrador
-              </Button>
-            )}
             </HStack>
-        </form>
-      </Container>
+          </HStack>
+        </Box>
+
+        {/* Side panel — sticky en escritorio: acompaña el scroll del editor */}
+        <VStack
+          spacing="14px"
+          align="stretch"
+          position={{ base: 'static', lg: 'sticky' }}
+          top={{ lg: '20px' }}
+          alignSelf={{ lg: 'flex-start' }}
+          maxH={{ lg: 'calc(100vh - 40px)' }}
+          overflowY={{ lg: 'auto' }}
+        >
+          <SideCard heading="Paciente">
+            <HStack spacing={3} align="center">
+              <Avatar
+                size="sm"
+                name={`${patient.firstName} ${patient.lastName}`}
+                src={patient.avatar}
+                bg="statusSoft.infoBg"
+                color="brand.700"
+              />
+              <VStack align="start" spacing={0}>
+                <Text fontSize="13.5px" fontWeight={500}>
+                  {patient.firstName} {patient.lastName}
+                </Text>
+                {(() => {
+                  const parts: string[] = [];
+                  if (patient.dateOfBirth) {
+                    parts.push(
+                      `${Math.max(
+                        0,
+                        new Date().getFullYear() -
+                          new Date(patient.dateOfBirth).getFullYear()
+                      )} años`
+                    );
+                  }
+                  if (patient.gender) {
+                    parts.push(
+                      patient.gender === 'male'
+                        ? 'Hombre'
+                        : patient.gender === 'female'
+                          ? 'Mujer'
+                          : 'Otro'
+                    );
+                  }
+                  const meta = parts.filter(Boolean).join(' · ');
+                  return meta ? (
+                    <Text fontSize="12px" color={subColor} lineHeight="1.25" mt={0.5}>
+                      {meta}
+                    </Text>
+                  ) : null;
+                })()}
+              </VStack>
+            </HStack>
+          </SideCard>
+
+          <CollapsibleSideCard heading="Resumen clínico" defaultOpen={false}>
+            <PatientClinicalSummary
+              vitals={vitals}
+              bloodFallback={patient.bloodType}
+              loading={vitalsLoading}
+            />
+          </CollapsibleSideCard>
+
+          <Box
+            bg={cardBg}
+            border="1px solid"
+            borderColor={borderColor}
+            borderRadius="8px"
+            overflow="hidden"
+          >
+            <Box
+              as="button"
+              type="button"
+              onClick={() => setIsNomOpen((v) => !v)}
+              display="block"
+              w="full"
+              textAlign="left"
+              borderRadius="0"
+              px={4}
+              py={3.5}
+              aria-expanded={isNomOpen}
+            >
+              <HStack justify="space-between" align="center">
+                <Text
+                  fontSize="11px"
+                  fontFamily="mono"
+                  letterSpacing="0.1em"
+                  textTransform="uppercase"
+                  color={labelColor}
+                  fontWeight={600}
+                  userSelect="none"
+                >
+                  Integridad NOM‑004
+                </Text>
+                <Icon
+                  as={isNomOpen ? FiChevronUp : FiChevronDown}
+                  boxSize={4}
+                  color={labelColor}
+                  flexShrink={0}
+                />
+              </HStack>
+            </Box>
+
+            {/* Progress siempre visible */}
+            <Box px={4} pb={isNomOpen ? 0 : 3.5}>
+              {showAnalysisPanel ? (
+                isLoadingAnalysis ? (
+                  <HStack spacing={2} fontSize="12.5px" color={subColor} py={1}>
+                    <Spinner size="xs" />
+                    <Text>Analizando…</Text>
+                  </HStack>
+                ) : completenessAnalysis ? (
+                  <VStack align="stretch" spacing={2} fontSize="12.5px">
+                    <HStack justify="space-between">
+                      <Text color={subColor}>Completitud</Text>
+                      <Text fontWeight={600} color="brand.600">
+                        {completenessAnalysis.completeness_score}%
+                      </Text>
+                    </HStack>
+                    <Box
+                      h="4px"
+                      bg="paper.200"
+                      borderRadius="full"
+                      overflow="hidden"
+                    >
+                      <Box
+                        h="100%"
+                        w={`${completenessAnalysis.completeness_score}%`}
+                        bg={
+                          completenessAnalysis.completeness_score >= 90
+                            ? 'statusSoft.okFg'
+                            : completenessAnalysis.completeness_score >= 70
+                              ? 'statusSoft.warnFg'
+                              : 'statusSoft.critFg'
+                        }
+                      />
+                    </Box>
+                  </VStack>
+                ) : (
+                  <Text fontSize="12.5px" color={subColor}>
+                    Guarda el borrador para obtener el análisis.
+                  </Text>
+                )
+              ) : (
+                <Text fontSize="12.5px" color={subColor}>
+                  El análisis se genera una vez guardada la nota como borrador.
+                </Text>
+              )}
+            </Box>
+
+            {/* Detalle colapsable */}
+            <Collapse in={isNomOpen} animateOpacity>
+              {showAnalysisPanel && completenessAnalysis && (
+                <Box
+                  px={4}
+                  pt={3}
+                  pb={3.5}
+                  maxH="260px"
+                  overflowY="auto"
+                  pr={3}
+                >
+                  <VStack align="stretch" spacing={2}>
+                    {Object.entries(completenessAnalysis.reasoning ?? {}).map(
+                      ([key, value]) => {
+                        const missing = (
+                          completenessAnalysis.missing_fields ?? []
+                        ).includes(key);
+                        return (
+                          <HStack key={key} align="start" spacing={2}>
+                            <Icon
+                              as={missing ? FiX : FiCheck}
+                              color={
+                                missing ? 'statusSoft.critFg' : 'statusSoft.okFg'
+                              }
+                              boxSize="14px"
+                              mt="2px"
+                              flexShrink={0}
+                              aria-label={missing ? 'Ausente' : 'Presente'}
+                            />
+                            <Text fontSize="12px" color={subColor}>
+                              {value}
+                            </Text>
+                          </HStack>
+                        );
+                      }
+                    )}
+                  </VStack>
+                </Box>
+              )}
+            </Collapse>
+          </Box>
+
+          {previousNotes.length > 0 && (
+            <SideCard heading="Notas anteriores">
+              <VStack align="stretch" spacing={2}>
+                {previousNotes.map((n) => (
+                  <ChakraLink
+                    key={n.id}
+                    fontSize="12.5px"
+                    color="text.strong"
+                    _hover={{ color: 'brand.600', textDecoration: 'underline' }}
+                    onClick={() =>
+                      navigate(patientPathBase, {
+                        state: { highlightNote: n.id },
+                      })
+                    }
+                  >
+                    <Text fontWeight={500} noOfLines={1}>
+                      {n.title}
+                    </Text>
+                    <Text fontSize="11.5px" color={subColor}>
+                      {format(new Date(n.createdAt), 'd MMM yyyy', {
+                        locale: es,
+                      })}
+                    </Text>
+                  </ChakraLink>
+                ))}
+              </VStack>
+            </SideCard>
+          )}
+        </VStack>
       </Box>
 
-      {/* Modal de confirmación antes de firmar (solo cuando la nota está completa) */}
+      {/* Confirm sign modal */}
       <Modal isOpen={isConfirmSignOpen} onClose={onConfirmSignClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            <HStack spacing={2}>
-              <Box color="brand.500">
-                <FiCheckCircle size={20} />
-              </Box>
-              <Text>Confirmar firma</Text>
-            </HStack>
+        <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(6px)" />
+        <ModalContent
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="10px"
+          boxShadow="0 20px 60px -20px rgba(15, 23, 42, 0.25)"
+          overflow="hidden"
+        >
+          <ModalCloseButton
+            top="14px"
+            right="14px"
+            color="text.muted"
+            _hover={{ color: 'text.strong', bg: 'surface.hover' }}
+          />
+          <ModalHeader px={7} pt={6} pb={4} borderBottom="1px solid" borderColor={borderColor}>
+            <Box pr={8}>
+              <HStack spacing={3} align="center" mb={1.5}>
+                <Box
+                  w="28px"
+                  h="28px"
+                  borderRadius="8px"
+                  display="inline-flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  bg="statusSoft.okBg"
+                  color="statusSoft.okFg"
+                  flexShrink={0}
+                >
+                  <FiCheckCircle size={18} />
+                </Box>
+                <Text
+                  as="span"
+                  fontFamily="mono"
+                  fontSize="11px"
+                  color={labelColor}
+                  letterSpacing="0.08em"
+                  textTransform="uppercase"
+                  fontWeight={500}
+                >
+                  Firma
+                </Text>
+              </HStack>
+              <Text fontSize="18px" fontWeight={600} letterSpacing="-0.012em" color={inkStrong}>
+                Confirmar firma
+              </Text>
+            </Box>
           </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <VStack spacing={4} align="stretch">
-              <Text>
-                Una vez firmada, la nota no podrá ser modificada. Esta acción es permanente e irreversible.
+          <ModalBody px={7} py={5}>
+            <VStack spacing={3} align="stretch">
+              <Text fontSize="13.5px" color={bodyColor} lineHeight="1.55">
+                Una vez firmada, la nota no podrá ser modificada. Esta acción es permanente e
+                irreversible.
               </Text>
-              <Text fontWeight="medium">
-                ¿Deseas continuar con la firma de la nota?
-              </Text>
+              <Box
+                bg={paperBg}
+                border="1px solid"
+                borderColor={borderColor}
+                borderRadius="8px"
+                p="10px 12px"
+              >
+                <Text fontSize="13px" color={inkStrong} fontWeight={600}>
+                  ¿Deseas continuar con la firma de la nota?
+                </Text>
+              </Box>
             </VStack>
           </ModalBody>
-          <ModalFooter>
-            <HStack spacing={3}>
-              <Button variant="outline" onClick={onConfirmSignClose} isDisabled={isSubmitting}>
+          <ModalFooter px={7} pt={0} pb={6}>
+            <HStack spacing={3} w="full" justify="flex-end">
+              <Button
+                variant="outline"
+                borderColor="line.strong"
+                _hover={{ borderColor: 'paper.600', bg: 'surface.hover' }}
+                onClick={onConfirmSignClose}
+                isDisabled={isSubmitting}
+                h="36px"
+                px={5}
+                borderRadius="10px"
+                fontWeight={600}
+              >
                 Cancelar
               </Button>
               <Button
-                colorScheme="brand"
+                bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
                 onClick={() => proceedWithSigning(false)}
                 isLoading={isSubmitting}
-                loadingText="Firmando..."
+                loadingText="Firmando…"
+                h="36px"
+                px={6}
+                borderRadius="10px"
+                fontWeight={700}
               >
                 Continuar
               </Button>
@@ -1095,13 +1378,16 @@ const NoteForm: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      {/* Modal de advertencia de completitud incompleta */}
-      <Modal isOpen={isIncompleteWarningOpen} onClose={onIncompleteWarningClose} size="lg">
+      <Modal
+        isOpen={isIncompleteWarningOpen}
+        onClose={onIncompleteWarningClose}
+        size="lg"
+      >
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
             <HStack spacing={2}>
-              <Box color="orange.500">
+              <Box color="statusSoft.warnFg">
                 <FiAlertCircle size={20} />
               </Box>
               <Text>Nota Incompleta</Text>
@@ -1115,7 +1401,9 @@ const NoteForm: React.FC = () => {
                 <VStack align="start" spacing={1}>
                   <AlertTitle>Advertencia</AlertTitle>
                   <AlertDescription fontSize="sm">
-                    La nota tiene una completitud del {completenessAnalysis?.completeness_score || 0}%, que está por debajo del 70% recomendado.
+                    La nota tiene una completitud del{' '}
+                    {completenessAnalysis?.completeness_score || 0}%, que está
+                    por debajo del 70% recomendado.
                   </AlertDescription>
                 </VStack>
               </Alert>
@@ -1127,7 +1415,7 @@ const NoteForm: React.FC = () => {
                   <Text fontWeight="semibold" mb={2} fontSize="sm">
                     Campos faltantes:
                   </Text>
-                  <Text fontSize="sm" color="gray.600">
+                  <Text fontSize="sm" color={subColor}>
                     {getMissingFields().join(', ')}
                   </Text>
                 </Box>
@@ -1147,6 +1435,7 @@ const NoteForm: React.FC = () => {
               </Button>
               <Button
                 colorScheme="brand"
+                bg="brand.600"
                 onClick={onIncompleteWarningClose}
                 isDisabled={isSubmitting}
                 size="lg"
@@ -1158,13 +1447,12 @@ const NoteForm: React.FC = () => {
         </ModalContent>
       </Modal>
 
-      {/* Modal post-firma */}
       <Modal isOpen={isSignModalOpen} onClose={handleCloseSignModal} size="lg">
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
             <HStack spacing={2}>
-              <Box color="green.500">
+              <Box color="statusSoft.okFg">
                 <FiCheckCircle size={20} />
               </Box>
               <Text>Nota Firmada Exitosamente</Text>
@@ -1172,18 +1460,20 @@ const NoteForm: React.FC = () => {
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-              <VStack spacing={4} align="stretch">
+            <VStack spacing={4} align="stretch">
               <Alert status="info" borderRadius="lg">
-                  <AlertIcon />
+                <AlertIcon />
                 <VStack align="start" spacing={1}>
                   <AlertTitle>Importante</AlertTitle>
                   <AlertDescription fontSize="sm">
-                    Una vez firmada, la nota no podrá ser modificada. Esta acción es permanente e irreversible.
+                    Una vez firmada, la nota no podrá ser modificada. Esta
+                    acción es permanente e irreversible.
                   </AlertDescription>
                 </VStack>
-                </Alert>
+              </Alert>
               <Text>
-                La nota médica ha sido firmada digitalmente y guardada en el expediente del paciente.
+                La nota médica ha sido firmada digitalmente y guardada en el
+                expediente del paciente.
               </Text>
               <Checkbox
                 isChecked={dontShowAgain}
@@ -1194,12 +1484,69 @@ const NoteForm: React.FC = () => {
             </VStack>
           </ModalBody>
           <ModalFooter>
-            <Button colorScheme="brand" onClick={handleCloseSignModal}>
+            <Button
+              colorScheme="brand"
+              bg="brand.600"
+              onClick={handleCloseSignModal}
+            >
               Continuar
-                  </Button>
+            </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
+    </Container>
+  );
+};
+
+const SideCard: React.FC<{ heading: string; children: React.ReactNode }> = ({
+  heading,
+  children,
+}) => {
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  return (
+    <Box
+      bg={cardBg}
+      border="1px solid"
+      borderColor={borderColor}
+      borderRadius="8px"
+      p="14px 16px"
+    >
+      <Text
+        fontSize="11px"
+        fontFamily="mono"
+        letterSpacing="0.1em"
+        textTransform="uppercase"
+        color={labelColor}
+        fontWeight={600}
+        mb="10px"
+      >
+        {heading}
+      </Text>
+      {children}
+    </Box>
+  );
+};
+
+const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.strong', 'whiteAlpha.300');
+  return (
+    <Box
+      as="kbd"
+      fontFamily="mono"
+      fontSize="11px"
+      px="6px"
+      py="1px"
+      borderWidth="1px"
+      borderColor={borderColor}
+      borderBottomWidth="2px"
+      borderRadius="4px"
+      bg={cardBg}
+      color="text.strong"
+    >
+      {children}
     </Box>
   );
 };

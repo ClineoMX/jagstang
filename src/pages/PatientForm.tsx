@@ -23,8 +23,8 @@ import PhoneNumberField, { phoneNumberFieldUtils } from '../components/PhoneNumb
 const PatientForm: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'line.dark');
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');

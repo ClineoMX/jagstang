@@ -2,137 +2,123 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Container,
-  Heading,
   SimpleGrid,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  Card,
-  CardHeader,
-  CardBody,
   VStack,
   HStack,
   Text,
-  Avatar,
-  Badge,
   Button,
-  Icon,
   useColorModeValue,
-  Flex,
   useDisclosure,
-  Tooltip,
+  Heading,
+  Link as ChakraLink,
 } from '@chakra-ui/react';
-import {
-  FiCalendar,
-  FiUsers,
-  FiFileText,
-  FiFile,
-  FiClock,
-  FiCheckCircle,
-  FiEdit,
-  FiClipboard,
-  FiTrendingUp,
-  FiSearch,
-} from 'react-icons/fi';
-import { MdVerified } from 'react-icons/md';
+import { FiPlus } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { differenceInMinutes, format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PatientFormModal from '../components/PatientFormModal';
+import PageHead from '../components/PageHead';
+import TodayStrip from '../components/TodayStrip';
+import Nudge from '../components/Nudge';
+import StatusBadge from '../components/StatusBadge';
+import type { StatusBadgeTone } from '../components/StatusBadge';
 import { useAuth } from '../contexts/AuthContext';
 import { usePatients } from '../hooks/usePatients';
 import { useAppointments } from '../hooks/useAppointments';
 import { apiService } from '../services/api';
+import { normalizePatientSlug } from '../utils/patientSlug';
 
-function getNoteTypeIcon(type: string) {
-  switch (type) {
-    case 'interrogation':
-      return { icon: FiClipboard, color: 'purple.500' as const, bg: 'purple.50' as const };
-    case 'evolution':
-      return { icon: FiTrendingUp, color: 'blue.500' as const, bg: 'blue.50' as const };
-    case 'exploration':
-      return { icon: FiSearch, color: 'green.500' as const, bg: 'green.50' as const };
-    case 'psychology-interrogation':
-      return { icon: FiClipboard, color: 'purple.500' as const, bg: 'purple.50' as const };
-    case 'psychology-evolution':
-      return { icon: FiTrendingUp, color: 'blue.500' as const, bg: 'blue.50' as const };
-    case 'document':
-      return { icon: FiFile, color: 'teal.500' as const, bg: 'teal.50' as const };
-    default:
-      return { icon: FiFileText, color: 'gray.500' as const, bg: 'gray.50' as const };
-  }
+interface RecentNote {
+  id: string;
+  title: string;
+  status: string;
+  type?: string;
+  patient_id: string;
+  patient_slug?: string;
+  patient_name: string;
+  patient_lastname: string;
+  created_at?: string;
+  accessed_at?: string;
 }
 
-function getNoteTypeLabel(type: string) {
-  switch (type) {
-    case 'interrogation':
-      return 'Detalles';
-    case 'evolution':
-      return 'Nota de Evolución';
-    case 'exploration':
-      return 'Exploración Física';
-    case 'psychology-interrogation':
-      return 'Psicología · Historia Clínica Inicial';
-    case 'psychology-evolution':
-      return 'Psicología · Nota de Sesión';
-    case 'document':
-      return 'Documento';
-    default:
-      return 'Nota Personalizada';
-  }
+interface ComplianceOverallScore {
+  doctor_id: string;
+  overall_score: number;
+  patient_count: number;
+  computed_at: string;
 }
+
+const statusToTone = (status: string): StatusBadgeTone => {
+  switch (status?.toUpperCase()) {
+    case 'CONFIRMED':
+      return 'confirm';
+    case 'COMPLETED':
+      return 'signed';
+    case 'PENDING':
+      return 'pending';
+    case 'CANCELLED':
+      return 'cancel';
+    default:
+      return 'neutral';
+  }
+};
+
+const statusLabel = (status: string): string => {
+  switch (status?.toUpperCase()) {
+    case 'CONFIRMED':
+      return 'Confirmada';
+    case 'COMPLETED':
+      return 'Atendido';
+    case 'PENDING':
+      return 'Pendiente';
+    case 'CANCELLED':
+      return 'Cancelada';
+    default:
+      return status ?? '';
+  }
+};
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const rowHoverBg = useColorModeValue('paper.100', 'whiteAlpha.50');
+  const nowBg = useColorModeValue('statusSoft.infoBg', 'whiteAlpha.100');
+  const nowHoverBg = useColorModeValue('#d9ebf0', 'whiteAlpha.200');
+  const mutedColor = useColorModeValue('paper.700', 'paper.400');
+  const metaColor = useColorModeValue('paper.600', 'paper.500');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { doctor } = useAuth();
 
-  const welcomeLabel = (() => {
-    const name = doctor?.firstName?.trim() || '';
-    if (doctor?.gender === 'female') {
-      return name ? `Bienvenida de nuevo, ${name}` : 'Bienvenida de nuevo';
-    }
-    return name ? `Bienvenido de nuevo, ${name}` : 'Bienvenido de nuevo';
-  })();
-
-  const { patients, count: patientsCount, loading: patientsLoading, refetch } = usePatients();
+  const { patients, refetch } = usePatients();
   const { appointments } = useAppointments();
   const [notesCount, setNotesCount] = useState<number | null>(null);
   const [notesDraft, setNotesDraft] = useState<number>(0);
-  const [notesSigned, setNotesSigned] = useState<number>(0);
-  const [recentNotes, setRecentNotes] = useState<
-    Array<{
-      id: string;
-      title: string;
-      status: string;
-      type?: string;
-      patient_id: string;
-      patient_name: string;
-      patient_lastname: string;
-      created_at?: string;
-      accessed_at?: string;
-    }>
-  >([]);
+  const [recentNotes, setRecentNotes] = useState<RecentNote[]>([]);
+  const [complianceOverall, setComplianceOverall] = useState<ComplianceOverallScore | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     apiService
-      .getDoctorNotesRecent({ limit: 500 })
+      .getDoctorNotesRecent({ size: 500 })
       .then((res) => {
         if (cancelled) return;
         setNotesCount(res.count);
         setNotesDraft(res.results.filter((n) => n.status !== 'signed').length);
-        setNotesSigned(res.results.filter((n) => n.status === 'signed').length);
         setRecentNotes(
           res.results.slice(0, 5).map((n) => ({
             id: n.id,
             title: n.title,
             status: n.status,
-            type: (n as { type?: string; note_type?: string }).type ?? (n as { type?: string; note_type?: string }).note_type,
+            type:
+              (n as { type?: string; note_type?: string }).type ??
+              (n as { type?: string; note_type?: string }).note_type,
             patient_id: n.patient_id,
+            patient_slug: (() => {
+              const raw = (n as { patient_slug?: string | null }).patient_slug;
+              const s = normalizePatientSlug(raw);
+              return s || undefined;
+            })(),
             patient_name: n.patient_name,
             patient_lastname: n.patient_lastname,
             created_at: n.created_at,
@@ -144,7 +130,6 @@ const Dashboard: React.FC = () => {
         if (!cancelled) {
           setNotesCount(0);
           setNotesDraft(0);
-          setNotesSigned(0);
           setRecentNotes([]);
         }
       });
@@ -153,679 +138,451 @@ const Dashboard: React.FC = () => {
     };
   }, []);
 
-  const today = format(new Date(), 'yyyy-MM-dd');
+  useEffect(() => {
+    let cancelled = false;
+    apiService
+      .getDoctorComplianceOverallScore()
+      .then((res) => {
+        if (cancelled) return;
+        setComplianceOverall(res);
+      })
+      .catch(() => {
+        if (!cancelled) setComplianceOverall(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const compliancePct = useMemo(() => {
+    if (!complianceOverall) return null;
+    const raw = Number(complianceOverall.overall_score);
+    if (!Number.isFinite(raw)) return null;
+    return Math.round(raw * 100);
+  }, [complianceOverall]);
+
+  const welcomeLabel = (() => {
+    const name = doctor?.firstName?.trim() || '';
+    const isFemale = doctor?.gender === 'female';
+    if (!name) return isFemale ? 'Bienvenida' : 'Bienvenidos';
+    const prefix = isFemale ? 'Dra.' : 'Dr.';
+    const last = doctor?.lastName?.trim()
+      ? ` ${doctor.lastName.split(' ')[0]}`
+      : '';
+    return `Buenos días, ${prefix}${last || ` ${name}`}`;
+  })();
+
+  const today = new Date();
+  const todayKey = format(today, 'yyyy-MM-dd');
 
   const todayAppointments = useMemo(() => {
-    return appointments.filter((apt) => {
-      const d = new Date(apt.starts_at);
-      return format(d, 'yyyy-MM-dd') === today;
-    });
-  }, [appointments, today]);
-
-  const recentPatients = useMemo(() => {
-    return [...patients]
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt || b.createdAt).getTime() -
-          new Date(a.updatedAt || a.createdAt).getTime()
-      )
-      .slice(0, 5);
-  }, [patients]);
-
-  const firstTimeCount = useMemo(
-    () => patients.filter((p) => !p.isRecurrent).length,
-    [patients]
-  );
-  const recurrentCount = useMemo(
-    () => patients.filter((p) => p.isRecurrent).length,
-    [patients]
-  );
-
-  const upcomingAppointments = useMemo(() => {
-    const now = new Date();
     return [...appointments]
       .filter(
-        (apt) =>
-          new Date(apt.starts_at) >= now && apt.status !== 'CANCELLED'
+        (apt) => format(new Date(apt.starts_at), 'yyyy-MM-dd') === todayKey
       )
       .sort(
         (a, b) =>
           new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
-      )
-      .slice(0, 5);
-  }, [appointments]);
+      );
+  }, [appointments, todayKey]);
 
-  const getPatientById = (id: string) => {
-    return patients.find((p) => p.id === id);
-  };
+  const nextAppointment = useMemo(() => {
+    const now = new Date();
+    return (
+      todayAppointments.find(
+        (apt) =>
+          new Date(apt.ends_at) > now &&
+          apt.status?.toUpperCase() !== 'CANCELLED'
+      ) ?? null
+    );
+  }, [todayAppointments]);
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case 'CONFIRMED':
-        return 'success';
-      case 'PENDING':
-        return 'warning';
-      case 'CANCELLED':
-        return 'error';
-      default:
-        return 'gray';
+  const todayAttended = todayAppointments.filter(
+    (apt) => apt.status?.toUpperCase() === 'COMPLETED'
+  ).length;
+  const todayRemaining = todayAppointments.length - todayAttended;
+
+  // Heuristic: find the row closest to "now" to highlight (prototype `.now`).
+  const nowRowId = useMemo(() => {
+    const now = new Date();
+    let bestId: string | null = null;
+    let bestDiff = Infinity;
+    for (const apt of todayAppointments) {
+      const start = new Date(apt.starts_at).getTime();
+      const end = new Date(apt.ends_at).getTime();
+      const nowMs = now.getTime();
+      if (nowMs >= start && nowMs <= end) return apt.id;
+      const diff = Math.min(Math.abs(nowMs - start), Math.abs(nowMs - end));
+      if (diff < bestDiff && apt.status?.toUpperCase() !== 'CANCELLED') {
+        bestDiff = diff;
+        bestId = apt.id;
+      }
+    }
+    return bestDiff < 60 * 60 * 1000 ? bestId : null;
+  }, [todayAppointments]);
+
+  const patientById = useMemo(
+    () => Object.fromEntries(patients.map((p) => [p.id, p] as const)),
+    [patients]
+  );
+
+  const handleNewNote = () => {
+    const firstPatient = patients[0];
+    if (firstPatient) {
+      if (!firstPatient.slug?.trim()) return;
+      navigate(
+        `/patients/${normalizePatientSlug(firstPatient.slug)}/notes/new`
+      );
+    } else {
+      navigate('/patients');
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status?.toUpperCase()) {
-      case 'CONFIRMED':
-        return 'Confirmada';
-      case 'PENDING':
-        return 'Pendiente';
-      case 'CANCELLED':
-        return 'Cancelada';
-      default:
-        return status ?? '';
-    }
-  };
+  const nextPatient = nextAppointment
+    ? patientById[nextAppointment.patient_id]
+    : null;
+
+  const nextCitaValue = nextAppointment
+    ? format(new Date(nextAppointment.starts_at), 'HH:mm')
+    : '—';
+  const nextCitaSub = nextAppointment
+    ? `· ${nextPatient ? `${nextPatient.firstName} ${nextPatient.lastName}` : 'Paciente'}`
+    : 'No hay más citas programadas';
 
   return (
-    <Box bg={useColorModeValue('gray.50', 'gray.900')} minH="100vh">
-      {/* Header with Gradient - Medtters Style */}
-      <Box
-        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
-        color="white"
-        px={8}
-        py={8}
-      >
-        <Container maxW="container.xl">
-          <Flex justify="space-between" align="center" mb={6}>
-            <VStack align="start" spacing={1}>
-              <Heading size="xl" fontWeight="bold">
-                {welcomeLabel}
-              </Heading>
-              <Text fontSize="lg" opacity={0.9}>
-                {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", {
-                  locale: es,
-                })}
-              </Text>
-            </VStack>
-            <HStack spacing={3}>
-              <Button
-                leftIcon={<FiUsers />}
-                colorScheme="whiteAlpha"
-                bg="whiteAlpha.300"
-                backdropFilter="blur(10px)"
-                _hover={{ bg: 'whiteAlpha.400' }}
-                color="white"
-                size="lg"
-                onClick={onOpen}
-              >
-                Nuevo Paciente
-              </Button>
-              <Button
-                leftIcon={<FiCalendar />}
-                bg="white"
-                color="brand.600"
-                _hover={{ bg: 'gray.50' }}
-                size="lg"
-                onClick={() => navigate('/calendar')}
-              >
-                Nueva Cita
-              </Button>
-            </HStack>
-          </Flex>
-
-          {/* Stats Cards - Medtters Style with Gradients */}
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-            {/* Citas Hoy */}
-            <Card
-              bg={cardBg}
-              borderRadius="2xl"
-              overflow="hidden"
-              position="relative"
-              boxShadow="xl"
-              _hover={{ transform: 'translateY(-4px)', boxShadow: '2xl' }}
-              transition="all 0.3s"
+    <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
+      <PageHead
+        crumbs={format(today, 'EEEE · d MMM yyyy', { locale: es })}
+        title={welcomeLabel}
+        sub={
+          <>
+            {todayAppointments.length} citas en agenda
+            {notesDraft > 0 ? ` · ${notesDraft} notas sin firmar` : ''}
+          </>
+        }
+        actions={
+          <>
+            <Button
+              leftIcon={<FiPlus />}
+              size="sm"
+              h="36px"
+              colorScheme="brand"
+              bg="brand.600"
+              color="white"
+              _hover={{ bg: 'brand.700' }}
+              onClick={onOpen}
             >
-              <Box
-                position="absolute"
-                top={0}
-                right={0}
-                width="120px"
-                height="120px"
-                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
-                opacity={0.1}
-                borderRadius="full"
-                transform="translate(30%, -30%)"
-              />
-              <CardBody p={6}>
-                <HStack justify="space-between" mb={4}>
-                  <Box
-                    bg="brand.50"
-                    p={3}
-                    borderRadius="xl"
-                    color="brand.500"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Icon as={FiCalendar} boxSize={6} />
-                  </Box>
-                  <Badge
-                    colorScheme="brand"
-                    fontSize="xs"
-                    px={3}
-                    py={1}
-                    borderRadius="full"
-                  >
-                    Hoy
-                  </Badge>
-                </HStack>
-                <Stat>
-                  <StatNumber fontSize="4xl" fontWeight="bold" color="gray.800">
-                    {todayAppointments.length}
-                  </StatNumber>
-                  <StatLabel fontSize="md" color="gray.600" mt={2}>
-                    Citas Programadas
-                  </StatLabel>
-                  <StatHelpText mt={3}>
-                    <HStack spacing={1}>
-                      <Icon as={FiCheckCircle} color="success.500" />
-                      <Text color="success.600" fontWeight="medium">
-                        {todayAppointments.filter((a) => a.status === 'CONFIRMED').length} confirmadas
-                      </Text>
-                    </HStack>
-                  </StatHelpText>
-                </Stat>
-              </CardBody>
-            </Card>
-
-            {/* Total Pacientes */}
-            <Card
-              bg={cardBg}
-              borderRadius="2xl"
-              overflow="hidden"
-              position="relative"
-              boxShadow="xl"
-              _hover={{ transform: 'translateY(-4px)', boxShadow: '2xl' }}
-              transition="all 0.3s"
-            >
-              <Box
-                position="absolute"
-                top={0}
-                right={0}
-                width="120px"
-                height="120px"
-                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
-                opacity={0.1}
-                borderRadius="full"
-                transform="translate(30%, -30%)"
-              />
-              <CardBody p={6}>
-                <HStack justify="space-between" mb={4}>
-                  <Box
-                    bg="purple.50"
-                    p={3}
-                    borderRadius="xl"
-                    color="purple.500"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Icon as={FiUsers} boxSize={6} />
-                  </Box>
-                  <Badge
-                    colorScheme="purple"
-                    fontSize="xs"
-                    px={3}
-                    py={1}
-                    borderRadius="full"
-                  >
-                    Total
-                  </Badge>
-                </HStack>
-                <Stat>
-                  <StatNumber fontSize="4xl" fontWeight="bold" color="gray.800">
-                    {patientsLoading ? '...' : patientsCount}
-                  </StatNumber>
-                  <StatLabel fontSize="md" color="gray.600" mt={2}>
-                    Pacientes Activos
-                  </StatLabel>
-                  <StatHelpText mt={3}>
-                    <HStack spacing={3} flexWrap="wrap">
-                      <HStack spacing={1}>
-                        <Icon as={FiUsers} color="purple.500" boxSize={3.5} />
-                        <Text color="gray.600" fontWeight="medium">
-                          {patientsLoading ? '...' : firstTimeCount} primera vez
-                        </Text>
-                      </HStack>
-                      <HStack spacing={1}>
-                        <Icon as={FiCheckCircle} color="green.500" boxSize={3.5} />
-                        <Text color="gray.600" fontWeight="medium">
-                          {patientsLoading ? '...' : recurrentCount} recurrentes
-                        </Text>
-                      </HStack>
-                    </HStack>
-                  </StatHelpText>
-                </Stat>
-              </CardBody>
-            </Card>
-
-            {/* Notas Creadas */}
-            <Card
-              bg={cardBg}
-              borderRadius="2xl"
-              overflow="hidden"
-              position="relative"
-              boxShadow="xl"
-              _hover={{ transform: 'translateY(-4px)', boxShadow: '2xl' }}
-              transition="all 0.3s"
-            >
-              <Box
-                position="absolute"
-                top={0}
-                right={0}
-                width="120px"
-                height="120px"
-                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
-                opacity={0.1}
-                borderRadius="full"
-                transform="translate(30%, -30%)"
-              />
-              <CardBody p={6}>
-                <HStack justify="space-between" mb={4}>
-                  <Box
-                    bg="success.50"
-                    p={3}
-                    borderRadius="xl"
-                    color="success.600"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Icon as={FiFileText} boxSize={6} />
-                  </Box>
-                  <Badge
-                    colorScheme="green"
-                    fontSize="xs"
-                    px={3}
-                    py={1}
-                    borderRadius="full"
-                  >
-                    Mes actual
-                  </Badge>
-                </HStack>
-                <Stat>
-                  <StatNumber fontSize="4xl" fontWeight="bold" color="gray.800">
-                    {notesCount === null ? '...' : notesCount}
-                  </StatNumber>
-                  <StatLabel fontSize="md" color="gray.600" mt={2}>
-                    Notas Médicas
-                  </StatLabel>
-                  <StatHelpText mt={3}>
-                    <HStack spacing={3} flexWrap="wrap">
-                      <HStack spacing={1}>
-                        <Icon as={FiEdit} color="orange.500" boxSize={3.5} />
-                        <Text color="gray.600" fontWeight="medium">
-                          {notesCount === null ? '...' : notesDraft} borradores
-                        </Text>
-                      </HStack>
-                      <HStack spacing={1}>
-                        <Icon as={FiCheckCircle} color="success.500" boxSize={3.5} />
-                        <Text color="gray.600" fontWeight="medium">
-                          {notesCount === null ? '...' : notesSigned} firmadas
-                        </Text>
-                      </HStack>
-                    </HStack>
-                  </StatHelpText>
-                </Stat>
-              </CardBody>
-            </Card>
-          </SimpleGrid>
-        </Container>
-      </Box>
-
-      <Container maxW="container.xl" pt={12} pb={8} mt={-8}>
-        <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-          {/* Próximas Citas - Medtters Style */}
-          <Card
-            bg={cardBg}
-            borderRadius="2xl"
-            boxShadow="lg"
-            overflow="hidden"
-          >
-            <CardHeader
-              bg={useColorModeValue('gray.50', 'gray.700')}
-              borderBottom="1px"
-              borderColor={borderColor}
-              py={4}
-            >
-              <HStack justify="space-between">
-                <HStack spacing={3}>
-                  <Box
-                    bg="brand.50"
-                    p={2}
-                    borderRadius="lg"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Icon as={FiClock} boxSize={5} color="brand.500" />
-                  </Box>
-                  <Heading size="md">Próximas Citas</Heading>
-                </HStack>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  colorScheme="brand"
-                  onClick={() => navigate('/calendar')}
-                >
-                  Ver todas →
-                </Button>
-              </HStack>
-            </CardHeader>
-            <CardBody p={6}>
-              <VStack spacing={4} align="stretch">
-                {upcomingAppointments.length === 0 ? (
-                  <VStack py={8} spacing={3}>
-                    <Icon as={FiCalendar} boxSize={12} color="gray.300" />
-                    <Text color="gray.500" textAlign="center">
-                      No hay citas próximas
-                    </Text>
-                    <Button
-                      size="sm"
-                      colorScheme="brand"
-                      onClick={() => navigate('/calendar')}
-                    >
-                      Agendar cita
-                    </Button>
-                  </VStack>
-                ) : (
-                  upcomingAppointments.map((apt) => {
-                    const patient = getPatientById(apt.patient_id);
-                    return (
-                      <Box
-                        key={apt.id}
-                        p={4}
-                        borderRadius="xl"
-                        borderWidth="1px"
-                        borderColor={borderColor}
-                        cursor="pointer"
-                        bg={useColorModeValue('white', 'gray.700')}
-                        _hover={{
-                          bg: useColorModeValue('brand.50', 'gray.600'),
-                          borderColor: 'brand.300',
-                          transform: 'translateX(4px)',
-                        }}
-                        transition="all 0.2s"
-                        onClick={() => navigate(`/patients/${apt.patient_id}`)}
-                      >
-                        <HStack spacing={4}>
-                          <Avatar
-                            size="md"
-                            name={`${patient?.firstName} ${patient?.lastName}`}
-                            src={patient?.avatar}
-                            bg="brand.100"
-                            color="brand.600"
-                            sx={{
-                              '& span': {
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '100%',
-                                height: '100%',
-                              },
-                            }}
-                          />
-                          <VStack align="start" spacing={1} flex={1}>
-                            <Text fontWeight="semibold" fontSize="md">
-                              {patient?.firstName} {patient?.lastName}
-                            </Text>
-                            <HStack spacing={2}>
-                              <Icon as={FiClock} boxSize={3} color="gray.500" />
-                              <Text fontSize="sm" color="gray.600">
-                                {format(
-                                  new Date(apt.starts_at),
-                                  "d MMM, HH:mm 'hrs'",
-                                  { locale: es }
-                                )}
-                              </Text>
-                            </HStack>
-                          </VStack>
-                          <Badge
-                            colorScheme={getStatusColor(apt.status)}
-                            fontSize="xs"
-                            px={3}
-                            py={1}
-                            borderRadius="full"
-                          >
-                            {getStatusLabel(apt.status)}
-                          </Badge>
-                        </HStack>
-                      </Box>
-                    );
-                  })
-                )}
-              </VStack>
-            </CardBody>
-          </Card>
-
-          {/* Pacientes Recientes - Medtters Style */}
-          <Card
-            bg={cardBg}
-            borderRadius="2xl"
-            boxShadow="lg"
-            overflow="hidden"
-          >
-            <CardHeader
-              bg={useColorModeValue('gray.50', 'gray.700')}
-              borderBottom="1px"
-              borderColor={borderColor}
-              py={4}
-            >
-              <HStack justify="space-between">
-                <HStack spacing={3}>
-                  <Box
-                    bg="purple.50"
-                    p={2}
-                    borderRadius="lg"
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                  >
-                    <Icon as={FiUsers} boxSize={5} color="purple.500" />
-                  </Box>
-                  <Heading size="md">Pacientes Recientes</Heading>
-                </HStack>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  colorScheme="purple"
-                  onClick={() => navigate('/patients')}
-                >
-                  Ver todos →
-                </Button>
-              </HStack>
-            </CardHeader>
-            <CardBody p={6}>
-              <VStack spacing={4} align="stretch">
-                {recentPatients.map((patient) => (
-                  <Box
-                    key={patient.id}
-                    p={4}
-                    borderRadius="xl"
-                    borderWidth="1px"
-                    borderColor={borderColor}
-                    cursor="pointer"
-                    bg={useColorModeValue('white', 'gray.700')}
-                    _hover={{
-                      bg: useColorModeValue('purple.50', 'gray.600'),
-                      borderColor: 'purple.300',
-                      transform: 'translateX(4px)',
-                    }}
-                    transition="all 0.2s"
-                    onClick={() => navigate(`/patients/${patient.id}`)}
-                  >
-                    <HStack spacing={4}>
-                      <Avatar
-                        size="md"
-                        name={`${patient.firstName} ${patient.lastName}`}
-                        src={patient.avatar}
-                        bg="purple.100"
-                        color="purple.600"
-                        sx={{
-                          '& span': {
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '100%',
-                            height: '100%',
-                          },
-                        }}
-                      />
-                      <VStack align="start" spacing={1} flex={1}>
-                        <Text fontWeight="semibold" fontSize="md">
-                          {patient.firstName} {patient.lastName}
-                        </Text>
-                        <Text fontSize="sm" color="gray.600">
-                          Última visita:{' '}
-                          {patient.lastVisit
-                            ? format(
-                                new Date(patient.lastVisit),
-                                "d 'de' MMM",
-                                { locale: es }
-                              )
-                            : 'N/A'}
-                        </Text>
-                      </VStack>
-                    </HStack>
-                  </Box>
-                ))}
-              </VStack>
-            </CardBody>
-          </Card>
-        </SimpleGrid>
-
-        {/* Recent Notes - Full Width with Medtters Style */}
-        <Card
-          bg={cardBg}
-          borderRadius="2xl"
-          boxShadow="lg"
-          overflow="hidden"
-          mt={6}
-        >
-          <CardHeader
-            bg={useColorModeValue('gray.50', 'gray.700')}
-            borderBottom="1px"
-            borderColor={borderColor}
-            py={4}
-          >
-            <HStack spacing={3}>
-              <Box
-                bg="success.50"
-                p={2}
-                borderRadius="lg"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Icon as={FiFileText} boxSize={5} color="success.500" />
-              </Box>
-              <Heading size="md">Últimas Notas Médicas</Heading>
-            </HStack>
-          </CardHeader>
-          <CardBody p={6}>
-            <VStack spacing={4} align="stretch">
-              {recentNotes.length === 0 ? (
-                <Text color="gray.500" py={6} textAlign="center">
-                  No hay notas este mes
-                </Text>
-              ) : (
-                recentNotes.map((note) => {
-                  const noteIcon = getNoteTypeIcon(note.type ?? 'evolution');
-                  return (
-                  <Box
-                    key={note.id}
-                    p={5}
-                    borderRadius="xl"
-                    borderWidth="1px"
-                    borderColor={borderColor}
-                    cursor="pointer"
-                    bg={useColorModeValue('white', 'gray.700')}
-                    _hover={{
-                      bg: useColorModeValue('success.50', 'gray.600'),
-                      borderColor: 'success.300',
-                      transform: 'translateX(4px)',
-                    }}
-                    transition="all 0.2s"
-                    onClick={() => navigate(`/patients/${note.patient_id}`)}
-                  >
-                    <HStack spacing={4} align="start">
-                      <Tooltip label={getNoteTypeLabel(note.type ?? 'evolution')} placement="top" hasArrow>
-                        <Box
-                          bg={noteIcon.bg}
-                          p={3}
-                          borderRadius="xl"
-                          color={noteIcon.color}
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                        >
-                          <Icon as={noteIcon.icon} boxSize={5} />
-                        </Box>
-                      </Tooltip>
-                      <VStack align="start" spacing={2} flex={1}>
-                        <HStack justify="space-between" w="full" align="center">
-                          <Text fontWeight="semibold" fontSize="md" flex={1} noOfLines={1}>
-                            {note.title}
-                          </Text>
-                          {note.status === 'signed' ? (
-                            <Tooltip label="Firmada" placement="top" hasArrow>
-                              <Box as="span" display="inline-flex" color="green.500" alignItems="center" flexShrink={0}>
-                                <Icon as={MdVerified} boxSize={4} />
-                              </Box>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip
-                              label={note.created_at ? `Borrador creado el ${format(new Date(note.created_at), "d 'de' MMM, yyyy 'a las' HH:mm", { locale: es })}` : 'Borrador'}
-                              placement="top"
-                              hasArrow
-                            >
-                              <Box as="span" display="inline-flex" color="orange.500" alignItems="center" flexShrink={0}>
-                                <Icon as={FiEdit} boxSize={4} />
-                              </Box>
-                            </Tooltip>
-                          )}
-                        </HStack>
-                        <HStack justify="space-between" w="full">
-                          <Text fontSize="sm" color="gray.600">
-                            Paciente: {note.patient_name} {note.patient_lastname}
-                          </Text>
-                          <Text fontSize="sm" color="gray.500">
-                            {(() => {
-                              const dateStr = note.created_at ?? note.accessed_at;
-                              if (!dateStr) return '—';
-                              const d = new Date(dateStr);
-                              return Number.isNaN(d.getTime())
-                                ? '—'
-                                : format(d, "d 'de' MMM, HH:mm", { locale: es });
-                            })()}
-                          </Text>
-                        </HStack>
-                      </VStack>
-                    </HStack>
-                  </Box>
-                  );
-                })
-              )}
-            </VStack>
-          </CardBody>
-        </Card>
-      </Container>
-
-      <PatientFormModal
-        isOpen={isOpen}
-        onClose={onClose}
-        onSuccess={refetch}
+              Nuevo paciente
+            </Button>
+          </>
+        }
       />
-    </Box>
+
+      <TodayStrip
+        cells={[
+          {
+            label: 'Siguiente cita',
+            value: nextCitaValue,
+            sub: nextCitaSub,
+          },
+          {
+            label: 'Hoy',
+            value: String(todayRemaining),
+            sub: `restantes · ${todayAttended} atendido${todayAttended === 1 ? '' : 's'}`,
+          },
+          {
+            label: 'Borradores',
+            value:
+              notesDraft > 0 ? (
+                <ChakraLink
+                  color="brand.600"
+                  onClick={handleNewNote}
+                  _hover={{ textDecoration: 'underline' }}
+                >
+                  {notesDraft} sin firmar
+                </ChakraLink>
+              ) : (
+                '0'
+              ),
+            tone: notesDraft > 0 ? 'warn' : 'default',
+          },
+          {
+            label: 'Cumplimiento NOM',
+            value: compliancePct == null ? '—' : `${compliancePct}%`,
+            sub:
+              complianceOverall == null
+                ? '· sin datos'
+                : `· ${complianceOverall.patient_count} paciente${
+                    complianceOverall.patient_count === 1 ? '' : 's'
+                  }`,
+          },
+        ]}
+      />
+
+      {notesDraft > 0 && (
+        <Nudge>
+          Tienes <b>{notesDraft} notas en borrador</b>. Las notas sin firmar no
+          cuentan para NOM‑004.{' '}
+          <ChakraLink
+            color="statusSoft.warnFg"
+            fontWeight={600}
+            textDecoration="underline"
+            onClick={handleNewNote}
+          >
+            Revisar y firmar →
+          </ChakraLink>
+        </Nudge>
+      )}
+
+      <SimpleGrid
+        templateColumns={{ base: '1fr', lg: '1.4fr 1fr' }}
+        spacing={5}
+      >
+        {/* Today's agenda */}
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          overflow="hidden"
+        >
+          <HStack
+            justify="space-between"
+            px={{ base: 4, md: 5 }}
+            py={4}
+            borderBottom="1px solid"
+            borderColor={borderColor}
+          >
+            <Heading
+              as="h3"
+              fontSize="14px"
+              fontWeight={600}
+              letterSpacing="-0.005em"
+            >
+              Agenda de hoy
+            </Heading>
+            <Text
+              fontFamily="mono"
+              fontSize="11px"
+              color={metaColor}
+              letterSpacing="0.06em"
+            >
+              {format(today, 'd MMM', { locale: es }).toUpperCase()} ·{' '}
+              {todayAppointments.length} CITAS
+            </Text>
+          </HStack>
+          {todayAppointments.length === 0 ? (
+            <Box p={6}>
+              <Text fontSize="sm" color={mutedColor} textAlign="center">
+                No hay citas programadas para hoy.
+              </Text>
+            </Box>
+          ) : (
+            <VStack as="ul" spacing={0} align="stretch">
+              {todayAppointments.map((apt) => {
+                const p = patientById[apt.patient_id];
+                const start = new Date(apt.starts_at);
+                const end = new Date(apt.ends_at);
+                const mins = Math.max(0, differenceInMinutes(end, start));
+                const isNow = nowRowId === apt.id;
+                return (
+                  <HStack
+                    key={apt.id}
+                    as="button"
+                    onClick={() =>
+                      navigate(
+                        `/patients/${normalizePatientSlug(p?.slug) || apt.patient_id}`
+                      )
+                    }
+                    display="grid"
+                    gridTemplateColumns={{
+                      base: '52px 1fr auto',
+                      md: '68px 1fr auto',
+                    }}
+                    gap={{ base: 3, md: 4 }}
+                    px={{ base: 3, md: 5 }}
+                    py={3}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    bg={isNow ? nowBg : 'transparent'}
+                    _hover={{ bg: isNow ? nowHoverBg : rowHoverBg }}
+                    transition="background .1s"
+                    textAlign="left"
+                    alignItems="center"
+                    sx={{ '&:last-child': { borderBottom: 'none' } }}
+                  >
+                    <Box
+                      textAlign="right"
+                      fontFamily="mono"
+                      fontSize="13px"
+                      fontWeight={500}
+                      color="text.strong"
+                    >
+                      {format(start, 'HH:mm')}
+                      <Text
+                        as="span"
+                        display="block"
+                        fontSize="10.5px"
+                        color={metaColor}
+                        fontWeight={400}
+                        mt="1px"
+                      >
+                        {mins} min
+                      </Text>
+                    </Box>
+                    <Box minW={0}>
+                      <Text fontWeight={500} fontSize="14px" color="text.strong">
+                        {p ? `${p.firstName} ${p.lastName}` : 'Paciente'}
+                        {isNow && (
+                          <Text
+                            as="span"
+                            ml={2}
+                            fontFamily="mono"
+                            fontSize="11px"
+                            color={metaColor}
+                            fontWeight={400}
+                          >
+                            · ahora
+                          </Text>
+                        )}
+                      </Text>
+                      <Text fontSize="12.5px" color={mutedColor} mt="1px">
+                        {p?.isRecurrent ? 'Recurrente' : 'Primera vez'}
+                      </Text>
+                    </Box>
+                    <StatusBadge tone={statusToTone(apt.status)}>
+                      {statusLabel(apt.status)}
+                    </StatusBadge>
+                  </HStack>
+                );
+              })}
+            </VStack>
+          )}
+        </Box>
+
+        {/* Recent notes */}
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          overflow="hidden"
+        >
+          <HStack
+            justify="space-between"
+            px={{ base: 4, md: 5 }}
+            py={4}
+            borderBottom="1px solid"
+            borderColor={borderColor}
+          >
+            <Heading
+              as="h3"
+              fontSize="14px"
+              fontWeight={600}
+              letterSpacing="-0.005em"
+            >
+              Notas recientes
+            </Heading>
+            <Text
+              fontFamily="mono"
+              fontSize="11px"
+              color={metaColor}
+              letterSpacing="0.06em"
+            >
+              {Math.min(5, notesCount ?? 0)} ÚLTIMAS
+            </Text>
+          </HStack>
+          {recentNotes.length === 0 ? (
+            <Box p={6}>
+              <Text fontSize="sm" color={mutedColor} textAlign="center">
+                No hay notas recientes.
+              </Text>
+            </Box>
+          ) : (
+            <VStack spacing={0} align="stretch">
+              {recentNotes.map((note) => {
+                const created = note.created_at
+                  ? new Date(note.created_at)
+                  : null;
+                const isSigned = note.status === 'signed';
+                const tone: StatusBadgeTone = isSigned ? 'signed' : 'draft';
+                const label = isSigned
+                  ? created
+                    ? `Firmada · ${format(created, 'd MMM', { locale: es })}`
+                    : 'Firmada'
+                  : 'Borrador';
+                const when = created
+                  ? isSameDay(created, today)
+                    ? `Creada hoy, ${format(created, 'HH:mm')}`
+                    : `Creada ${format(created, 'd MMM, HH:mm', { locale: es })}`
+                  : '';
+                const patientSlug =
+                  normalizePatientSlug(note.patient_slug) ||
+                  normalizePatientSlug(patientById[note.patient_id]?.slug) ||
+                  '';
+                const patientSlugForUrl =
+                  patientSlug || normalizePatientSlug(note.patient_id) || note.patient_id;
+
+                return (
+                  <HStack
+                    key={note.id}
+                    as="button"
+                    onClick={() =>
+                      navigate(
+                        `/patients/${patientSlugForUrl}/notes/${note.id}/edit`
+                      )
+                    }
+                    display="grid"
+                    gridTemplateColumns="1fr auto"
+                    gap={{ base: 3, md: 4 }}
+                    px={{ base: 3, md: 5 }}
+                    py={3}
+                    borderBottom="1px solid"
+                    borderColor={borderColor}
+                    _hover={{ bg: rowHoverBg }}
+                    alignItems="center"
+                    textAlign="left"
+                    sx={{ '&:last-child': { borderBottom: 'none' } }}
+                  >
+                    <Box minW={0}>
+                      <Text
+                        fontWeight={500}
+                        fontSize="13.5px"
+                        color="text.strong"
+                        noOfLines={1}
+                      >
+                        {note.title}
+                      </Text>
+                      {patientSlug ? (
+                        <Text
+                          fontFamily="mono"
+                          fontSize="10.5px"
+                          letterSpacing="0.06em"
+                          textTransform="uppercase"
+                          color={metaColor}
+                          mt="2px"
+                          noOfLines={1}
+                        >
+                          {patientSlug}
+                        </Text>
+                      ) : null}
+                      {when && (
+                        <Text fontSize="12px" color={mutedColor} mt="2px">
+                          {when}
+                        </Text>
+                      )}
+                    </Box>
+                    <StatusBadge tone={tone}>{label}</StatusBadge>
+                  </HStack>
+                );
+              })}
+            </VStack>
+          )}
+        </Box>
+      </SimpleGrid>
+
+      <PatientFormModal isOpen={isOpen} onClose={onClose} onSuccess={refetch} />
+    </Container>
   );
 };
 

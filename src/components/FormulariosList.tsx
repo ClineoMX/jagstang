@@ -1,20 +1,26 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  VStack,
-  HStack,
-  Text,
-  Button,
-  Icon,
   Box,
-  useColorModeValue,
-  Card,
-  CardBody,
-  SimpleGrid,
+  Button,
+  HStack,
+  Icon,
+  IconButton,
   Spinner,
+  Table,
+  Tbody,
+  Td,
+  Text,
+  Th,
+  Thead,
+  Tr,
+  VStack,
+  useColorModeValue,
   useToast,
 } from '@chakra-ui/react';
-import { FiFileText, FiPlus } from 'react-icons/fi';
+import { FiChevronRight, FiFileText, FiPlus, FiSearch } from 'react-icons/fi';
 import { apiService } from '../services/api';
+import SurfaceCard from './SurfaceCard';
+import TablePagination from './TablePagination';
 
 interface SavedFormSummary {
   id: string;
@@ -33,18 +39,33 @@ const FormulariosList: React.FC<FormulariosListProps> = ({
   onSelectForm,
 }) => {
   const toast = useToast();
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const iconBg = useColorModeValue('brand.50', 'whiteAlpha.100');
+  const headerColor = useColorModeValue('paper.600', 'paper.500');
+  const rowBorder = useColorModeValue('line.light', 'whiteAlpha.200');
+  const helpColor = useColorModeValue('paper.700', 'paper.400');
+  const badgeBg = useColorModeValue('paper.100', 'whiteAlpha.100');
+  const badgeColor = useColorModeValue('paper.700', 'paper.300');
+  const rowHoverBg = useColorModeValue('paper.50', 'whiteAlpha.50');
+  const nameColor = useColorModeValue('ink.700', 'paper.50');
 
   const [savedForms, setSavedForms] = useState<SavedFormSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const filteredForms = useMemo(() => {
     if (searchQuery.trim() === '') return savedForms;
     const q = searchQuery.toLowerCase();
     return savedForms.filter((f) => f.name.toLowerCase().includes(q));
   }, [savedForms, searchQuery]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
+
+  const pagedForms = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredForms.slice(start, start + pageSize);
+  }, [filteredForms, page, pageSize]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,112 +93,146 @@ const FormulariosList: React.FC<FormulariosListProps> = ({
   }, [toast]);
 
   return (
-    <VStack align="stretch" spacing={6}>
+    <SurfaceCard flush>
       {loading ? (
-        <Card bg={cardBg} borderRadius="2xl">
-          <CardBody>
-            <VStack spacing={4} py={12}>
-              <Spinner size="xl" colorScheme="brand" />
-              <Text color="gray.500">Cargando formularios…</Text>
-            </VStack>
-          </CardBody>
-        </Card>
+        <VStack py={14} spacing={3}>
+          <Spinner size="lg" color="brand.500" thickness="3px" />
+          <Text fontSize="14px" color={helpColor}>
+            Cargando formularios…
+          </Text>
+        </VStack>
       ) : savedForms.length === 0 ? (
-        <Card bg={cardBg} borderRadius="2xl" borderWidth="1px" borderColor={borderColor}>
-          <CardBody py={12}>
-            <VStack spacing={4}>
-              <Icon as={FiFileText} boxSize={12} color="gray.400" />
-              <Text color="gray.500" textAlign="center" fontSize="lg">
-                No hay formularios guardados.
-              </Text>
-              <Text fontSize="sm" color="gray.400" textAlign="center">
-                Crea un formulario para definir campos sobre un PDF y posicionarlos.
-              </Text>
-              <Button
-                leftIcon={<Icon as={FiPlus} />}
-                colorScheme="brand"
-                size="lg"
-                onClick={onSelectNew}
-              >
-                Crear primer formulario
-              </Button>
-            </VStack>
-          </CardBody>
-        </Card>
+        <VStack py={12} spacing={4} px={4}>
+          <Icon as={FiFileText} boxSize={10} color="paper.400" />
+          <Text fontSize="15px" fontWeight={600} color={nameColor} textAlign="center">
+            No hay formularios guardados
+          </Text>
+          <Text fontSize="13px" color={helpColor} textAlign="center" maxW="360px">
+            Crea un formulario para definir campos sobre un PDF y posicionarlos.
+          </Text>
+          <Button
+            leftIcon={<FiPlus />}
+            size="sm"
+            h="36px"
+            bg="brand.600"
+            color="white"
+            _hover={{ bg: 'brand.700' }}
+            fontWeight={500}
+            onClick={onSelectNew}
+          >
+            Crear primer formulario
+          </Button>
+        </VStack>
       ) : filteredForms.length === 0 ? (
-        <Card bg={cardBg} borderRadius="2xl">
-          <CardBody>
-            <VStack spacing={4} py={12}>
-              <Box fontSize="4xl">🔍</Box>
-              <Text fontSize="xl" fontWeight="semibold" color="gray.500">
-                No se encontraron formularios
-              </Text>
-              {searchQuery && (
-                <Text fontSize="md" color="gray.400">
-                  Intenta con otro término de búsqueda
-                </Text>
-              )}
-            </VStack>
-          </CardBody>
-        </Card>
+        <VStack py={12} spacing={3} px={4}>
+          <Icon as={FiSearch} boxSize={8} color="paper.400" />
+          <Text fontSize="15px" fontWeight={600} color={nameColor}>
+            No se encontraron formularios
+          </Text>
+          {searchQuery.trim() !== '' && (
+            <Text fontSize="13px" color={helpColor} textAlign="center">
+              Intenta con otro término de búsqueda.
+            </Text>
+          )}
+        </VStack>
       ) : (
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-          {filteredForms.map((form) => (
-            <Card
-              key={form.id}
-              bg={cardBg}
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor={borderColor}
-              cursor="pointer"
-              position="relative"
-              overflow="hidden"
-              transition="all 0.3s"
-              _hover={{
-                transform: 'translateY(-8px)',
-                shadow: '2xl',
-                borderColor: 'brand.300',
-              }}
-              onClick={() => onSelectForm(form.id)}
-            >
-              <Box
-                position="absolute"
-                top="-40px"
-                right="-40px"
-                w="120px"
-                h="120px"
-                bgGradient="linear(135deg, brand.400 0%, brand.500 100%)"
-                borderRadius="full"
-                opacity={0.1}
-                pointerEvents="none"
+        <>
+          <Table variant="simple" size="md">
+            <Thead>
+              <Tr>
+              <Th
+                fontFamily="mono"
+                fontSize="10.5px"
+                letterSpacing="0.08em"
+                color={headerColor}
+                borderColor={rowBorder}
+                textTransform="uppercase"
+              >
+                Nombre
+              </Th>
+              <Th
+                fontFamily="mono"
+                fontSize="10.5px"
+                letterSpacing="0.08em"
+                color={headerColor}
+                borderColor={rowBorder}
+                textTransform="uppercase"
+              >
+                Tipo
+              </Th>
+              <Th
+                fontFamily="mono"
+                fontSize="10.5px"
+                letterSpacing="0.08em"
+                color={headerColor}
+                borderColor={rowBorder}
+                textTransform="uppercase"
+                w="56px"
+                px={2}
               />
-              <CardBody p={6}>
-                <VStack spacing={4} align="stretch">
-                  <HStack spacing={4}>
-                    <Box
-                      p={3}
-                      borderRadius="xl"
-                      bg={iconBg}
-                      color="brand.500"
-                    >
-                      <Icon as={FiFileText} boxSize={8} />
-                    </Box>
-                    <VStack align="start" spacing={0} flex={1}>
-                      <Text fontWeight="bold" fontSize="lg" noOfLines={2}>
-                        {form.name}
-                      </Text>
-                      <Text fontSize="sm" color="gray.500">
-                        Formulario PDF
-                      </Text>
-                    </VStack>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {pagedForms.map((form) => (
+              <Tr
+                key={form.id}
+                cursor="pointer"
+                transition="background .12s ease"
+                _hover={{ bg: rowHoverBg }}
+                onClick={() => onSelectForm(form.id)}
+              >
+                <Td borderColor={rowBorder}>
+                  <HStack spacing={3}>
+                    <Icon as={FiFileText} color="brand.500" boxSize={4} />
+                    <Text fontSize="14px" fontWeight={500} color={nameColor} noOfLines={2}>
+                      {form.name}
+                    </Text>
                   </HStack>
-                </VStack>
-              </CardBody>
-            </Card>
-          ))}
-        </SimpleGrid>
+                </Td>
+                <Td borderColor={rowBorder}>
+                  <Box
+                    as="span"
+                    display="inline-block"
+                    px={2}
+                    py={0.5}
+                    borderRadius="4px"
+                    bg={badgeBg}
+                    color={badgeColor}
+                    fontSize="11px"
+                    fontWeight={500}
+                  >
+                    Formulario PDF
+                  </Box>
+                </Td>
+                <Td borderColor={rowBorder} px={2}>
+                  <IconButton
+                    aria-label={`Abrir ${form.name}`}
+                    icon={<FiChevronRight />}
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectForm(form.id);
+                    }}
+                  />
+                </Td>
+              </Tr>
+              ))}
+            </Tbody>
+          </Table>
+          <TablePagination
+            totalItems={filteredForms.length}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+          />
+        </>
       )}
-    </VStack>
+    </SurfaceCard>
   );
 };
 

@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FormControl, FormLabel, HStack, Input, Select } from '@chakra-ui/react';
+import {
+  FormControl,
+  FormLabel,
+  HStack,
+  Input,
+  Select,
+  useColorModeValue,
+} from '@chakra-ui/react';
 
 type CountryOption = {
   iso2: string;
@@ -38,17 +45,18 @@ function normalizeE164(input: string) {
   return digitsOnly(trimmed);
 }
 
-function splitE164ToCountry(e164OrDigits: string): { countryIso2: string; national: string } {
+function splitE164ToCountry(e164OrDigits: string): {
+  countryIso2: string;
+  national: string;
+} {
   const normalized = normalizeE164(e164OrDigits);
   if (!normalized) return { countryIso2: DEFAULT_COUNTRY_ISO2, national: '' };
 
-  // If it doesn't start with '+', treat as national number with default country.
   if (!normalized.startsWith('+')) {
     return { countryIso2: DEFAULT_COUNTRY_ISO2, national: normalized };
   }
 
   const rest = normalized.slice(1);
-  // Prefer the longest matching calling code.
   const match = [...COUNTRY_OPTIONS]
     .sort((a, b) => b.callingCode.length - a.callingCode.length)
     .find((c) => rest.startsWith(c.callingCode));
@@ -56,13 +64,17 @@ function splitE164ToCountry(e164OrDigits: string): { countryIso2: string; nation
   if (!match) {
     return { countryIso2: DEFAULT_COUNTRY_ISO2, national: rest };
   }
-  return { countryIso2: match.iso2, national: rest.slice(match.callingCode.length) };
+  return {
+    countryIso2: match.iso2,
+    national: rest.slice(match.callingCode.length),
+  };
 }
 
 function toE164(countryIso2: string, nationalInput: string) {
   const national = digitsOnly(nationalInput);
   if (!national) return undefined;
-  const country = COUNTRY_OPTIONS.find((c) => c.iso2 === countryIso2) || COUNTRY_OPTIONS[0];
+  const country =
+    COUNTRY_OPTIONS.find((c) => c.iso2 === countryIso2) || COUNTRY_OPTIONS[0];
   return `+${country.callingCode}${national}`;
 }
 
@@ -77,6 +89,10 @@ type Props = {
   onChange: (next: PhoneNumberFieldValue) => void;
   /** If provided (e.g. "+525512345678"), will be used to initialize/sync the field */
   e164Value?: string | null | undefined;
+  /** Hide the built-in label (e.g. when the field is placed inside a section that already has one). */
+  hideLabel?: boolean;
+  /** Mark the field as required (affects label asterisk only). */
+  isRequired?: boolean;
 };
 
 export default function PhoneNumberField({
@@ -84,9 +100,13 @@ export default function PhoneNumberField({
   value,
   onChange,
   e164Value,
+  hideLabel = false,
+  isRequired = false,
 }: Props) {
   const options = useMemo(() => COUNTRY_OPTIONS, []);
   const [didInitFromE164, setDidInitFromE164] = useState(false);
+
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
 
   useEffect(() => {
     setDidInitFromE164(false);
@@ -100,18 +120,56 @@ export default function PhoneNumberField({
     setDidInitFromE164(true);
   }, [didInitFromE164, e164Value, onChange]);
 
+  // Shared proto-styled input/select look, matches other forms on the redesign.
+  const controlStyles = {
+    size: 'sm' as const,
+    h: '36px',
+    fontSize: '13.5px',
+    borderColor: 'line.strong',
+    borderRadius: '6px',
+    _hover: { borderColor: 'paper.600' },
+    _focus: {
+      borderColor: 'brand.500',
+      boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+    },
+    _focusVisible: {
+      borderColor: 'brand.500',
+      boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+    },
+  };
+
   return (
-    <FormControl>
-      <FormLabel>{label}</FormLabel>
-      <HStack spacing={3} align="stretch">
+    <FormControl isRequired={isRequired}>
+      {!hideLabel && (
+        <FormLabel
+          fontSize="11px"
+          fontFamily="mono"
+          letterSpacing="0.08em"
+          textTransform="uppercase"
+          color={labelColor}
+          fontWeight={500}
+          mb={1.5}
+          requiredIndicator={
+            <span style={{ color: 'var(--chakra-colors-red-500)' }}> *</span>
+          }
+        >
+          {label}
+        </FormLabel>
+      )}
+      <HStack spacing={2} align="stretch">
         <Select
           value={value.countryIso2}
           onChange={(e) => onChange({ ...value, countryIso2: e.target.value })}
-          maxW={{ base: '100%', md: '260px' }}
+          w={{ base: '120px', md: '130px' }}
+          flexShrink={0}
+          iconSize="14px"
+          fontFamily="mono"
+          letterSpacing="0.02em"
+          {...controlStyles}
         >
           {options.map((c) => (
             <option key={`${c.iso2}-${c.callingCode}`} value={c.iso2}>
-              {c.flag} {c.nameEs} (+{c.callingCode})
+              {c.flag} +{c.callingCode}
             </option>
           ))}
         </Select>
@@ -120,7 +178,6 @@ export default function PhoneNumberField({
           value={value.nationalNumber}
           onChange={(e) => {
             const raw = e.target.value;
-            // Allow pasting full E.164 like "+52 55..."
             if (raw.trim().startsWith('+')) {
               const { countryIso2, national } = splitE164ToCountry(raw);
               onChange({ countryIso2, nationalNumber: national });
@@ -129,6 +186,10 @@ export default function PhoneNumberField({
             onChange({ ...value, nationalNumber: digitsOnly(raw) });
           }}
           placeholder="55 1234 5678"
+          fontFamily="mono"
+          letterSpacing="0.02em"
+          flex={1}
+          {...controlStyles}
         />
       </HStack>
     </FormControl>
@@ -136,4 +197,3 @@ export default function PhoneNumberField({
 }
 
 export const phoneNumberFieldUtils = { toE164, splitE164ToCountry, digitsOnly };
-

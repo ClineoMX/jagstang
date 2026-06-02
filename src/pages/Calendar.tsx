@@ -2,7 +2,7 @@ import React, { useRef, useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Container,
-  Heading,
+  Flex,
   HStack,
   VStack,
   Text,
@@ -13,37 +13,54 @@ import {
   AlertDialogHeader,
   AlertDialogBody,
   AlertDialogFooter,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  ModalFooter,
   useDisclosure,
-  Badge,
   Avatar,
   useToast,
   useColorModeValue,
+  useBreakpointValue,
   Icon,
   IconButton,
-  Tooltip,
-  ButtonGroup,
+  Checkbox,
 } from '@chakra-ui/react';
-import { FiPlus, FiCalendar as FiCalendarIcon, FiCheck, FiX } from 'react-icons/fi';
-import { Calendar as BigCalendar, dateFnsLocalizer, type View, type NavigateAction, type ToolbarProps } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay } from 'date-fns';
+import {
+  FiPlus,
+  FiCheck,
+  FiX,
+  FiChevronLeft,
+  FiChevronRight,
+  FiDownload,
+} from 'react-icons/fi';
+import {
+  Calendar as BigCalendar,
+  dateFnsLocalizer,
+  type View,
+  type ToolbarProps,
+} from 'react-big-calendar';
+import {
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  addDays,
+  addMonths,
+  startOfDay,
+} from 'date-fns';
 import { es } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppointments } from '../hooks/useAppointments';
 import { usePatients } from '../hooks/usePatients';
 import AppointmentFormModal from '../components/AppointmentFormModal';
+import PageHead from '../components/PageHead';
+import MiniCalendar from '../components/MiniCalendar';
+import CalendarDayView from '../components/CalendarDayView';
+import CalendarAgendaView from '../components/CalendarAgendaView';
+import StatusBadge from '../components/StatusBadge';
+import FormDrawer from '../components/FormDrawer';
 import type { ApiAppointment } from '../types';
+import { normalizePatientSlug } from '../utils/patientSlug';
 
-const locales = {
-  es: es,
-};
+const locales = { es };
 
 const CALENDAR_MIN = new Date(2000, 0, 1, 8, 0, 0);
 const CALENDAR_MAX = new Date(2000, 0, 1, 22, 0, 0);
@@ -56,29 +73,10 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-function CalendarToolbar(props: ToolbarProps<CalendarEvent, object>) {
-  const { label, onNavigate, localizer: loc } = props;
-  const messages = (loc?.messages ?? {}) as Record<string, string>;
-  return (
-    <div className="rbc-toolbar">
-      <span className="rbc-btn-group">
-        <button type="button" onClick={() => onNavigate('TODAY' as NavigateAction)}>
-          {messages.today ?? 'Hoy'}
-        </button>
-        <button type="button" onClick={() => onNavigate('PREV' as NavigateAction)}>
-          {messages.previous ?? 'Anterior'}
-        </button>
-        <button type="button" onClick={() => onNavigate('NEXT' as NavigateAction)}>
-          {messages.next ?? 'Siguiente'}
-        </button>
-      </span>
-      <span className="rbc-toolbar-label">{label}</span>
-    </div>
-  );
-}
+type ProtoView = 'day' | 'agenda' | 'week' | 'month';
 
-interface CalendarEventResource extends ApiAppointment {
-  duration: number;
+function RbcEmptyToolbar(_: ToolbarProps<CalendarEvent, object>) {
+  return null;
 }
 
 interface CalendarEvent {
@@ -86,15 +84,55 @@ interface CalendarEvent {
   title: string;
   start: Date;
   end: Date;
-  resource: CalendarEventResource;
+  resource: ApiAppointment & { duration: number };
 }
+
+type StatusFilter = {
+  confirmed: boolean;
+  pending: boolean;
+  cancelled: boolean;
+};
+
+const statusTone = (status: string) => {
+  switch (status?.toUpperCase()) {
+    case 'CONFIRMED':
+      return 'confirm' as const;
+    case 'COMPLETED':
+      return 'signed' as const;
+    case 'PENDING':
+      return 'pending' as const;
+    case 'CANCELLED':
+      return 'cancel' as const;
+    default:
+      return 'neutral' as const;
+  }
+};
+
+const statusLabel = (status: string) => {
+  switch (status?.toUpperCase()) {
+    case 'CONFIRMED':
+      return 'Confirmada';
+    case 'COMPLETED':
+      return 'Completada';
+    case 'PENDING':
+      return 'Pendiente';
+    case 'CANCELLED':
+      return 'Cancelada';
+    default:
+      return status ?? '';
+  }
+};
 
 const CalendarPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
-  const { appointments, createAppointment, updateAppointmentStatus, deleteAppointment } =
-    useAppointments();
+  const {
+    appointments,
+    createAppointment,
+    updateAppointmentStatus,
+    deleteAppointment,
+  } = useAppointments();
   const { patients } = usePatients();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
@@ -108,6 +146,7 @@ const CalendarPage: React.FC = () => {
     onClose: onCancelClose,
   } = useDisclosure();
   const cancelRef = useRef<HTMLButtonElement | null>(null);
+
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null
   );
@@ -117,20 +156,43 @@ const CalendarPage: React.FC = () => {
   const [initialPatientId, setInitialPatientId] = useState<string | undefined>(
     undefined
   );
-  const [calendarView, setCalendarView] = useState<View>('month');
-  const [calendarDate, setCalendarDate] = useState(() => new Date());
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  const handleNavigate = (newDate: Date) => {
-    setCalendarDate(newDate);
-  };
+  const [view, setView] = useState<ProtoView>('day');
+  const [currentDate, setCurrentDate] = useState<Date>(() =>
+    startOfDay(new Date())
+  );
+  const [miniMonth, setMiniMonth] = useState<Date>(() => new Date());
+  const [filters, setFilters] = useState<StatusFilter>({
+    confirmed: true,
+    pending: true,
+    cancelled: true,
+  });
+
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+  const mutedColor = useColorModeValue('paper.700', 'paper.400');
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  const subtleCardBg = useColorModeValue('paper.50', 'paper.800');
 
   const patientsMap = useMemo(
     () => Object.fromEntries(patients.map((p) => [p.id, p])),
     [patients]
   );
 
-  const initialPatientIdFromRoute =
-    (location.state as { patientId?: string } | null)?.patientId;
+  const patientName = (id: string) => {
+    const p = patientsMap[id];
+    return p ? `${p.firstName} ${p.lastName}` : 'Paciente';
+  };
+  const patientMeta = (id: string) => {
+    const p = patientsMap[id];
+    if (!p) return '';
+    return p.isRecurrent ? 'Recurrente' : 'Primera vez';
+  };
+
+  const initialPatientIdFromRoute = (
+    location.state as { patientId?: string } | null
+  )?.patientId;
 
   useEffect(() => {
     if (initialPatientIdFromRoute) {
@@ -140,29 +202,50 @@ const CalendarPage: React.FC = () => {
     }
   }, [initialPatientIdFromRoute, onNewOpen, navigate]);
 
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const calendarBg = useColorModeValue('white', 'gray.800');
+  const passesFilter = (apt: ApiAppointment) => {
+    const s = apt.status?.toUpperCase();
+    if (s === 'CANCELLED') return filters.cancelled;
+    if (s === 'PENDING') return filters.pending;
+    return filters.confirmed; // CONFIRMED / COMPLETED share the "Confirmadas" toggle
+  };
 
-  // Convert appointments to calendar events
+  const filteredAppointments = useMemo(
+    () => appointments.filter(passesFilter),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [appointments, filters]
+  );
+
   const events: CalendarEvent[] = useMemo(() => {
-    return appointments.map((apt) => {
-      const startDate = new Date(apt.starts_at);
-      const endDate = new Date(apt.ends_at);
-      const patient = patientsMap[apt.patient_id];
-      const durationMs = endDate.getTime() - startDate.getTime();
-      const duration = Math.round(durationMs / 60000);
-
+    return filteredAppointments.map((apt) => {
+      const start = new Date(apt.starts_at);
+      const end = new Date(apt.ends_at);
+      const duration = Math.round((end.getTime() - start.getTime()) / 60000);
       return {
         id: apt.id,
-        title: patient
-          ? `${patient.firstName} ${patient.lastName}`
-          : `Paciente ${apt.patient_id.slice(0, 8)}`,
-        start: startDate,
-        end: endDate,
+        title: patientName(apt.patient_id),
+        start,
+        end,
         resource: { ...apt, duration },
       };
     });
-  }, [appointments, patientsMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredAppointments, patientsMap]);
+
+  const daysWithEvents = useMemo(() => {
+    const s = new Set<string>();
+    for (const apt of filteredAppointments) {
+      s.add(format(new Date(apt.starts_at), 'yyyy-MM-dd'));
+    }
+    return s;
+  }, [filteredAppointments]);
+
+  const openEvent = (apt: ApiAppointment) => {
+    const ev = events.find((e) => e.id === apt.id);
+    if (ev) {
+      setSelectedEvent(ev);
+      onOpen();
+    }
+  };
 
   const handleSelectEvent = (event: CalendarEvent) => {
     setSelectedEvent(event);
@@ -182,8 +265,6 @@ const CalendarPage: React.FC = () => {
     setInitialPatientId(undefined);
     onNewOpen();
   };
-
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const handleConfirmAppointment = async () => {
     if (!selectedEvent) return;
@@ -220,7 +301,6 @@ const CalendarPage: React.FC = () => {
     if (!selectedEvent) return;
     setIsCancelling(true);
     try {
-      // Backend marks as cancelled on delete
       await deleteAppointment(selectedEvent.id);
       toast({
         title: 'Cita cancelada',
@@ -244,464 +324,730 @@ const CalendarPage: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'confirmed':
-      case 'completed':
-        return 'green';
-      case 'pending':
-        return 'yellow';
-      case 'cancelled':
-        return 'red';
-      default:
-        return 'gray';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'confirmed':
-        return 'Confirmada';
-      case 'completed':
-        return 'Completada';
-      case 'pending':
-        return 'Pendiente';
-      case 'cancelled':
-        return 'Cancelada';
-      default:
-        return status ?? '';
-    }
-  };
-
-  const eventStyleGetter = (event: CalendarEvent) => {
-    const status = event.resource.status?.toLowerCase();
-    let backgroundColor = '#007AFF';
-
-    switch (status) {
-      case 'confirmed':
-      case 'completed':
-        backgroundColor = '#34C759';
-        break;
-      case 'pending':
-        backgroundColor = '#FF9500';
-        break;
-      case 'cancelled':
-        backgroundColor = '#FF3B30';
-        break;
-    }
-
-    return {
-      style: {
-        backgroundColor,
-        borderRadius: '8px',
-        opacity: 0.9,
-        color: 'white',
-        border: 'none',
-        display: 'block',
-        fontSize: '13px',
-        padding: '4px 8px',
-        fontWeight: '500',
-      },
-    };
-  };
-
   const patient = selectedEvent
     ? patientsMap[selectedEvent.resource.patient_id]
     : null;
 
+  const handleNavPrev = () => {
+    if (view === 'month') setCurrentDate(addMonths(currentDate, -1));
+    else if (view === 'week') setCurrentDate(addDays(currentDate, -7));
+    else if (view === 'agenda') setCurrentDate(addDays(currentDate, -7));
+    else setCurrentDate(addDays(currentDate, -1));
+  };
+  const handleNavNext = () => {
+    if (view === 'month') setCurrentDate(addMonths(currentDate, 1));
+    else if (view === 'week') setCurrentDate(addDays(currentDate, 7));
+    else if (view === 'agenda') setCurrentDate(addDays(currentDate, 7));
+    else setCurrentDate(addDays(currentDate, 1));
+  };
+  const handleToday = () => {
+    const d = startOfDay(new Date());
+    setCurrentDate(d);
+    setMiniMonth(d);
+  };
+
+  const longDateLabel = useMemo(() => {
+    if (view === 'day')
+      return format(currentDate, "EEEE d 'de' MMMM", { locale: es });
+    if (view === 'week') {
+      const start = startOfWeek(currentDate, { locale: es, weekStartsOn: 1 });
+      const end = addDays(start, 6);
+      const sameMonth = start.getMonth() === end.getMonth();
+      const fmtS = sameMonth ? 'd' : 'd MMM';
+      return `${format(start, fmtS, { locale: es })} – ${format(end, 'd MMM yyyy', { locale: es })}`;
+    }
+    if (view === 'agenda') {
+      const end = addDays(currentDate, 6);
+      return `${format(currentDate, 'd MMM', { locale: es })} – ${format(end, 'd MMM yyyy', { locale: es })}`;
+    }
+    return format(currentDate, 'MMMM yyyy', { locale: es });
+  }, [view, currentDate]);
+
+  const shortDateLabel = useMemo(() => {
+    if (view === 'day') return format(currentDate, 'd MMM', { locale: es });
+    if (view === 'week') {
+      const start = startOfWeek(currentDate, { locale: es, weekStartsOn: 1 });
+      const end = addDays(start, 6);
+      return `${format(start, 'd', { locale: es })}–${format(end, 'd MMM', { locale: es })}`;
+    }
+    if (view === 'agenda') {
+      const end = addDays(currentDate, 6);
+      return `${format(currentDate, 'd', { locale: es })}–${format(end, 'd MMM', { locale: es })}`;
+    }
+    return format(currentDate, 'MMM yyyy', { locale: es });
+  }, [view, currentDate]);
+
+  const isMobile = useBreakpointValue({ base: true, md: false }) ?? false;
+
+  useEffect(() => {
+    if (isMobile && (view === 'week' || view === 'month')) {
+      setView('day');
+    }
+  }, [isMobile, view]);
+
+  const viewOptions: Array<{ id: ProtoView; label: string }> = [
+    { id: 'day', label: 'Día' },
+    { id: 'agenda', label: 'Agenda' },
+    { id: 'week', label: 'Semana' },
+    { id: 'month', label: 'Mes' },
+  ];
+
+  const rbcView: View = view === 'week' ? 'week' : 'month';
+
+  const rbcEventStyle = (event: CalendarEvent) => {
+    const s = event.resource.status?.toUpperCase();
+    let bg = '#8890a0';
+    if (s === 'CONFIRMED' || s === 'COMPLETED') bg = '#2f6b4a';
+    else if (s === 'PENDING') bg = '#9a6a17';
+    else if (s === 'CANCELLED') bg = '#a6392e';
+    return {
+      style: {
+        backgroundColor: bg,
+        borderRadius: '4px',
+        opacity: 0.92,
+        color: 'white',
+        border: 'none',
+        fontSize: '12px',
+        padding: '3px 6px',
+        fontWeight: 500,
+      },
+    };
+  };
+
   return (
-    <Box>
-      {/* Header with Gradient */}
-      <Box
-        bgGradient="linear(135deg, brand.400 0%, brand.600 100%)"
-        color="white"
-        px={8}
-        py={8}
-      >
-        <Container maxW="container.xl">
-          <HStack justify="space-between" flexWrap="wrap" gap={4}>
-            <VStack align="start" spacing={2}>
-              <Heading size="xl">Calendario</Heading>
-              <Text fontSize="md" opacity={0.9}>
-                Gestiona tus citas y agenda
-              </Text>
-            </VStack>
+    <Container maxW="1280px" px={{ base: 5, md: 10 }} pt={7} pb={14}>
+      <PageHead
+        crumbs="Calendario"
+        title="Agenda"
+        sub={`Vista ${viewOptions.find((v) => v.id === view)?.label.toLowerCase() ?? ''}`}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              h="36px"
+              leftIcon={<FiDownload />}
+              borderColor="line.strong"
+              color="text.strong"
+              bg={cardBg}
+              isDisabled
+              _hover={{ borderColor: 'paper.600' }}
+            >
+              Importar
+            </Button>
             <Button
               leftIcon={<FiPlus />}
-              size="lg"
-              colorScheme="whiteAlpha"
-              bg="whiteAlpha.300"
-              backdropFilter="blur(10px)"
-              _hover={{
-                bg: 'whiteAlpha.400',
-                transform: 'translateY(-2px)',
-                boxShadow: 'xl',
-              }}
-              _active={{
-                bg: 'whiteAlpha.500',
-                transform: 'translateY(0)',
-              }}
+              size="sm"
+              h="36px"
+              colorScheme="brand"
+              bg="brand.600"
+              color="white"
+              _hover={{ bg: 'brand.700' }}
               onClick={handleNewAppointmentClick}
-              transition="all 0.2s"
             >
-              Nueva Cita
+              Nueva cita
             </Button>
+          </>
+        }
+      />
+
+      <Box
+        display="grid"
+        gridTemplateColumns={{ base: '1fr', lg: '260px 1fr' }}
+        gap={5}
+        alignItems="start"
+      >
+        <VStack spacing={4} align="stretch">
+          <Box
+            bg={cardBg}
+            border="1px solid"
+            borderColor={borderColor}
+            borderRadius="8px"
+            p="14px"
+          >
+            <MiniCalendar
+              month={miniMonth}
+              selected={currentDate}
+              daysWithEvents={daysWithEvents}
+              onChangeMonth={setMiniMonth}
+              onSelect={(d) => {
+                setCurrentDate(d);
+                setMiniMonth(d);
+              }}
+            />
+          </Box>
+          <Box
+            bg={cardBg}
+            border="1px solid"
+            borderColor={borderColor}
+            borderRadius="8px"
+          >
+            <Box
+              px="14px"
+              py="10px"
+              borderBottom="1px solid"
+              borderColor={borderColor}
+            >
+              <Text
+                fontFamily="mono"
+                fontSize="10.5px"
+                letterSpacing="0.08em"
+                textTransform="uppercase"
+                color={mutedColor}
+              >
+                Filtros
+              </Text>
+            </Box>
+            <VStack align="stretch" spacing={2} p="14px">
+              <Checkbox
+                colorScheme="brand"
+                isChecked={filters.confirmed}
+                onChange={(e) =>
+                  setFilters((f) => ({ ...f, confirmed: e.target.checked }))
+                }
+              >
+                <Text fontSize="13px">Confirmadas</Text>
+              </Checkbox>
+              <Checkbox
+                colorScheme="brand"
+                isChecked={filters.pending}
+                onChange={(e) =>
+                  setFilters((f) => ({ ...f, pending: e.target.checked }))
+                }
+              >
+                <Text fontSize="13px">Pendientes</Text>
+              </Checkbox>
+              <Checkbox
+                colorScheme="brand"
+                isChecked={filters.cancelled}
+                onChange={(e) =>
+                  setFilters((f) => ({ ...f, cancelled: e.target.checked }))
+                }
+              >
+                <Text fontSize="13px">Canceladas</Text>
+              </Checkbox>
+            </VStack>
+          </Box>
+        </VStack>
+
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="8px"
+          overflow="hidden"
+        >
+          <Flex
+            justify="space-between"
+            align="center"
+            flexWrap="wrap"
+            gap={3}
+            px={{ base: 3, md: '18px' }}
+            py="12px"
+            borderBottom="1px solid"
+            borderColor={borderColor}
+          >
+            <HStack spacing={3} minW={0} flex={{ base: '1 1 auto', md: '0 1 auto' }}>
+              <Button
+                size="xs"
+                h="30px"
+                px="12px"
+                variant="outline"
+                borderColor="line.strong"
+                onClick={handleToday}
+              >
+                Hoy
+              </Button>
+              <HStack spacing={1}>
+                <IconButton
+                  aria-label="Anterior"
+                  icon={<FiChevronLeft />}
+                  size="xs"
+                  variant="outline"
+                  w="30px"
+                  h="30px"
+                  borderColor="line.strong"
+                  onClick={handleNavPrev}
+                />
+                <IconButton
+                  aria-label="Siguiente"
+                  icon={<FiChevronRight />}
+                  size="xs"
+                  variant="outline"
+                  w="30px"
+                  h="30px"
+                  borderColor="line.strong"
+                  onClick={handleNavNext}
+                />
+              </HStack>
+              <Text
+                fontSize={{ base: '13px', md: '15px' }}
+                fontWeight={600}
+                textTransform="capitalize"
+                ml={1}
+                noOfLines={1}
+                display={{ base: 'none', sm: 'block' }}
+              >
+                {longDateLabel}
+              </Text>
+              <Text
+                fontSize="13px"
+                fontWeight={600}
+                textTransform="capitalize"
+                ml={1}
+                noOfLines={1}
+                display={{ base: 'block', sm: 'none' }}
+              >
+                {shortDateLabel}
+              </Text>
+            </HStack>
+            <HStack
+              spacing={0}
+              border="1px solid"
+              borderColor="line.strong"
+              borderRadius="6px"
+              overflow="hidden"
+              bg={cardBg}
+              flexShrink={0}
+            >
+              {viewOptions.map((v, i) => {
+                const on = v.id === view;
+                const hideOnMobile = v.id === 'week' || v.id === 'month';
+                return (
+                  <Box
+                    key={v.id}
+                    as="button"
+                    onClick={() => setView(v.id)}
+                    px="12px"
+                    py="6px"
+                    fontSize="12px"
+                    fontWeight={500}
+                    color={on ? 'white' : 'text.body'}
+                    bg={on ? 'brand.600' : 'transparent'}
+                    borderRight={
+                      i < viewOptions.length - 1 ? '1px solid' : 'none'
+                    }
+                    borderColor="border.default"
+                    _hover={!on ? { bg: 'surface.hover', color: 'text.strong' } : {}}
+                    display={
+                      hideOnMobile
+                        ? { base: 'none', md: 'block' }
+                        : 'block'
+                    }
+                  >
+                    {v.label}
+                  </Box>
+                );
+              })}
+            </HStack>
+          </Flex>
+
+          {view === 'day' && (
+            <Box maxH="680px" overflowY="auto" overscrollBehavior="contain">
+              <CalendarDayView
+                day={currentDate}
+                appointments={filteredAppointments}
+                patientName={patientName}
+                onSelect={openEvent}
+                startHour={0}
+                endHour={24}
+              />
+            </Box>
+          )}
+
+          {view === 'agenda' && (
+            <CalendarAgendaView
+              from={currentDate}
+              days={7}
+              appointments={filteredAppointments}
+              patientName={patientName}
+              patientMeta={patientMeta}
+              onSelect={openEvent}
+            />
+          )}
+
+          {(view === 'week' || view === 'month') && (
+            <Box
+              px={{ base: 3, md: 4 }}
+              py={3}
+              sx={{
+                '& .rbc-calendar': { fontFamily: 'inherit' },
+                '& .rbc-header': {
+                  padding: '10px 4px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: 'text.body',
+                  borderBottom: '1px solid',
+                  borderColor: borderColor,
+                  textTransform: 'capitalize',
+                },
+                '& .rbc-today': { backgroundColor: 'statusSoft.infoBg' },
+                '& .rbc-off-range-bg': { backgroundColor: 'surface.hover' },
+                '& .rbc-date-cell': { padding: '6px 8px', fontSize: '12.5px' },
+                '& .rbc-event': { padding: '3px 6px', borderRadius: '4px' },
+                '& .rbc-month-view, & .rbc-time-view': {
+                  border: '1px solid',
+                  borderColor: borderColor,
+                  borderRadius: '6px',
+                  overflow: 'hidden',
+                },
+                '& .rbc-day-bg, & .rbc-month-row, & .rbc-header + .rbc-header':
+                  {
+                    borderColor: borderColor,
+                  },
+                '& .rbc-time-header-content, & .rbc-time-header-gutter': {
+                  borderColor: borderColor,
+                },
+              }}
+            >
+              <BigCalendar
+                localizer={localizer}
+                events={events}
+                startAccessor="start"
+                endAccessor="end"
+                style={{ height: 640 }}
+                onSelectEvent={handleSelectEvent}
+                onSelectSlot={handleSelectSlot}
+                selectable
+                views={['month', 'week']}
+                view={rbcView}
+                onView={() => {
+                  /* controlled by our external switch */
+                }}
+                date={currentDate}
+                onNavigate={(d: Date) => setCurrentDate(d)}
+                defaultView={rbcView}
+                min={CALENDAR_MIN}
+                max={CALENDAR_MAX}
+                eventPropGetter={rbcEventStyle}
+                culture="es"
+                components={{ toolbar: RbcEmptyToolbar }}
+                messages={{
+                  next: 'Siguiente',
+                  previous: 'Anterior',
+                  today: 'Hoy',
+                  month: 'Mes',
+                  week: 'Semana',
+                  day: 'Día',
+                  agenda: 'Agenda',
+                  date: 'Fecha',
+                  time: 'Hora',
+                  event: 'Cita',
+                  noEventsInRange: 'No hay citas en este rango',
+                  showMore: (total: number) => `+ Ver más (${total})`,
+                }}
+              />
+            </Box>
+          )}
+
+          <HStack
+            spacing={5}
+            px="18px"
+            py="12px"
+            borderTop="1px solid"
+            borderColor={borderColor}
+            flexWrap="wrap"
+          >
+            <HStack spacing={2}>
+              <Box w="8px" h="8px" borderRadius="full" bg="statusSoft.okFg" />
+              <Text fontSize="12px" color={mutedColor}>
+                Confirmada
+              </Text>
+            </HStack>
+            <HStack spacing={2}>
+              <Box w="8px" h="8px" borderRadius="full" bg="statusSoft.warnFg" />
+              <Text fontSize="12px" color={mutedColor}>
+                Pendiente
+              </Text>
+            </HStack>
+            <HStack spacing={2}>
+              <Box w="8px" h="8px" borderRadius="full" bg="statusSoft.critFg" />
+              <Text fontSize="12px" color={mutedColor}>
+                Cancelada
+              </Text>
+            </HStack>
           </HStack>
-        </Container>
+        </Box>
       </Box>
 
-      {/* Calendar */}
-      <Container maxW="container.xl" py={8}>
-        <Box
-          bg={calendarBg}
-          p={8}
-          borderRadius="2xl"
-          boxShadow="xl"
-          borderWidth="1px"
-          borderColor={borderColor}
-          sx={{
-            '& .rbc-calendar': {
-              fontFamily: 'inherit',
-            },
-            '& .rbc-header': {
-              padding: '16px 4px',
-              fontWeight: '600',
-              fontSize: '15px',
-              borderBottom: '2px solid',
-              borderColor: borderColor,
-              color: useColorModeValue('gray.700', 'gray.200'),
-            },
-            '& .rbc-today': {
-              backgroundColor: useColorModeValue('#E6F2FF', '#1A365D'),
-            },
-            '& .rbc-off-range-bg': {
-              backgroundColor: useColorModeValue('#F7FAFC', '#1A202C'),
-            },
-            '& .rbc-date-cell': {
-              padding: '12px',
-              fontSize: '14px',
-              fontWeight: '500',
-            },
-            '& .rbc-event': {
-              padding: '6px 10px',
-            },
-            '& .rbc-month-view': {
-              border: '1px solid',
-              borderColor: borderColor,
-              borderRadius: 'xl',
-              overflow: 'hidden',
-            },
-            '& .rbc-time-view': {
-              border: '1px solid',
-              borderColor: borderColor,
-              borderRadius: 'xl',
-              overflow: 'hidden',
-            },
-            '& .rbc-day-bg': {
-              borderColor: borderColor,
-            },
-            '& .rbc-month-row': {
-              borderColor: borderColor,
-            },
-            '& .rbc-header + .rbc-header': {
-              borderLeft: '1px solid',
-              borderColor: borderColor,
-            },
-            '& .rbc-toolbar': {
-              padding: '20px 0',
-              marginBottom: '20px',
-              flexWrap: 'wrap',
-              gap: '12px',
-              '& button': {
-                color: useColorModeValue('gray.800', 'white'),
-                borderRadius: 'lg',
-                padding: '10px 20px',
-                fontWeight: '500',
-                fontSize: '14px',
-                border: '1px solid',
-                borderColor: borderColor,
-                transition: 'all 0.2s',
-                '&:hover': {
-                  backgroundColor: useColorModeValue('gray.100', 'gray.700'),
-                  transform: 'translateY(-2px)',
-                  boxShadow: 'md',
-                },
-                '&.rbc-active': {
-                  backgroundColor: 'brand.500',
-                  color: 'white',
-                  borderColor: 'brand.500',
-                  '&:hover': {
-                    backgroundColor: 'brand.600',
-                  },
-                },
-              },
-              '& .rbc-toolbar-label': {
-                fontSize: '20px',
-                fontWeight: '700',
-                color: useColorModeValue('gray.800', 'white'),
-              },
-            },
-          }}
-        >
-          <Box mb={2} display="flex" justifyContent="flex-end">
-            <ButtonGroup size="xs" isAttached variant="ghost" spacing={0}>
-              <Button
-                size="xs"
-                fontSize="xs"
-                onClick={() => setCalendarView('month')}
-                colorScheme={calendarView === 'month' ? 'brand' : 'gray'}
-                variant={calendarView === 'month' ? 'solid' : 'ghost'}
+      <FormDrawer
+        isOpen={isOpen}
+        onClose={onClose}
+        crumb="Agenda"
+        title="Detalles de la cita"
+        sub={
+          selectedEvent
+            ? format(selectedEvent.start, "EEEE, d 'de' MMMM 'de' yyyy", {
+                locale: es,
+              })
+            : 'Selecciona una cita para ver el detalle.'
+        }
+        size="md"
+        hideDefaultActions
+        bodyFillHeight
+      >
+        {selectedEvent ? (
+          <VStack align="stretch" spacing={4} flex={1} minH={0}>
+            <Box
+              bg={subtleCardBg}
+              border="1px solid"
+              borderColor={borderColor}
+              borderRadius="8px"
+              overflow="hidden"
+            >
+              <HStack
+                px={4}
+                py={3}
+                borderBottom="1px solid"
+                borderColor={borderColor}
+                justify="space-between"
+                align="center"
               >
-                Mes
-              </Button>
-              <Button
-                size="xs"
-                fontSize="xs"
-                onClick={() => setCalendarView('week')}
-                colorScheme={calendarView === 'week' ? 'brand' : 'gray'}
-                variant={calendarView === 'week' ? 'solid' : 'ghost'}
-              >
-                Semana
-              </Button>
-            </ButtonGroup>
-          </Box>
-          <BigCalendar
-            localizer={localizer}
-            events={events}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: 700 }}
-            onSelectEvent={handleSelectEvent}
-            onSelectSlot={handleSelectSlot}
-            selectable
-            views={['month', 'week']}
-            view={calendarView}
-            onView={setCalendarView}
-            date={calendarDate}
-            onNavigate={handleNavigate}
-            defaultView="month"
-            min={CALENDAR_MIN}
-            max={CALENDAR_MAX}
-            messages={{
-              next: 'Siguiente',
-              previous: 'Anterior',
-              today: 'Hoy',
-              month: 'Mes',
-              week: 'Semana',
-              day: 'Día',
-              agenda: 'Agenda',
-              date: 'Fecha',
-              time: 'Hora',
-              event: 'Cita',
-              noEventsInRange: 'No hay citas en este rango',
-              showMore: (total: number) => `+ Ver más (${total})`,
-            }}
-            eventPropGetter={eventStyleGetter}
-            culture="es"
-            components={{ toolbar: CalendarToolbar }}
-          />
-        </Box>
-
-        {/* Legend */}
-        <HStack spacing={8} mt={6} justify="center" flexWrap="wrap">
-          <HStack spacing={3}>
-            <Box w={6} h={6} bg="green.500" borderRadius="md" boxShadow="sm" />
-            <Text fontSize="md" fontWeight="medium">
-              Confirmada
-            </Text>
-          </HStack>
-          <HStack spacing={3}>
-            <Box w={6} h={6} bg="orange.500" borderRadius="md" boxShadow="sm" />
-            <Text fontSize="md" fontWeight="medium">
-              Pendiente
-            </Text>
-          </HStack>
-          <HStack spacing={3}>
-            <Box w={6} h={6} bg="red.500" borderRadius="md" boxShadow="sm" />
-            <Text fontSize="md" fontWeight="medium">
-              Cancelada
-            </Text>
-          </HStack>
-        </HStack>
-      </Container>
-
-      {/* Event Details Modal */}
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalOverlay backdropFilter="blur(4px)" />
-        <ModalContent borderRadius="2xl">
-          <ModalHeader>
-            <HStack spacing={3}>
-              <Box bg="brand.500" p={2} borderRadius="lg" color="white">
-                <Icon as={FiCalendarIcon} boxSize={5} />
-              </Box>
-              <Text>Detalles de la Cita</Text>
-            </HStack>
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            {selectedEvent && (
-              <VStack spacing={5} align="stretch">
-                {/* Patient Info */}
-                <HStack
-                  spacing={4}
-                  p={4}
-                  bg={useColorModeValue('brand.50', 'gray.700')}
-                  borderRadius="xl"
-                  cursor={patient ? 'pointer' : 'default'}
-                  onClick={
-                    patient
-                      ? () => {
-                          navigate(`/patients/${patient.id}`);
-                          onClose();
-                        }
-                      : undefined
-                  }
-                  _hover={
-                    patient
-                      ? { bg: useColorModeValue('brand.100', 'gray.600') }
-                      : undefined
-                  }
-                  transition="all 0.2s"
+                <Text
+                  fontFamily="mono"
+                  fontSize="10.5px"
+                  letterSpacing="0.08em"
+                  textTransform="uppercase"
+                  color={labelColor}
+                  fontWeight={500}
                 >
-                  <Avatar
-                    size="lg"
-                    name={
-                      patient
-                        ? `${patient.firstName} ${patient.lastName}`
-                        : 'Paciente'
-                    }
-                    src={patient?.avatar}
-                    bg="brand.500"
-                    color="white"
-                    sx={{
-                      '& span': {
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '100%',
-                        height: '100%',
-                      },
-                    }}
-                  />
-                  <VStack align="start" spacing={0} flex={1}>
-                    <Text fontWeight="bold" fontSize="lg">
-                      {patient
-                        ? `${patient.firstName} ${patient.lastName}`
-                        : `Paciente (${selectedEvent.resource.patient_id.slice(0, 8)}...)`}
-                    </Text>
-                    <Text fontSize="sm" color="gray.500">
-                      {patient ? 'Click para ver perfil' : 'Paciente no encontrado'}
-                    </Text>
-                  </VStack>
-                </HStack>
-
-                {/* Appointment Details */}
-                <VStack spacing={4} align="stretch">
-                  <HStack justify="space-between">
-                    <Text fontWeight="semibold" fontSize="md">
-                      Estado:
-                    </Text>
-                    <Badge
-                      colorScheme={getStatusColor(
-                        selectedEvent.resource.status
-                      )}
-                      fontSize="sm"
-                      px={3}
-                      py={1}
-                      borderRadius="full"
+                  Paciente
+                </Text>
+                <StatusBadge tone={statusTone(selectedEvent.resource.status)}>
+                  {statusLabel(selectedEvent.resource.status)}
+                </StatusBadge>
+              </HStack>
+              <HStack px={4} py={4} spacing={3} align="center">
+                <Avatar
+                  size="sm"
+                  name={
+                    patient
+                      ? `${patient.firstName} ${patient.lastName}`
+                      : 'Paciente'
+                  }
+                  src={patient?.avatar}
+                  bg="statusSoft.infoBg"
+                  color="brand.700"
+                  fontWeight={600}
+                />
+                <Box flex={1} minW={0}>
+                  <Text
+                    fontSize="14px"
+                    fontWeight={600}
+                    color="text.strong"
+                    noOfLines={1}
+                  >
+                    {patient
+                      ? `${patient.firstName} ${patient.lastName}`
+                      : `Paciente (${selectedEvent.resource.patient_id.slice(0, 8)}…)`}
+                  </Text>
+                  {patient?.slug?.trim() ? (
+                    <Text
+                      fontFamily="mono"
+                      fontSize="10.5px"
+                      color={labelColor}
+                      letterSpacing="0.04em"
+                      mt="1px"
                     >
-                      {getStatusLabel(selectedEvent.resource.status)}
-                    </Badge>
-                  </HStack>
+                      {normalizePatientSlug(patient.slug).toUpperCase()}
+                    </Text>
+                  ) : (
+                    <Text fontSize="11.5px" color={labelColor} mt="1px">
+                      Paciente no encontrado
+                    </Text>
+                  )}
+                </Box>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  h="30px"
+                  borderColor="line.strong"
+                  color="text.strong"
+                  fontWeight={500}
+                  bg={cardBg}
+                  isDisabled={!normalizePatientSlug(patient?.slug)}
+                  onClick={() => {
+                    const slug = normalizePatientSlug(patient?.slug);
+                    if (slug) navigate(`/patients/${slug}`);
+                    onClose();
+                  }}
+                >
+                  Ver expediente
+                </Button>
+              </HStack>
+            </Box>
 
-                  <HStack justify="space-between">
-                    <Text fontWeight="semibold" fontSize="md">
-                      Fecha:
+            <Box
+              bg={cardBg}
+              border="1px solid"
+              borderColor={borderColor}
+              borderRadius="8px"
+              overflow="hidden"
+            >
+              <Box
+                px={4}
+                py={3}
+                borderBottom="1px solid"
+                borderColor={borderColor}
+              >
+                <Text
+                  fontFamily="mono"
+                  fontSize="10.5px"
+                  letterSpacing="0.08em"
+                  textTransform="uppercase"
+                  color={labelColor}
+                  fontWeight={500}
+                >
+                  Detalles
+                </Text>
+              </Box>
+              <VStack align="stretch" spacing={0}>
+                {[
+                  {
+                    label: 'Fecha',
+                    value: format(
+                      selectedEvent.start,
+                      "EEEE, d 'de' MMMM 'de' yyyy",
+                      { locale: es }
+                    ),
+                  },
+                  {
+                    label: 'Hora',
+                    value: `${format(selectedEvent.start, 'HH:mm')} – ${format(
+                      selectedEvent.end,
+                      'HH:mm'
+                    )}`,
+                    mono: true,
+                  },
+                  {
+                    label: 'Duración',
+                    value: `${selectedEvent.resource.duration} minutos`,
+                  },
+                ].map((row, idx, arr) => (
+                  <HStack
+                    key={row.label}
+                    justify="space-between"
+                    spacing={4}
+                    px={4}
+                    py={3}
+                    borderBottom={idx < arr.length - 1 ? '1px solid' : 'none'}
+                    borderColor={borderColor}
+                  >
+                    <Text
+                      fontFamily="mono"
+                      fontSize="10.5px"
+                      letterSpacing="0.06em"
+                      textTransform="uppercase"
+                      color={labelColor}
+                      fontWeight={500}
+                    >
+                      {row.label}
                     </Text>
-                    <Text>
-                      {format(
-                        selectedEvent.start,
-                        "EEEE, d 'de' MMMM 'de' yyyy",
-                        { locale: es }
-                      )}
+                    <Text
+                      fontSize="13px"
+                      fontWeight={500}
+                      color="text.strong"
+                      fontFamily={row.mono ? 'mono' : undefined}
+                      textAlign="right"
+                      noOfLines={1}
+                    >
+                      {row.value}
                     </Text>
                   </HStack>
-
-                  <HStack justify="space-between">
-                    <Text fontWeight="semibold" fontSize="md">
-                      Hora:
-                    </Text>
-                    <Text fontWeight="medium">
-                      {format(selectedEvent.start, 'HH:mm', { locale: es })} -{' '}
-                      {format(selectedEvent.end, 'HH:mm', { locale: es })}
-                    </Text>
-                  </HStack>
-
-                  <HStack justify="space-between">
-                    <Text fontWeight="semibold" fontSize="md">
-                      Duración:
-                    </Text>
-                    <Text>{selectedEvent.resource.duration} minutos</Text>
-                  </HStack>
-                </VStack>
+                ))}
               </VStack>
-            )}
-          </ModalBody>
-          <ModalFooter>
-            <HStack spacing={2}>
-              {selectedEvent?.resource.status === 'PENDING' && (
-                <Tooltip label="Confirmar">
-                  <IconButton
-                    aria-label="Confirmar cita"
-                    icon={<Icon as={FiCheck} />}
-                    colorScheme="green"
-                    variant="ghost"
+            </Box>
+
+            <Box mt="auto" pt={2}>
+              <HStack spacing={2} justify="flex-end" flexWrap="wrap">
+                {selectedEvent.resource.status === 'PENDING' && (
+                  <Button
+                    leftIcon={<Icon as={FiCheck} />}
                     size="sm"
+                    h="36px"
+                    bg="brand.600"
+                    color="white"
+                    _hover={{ bg: 'brand.700' }}
                     onClick={handleConfirmAppointment}
                     isLoading={isUpdatingStatus}
-                    isDisabled={isUpdatingStatus}
-                  />
-                </Tooltip>
-              )}
-              {selectedEvent?.resource.status !== 'CANCELLED' && (
-                <Tooltip label="Cancelar cita">
-                  <IconButton
-                    aria-label="Cancelar cita"
-                    icon={<Icon as={FiX} />}
-                    colorScheme="red"
-                    variant="ghost"
+                    isDisabled={isUpdatingStatus || isCancelling}
+                  >
+                    Confirmar cita
+                  </Button>
+                )}
+                {selectedEvent.resource.status !== 'CANCELLED' && (
+                  <Button
+                    leftIcon={<Icon as={FiX} />}
+                    variant="outline"
                     size="sm"
+                    h="36px"
+                    borderColor="statusSoft.critBorder"
+                    color="statusSoft.critFg"
+                    bg="statusSoft.critBg"
+                    _hover={{
+                      bg: 'statusSoft.critBg',
+                      borderColor: 'statusSoft.critFg',
+                    }}
                     onClick={handleRequestCancelAppointment}
                     isDisabled={isUpdatingStatus || isCancelling}
-                  />
-                </Tooltip>
-              )}
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                Cerrar
-              </Button>
-            </HStack>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+                  >
+                    Cancelar cita
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  h="36px"
+                  borderColor="line.strong"
+                  color="text.strong"
+                  bg={cardBg}
+                  onClick={onClose}
+                >
+                  Cerrar
+                </Button>
+              </HStack>
+            </Box>
+          </VStack>
+        ) : (
+          <VStack spacing={3} align="stretch">
+            <Text fontSize="sm" color="text.body">
+              No hay cita seleccionada.
+            </Text>
+            <Button
+              variant="outline"
+              size="sm"
+              h="36px"
+              borderColor="line.strong"
+              color="text.strong"
+              onClick={onClose}
+              alignSelf="flex-end"
+            >
+              Cerrar
+            </Button>
+          </VStack>
+        )}
+      </FormDrawer>
 
-      {/* Cancel confirmation */}
       <AlertDialog
         isOpen={isCancelOpen}
         leastDestructiveRef={cancelRef}
         onClose={isCancelling ? () => {} : onCancelClose}
       >
         <AlertDialogOverlay>
-          <AlertDialogContent borderRadius="xl">
+          <AlertDialogContent borderRadius="10px">
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
               Cancelar cita
             </AlertDialogHeader>
-
             <AlertDialogBody>
-              ¿Seguro que quieres cancelar esta cita? Esta acción la marcará como cancelada.
+              ¿Seguro que quieres cancelar esta cita? Esta acción la marcará
+              como cancelada.
             </AlertDialogBody>
-
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onCancelClose} isDisabled={isCancelling}>
+              <Button
+                ref={cancelRef}
+                onClick={onCancelClose}
+                isDisabled={isCancelling}
+              >
                 Volver
               </Button>
               <Button
@@ -718,7 +1064,6 @@ const CalendarPage: React.FC = () => {
         </AlertDialogOverlay>
       </AlertDialog>
 
-      {/* New Appointment Modal */}
       <AppointmentFormModal
         isOpen={isNewOpen}
         onClose={onNewClose}
@@ -728,7 +1073,7 @@ const CalendarPage: React.FC = () => {
         initialPatientId={initialPatientId}
         createAppointment={createAppointment}
       />
-    </Box>
+    </Container>
   );
 };
 

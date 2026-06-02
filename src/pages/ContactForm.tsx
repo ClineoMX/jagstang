@@ -28,8 +28,8 @@ const ContactForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
-  const cardBg = useColorModeValue('card.light', 'card.dark');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'line.dark');
   const isEditing = !!id;
 
   // Form states

@@ -1,9 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from 'react';
 import {
   Box,
   VStack,
   HStack,
   Text,
+  Heading,
   Spinner,
   useColorModeValue,
   useDisclosure,
@@ -66,6 +74,7 @@ export interface FormFieldValue {
   tag?: string;
   type: string;
   value: string;
+  required?: boolean;
   position: FormField['position'];
 }
 
@@ -86,17 +95,33 @@ function normalizeType(t: string): FieldType {
   return 'text';
 }
 
+export interface FormNoteFillerHandle {
+  /** Abre el modal de edición del campo cuyo índice (basado en el orden recibido en `onValuesChange`) se pasa. */
+  openField: (index: number) => void;
+}
+
 interface FormNoteFillerProps {
   formId: string;
   initialValues?: FormFieldValue[];
   onValuesChange: (values: FormFieldValue[]) => void;
+  /** Si es true, oculta la lista interna «Campos del formulario» (suele renderizarse fuera, en un panel lateral). */
+  hideFieldsList?: boolean;
 }
 
-const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, onValuesChange }) => {
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const filledFieldBg = useColorModeValue('green.50', 'green.900');
-  const requiredFieldBg = useColorModeValue('yellow.100', 'yellow.900');
+const FormNoteFiller = forwardRef<FormNoteFillerHandle, FormNoteFillerProps>(
+  ({ formId, initialValues, onValuesChange, hideFieldsList = false }, ref) => {
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'line.dark');
+  const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
+  const mutedColor = useColorModeValue('paper.600', 'paper.400');
+  const inkStrong = useColorModeValue('paper.900', 'paper.50');
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  const modalBodyBg = useColorModeValue('paper.50', 'paper.900');
+  const fieldRowHoverBg = useColorModeValue('paper.50', 'whiteAlpha.50');
+  const filledFieldBg = 'statusSoft.okBg';
+  const filledFieldBorder = 'statusSoft.okBorder';
+  const filledFieldFg = 'statusSoft.okFg';
+  const requiredFieldBg = 'statusSoft.warnBg';
   const unfilledFieldBg = useColorModeValue('brand.50', 'whiteAlpha.100');
 
   const [fields, setFields] = useState<FormField[]>([]);
@@ -228,6 +253,7 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
       name: f.name,
       tag: f.tag,
       type: f.type,
+      required: f.required,
       value: values[String(i)] ?? '',
       position: f.position,
     }));
@@ -245,11 +271,25 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
 
   const pdfReady = Boolean(pdfBlobUrl && pdfContainerWidth > 0 && numPages != null);
 
-  const openFieldModal = (index: number) => {
-    setActiveFieldIndex(index);
-    setModalValue(values[String(index)] ?? '');
-    onOpen();
-  };
+  const openFieldModal = useCallback(
+    (index: number) => {
+      setActiveFieldIndex(index);
+      setModalValue(values[String(index)] ?? '');
+      onOpen();
+    },
+    [values, onOpen]
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      openField: (index: number) => {
+        if (index < 0 || index >= fields.length) return;
+        openFieldModal(index);
+      },
+    }),
+    [openFieldModal, fields.length]
+  );
 
   const saveFieldValue = () => {
     if (activeFieldIndex === null) return;
@@ -270,7 +310,7 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
     return (
       <VStack py={12} spacing={3}>
         <Spinner size="xl" colorScheme="brand" thickness="3px" />
-        <Text fontSize="sm" color="gray.500">Cargando formulario…</Text>
+        <Text fontSize="sm" color={mutedColor}>Cargando formulario…</Text>
       </VStack>
     );
   }
@@ -284,22 +324,85 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
     );
   }
 
-  return (
-    <VStack spacing={4} align="stretch">
-      <HStack justify="space-between" flexWrap="wrap" gap={2}>
+  const fieldsListSection = (
+    <Box>
+      <HStack justify="space-between" flexWrap="wrap" gap={2} mb={4}>
         <HStack spacing={2}>
-          <Badge colorScheme="brand">{filledCount}/{fields.length} campos</Badge>
+          <Badge colorScheme="brand">
+            {filledCount}/{fields.length} campos
+          </Badge>
           {requiredCount > 0 && (
-            <Badge colorScheme={requiredFilledCount === requiredCount ? 'green' : 'orange'}>
+            <Badge
+              colorScheme={
+                requiredFilledCount === requiredCount ? 'green' : 'orange'
+              }
+            >
               {requiredFilledCount}/{requiredCount} requeridos
             </Badge>
           )}
         </HStack>
       </HStack>
+      <Text fontWeight="semibold" mb={3} fontSize="sm" color={mutedColor}>
+        Campos del formulario
+      </Text>
+      <List spacing={2}>
+        {fields.map((field, index) => {
+          const filled = (values[String(index)] ?? '').trim() !== '';
+          const FieldIcon = FIELD_TYPE_ICONS[field.type.toUpperCase()] ?? FiType;
+          return (
+            <ListItem
+              key={index}
+              p={3}
+              borderWidth="1px"
+              borderColor={filled ? filledFieldBorder : borderColor}
+              borderRadius="lg"
+              cursor="pointer"
+              bg={filled ? filledFieldBg : undefined}
+              _hover={{ bg: filled ? filledFieldBg : fieldRowHoverBg }}
+              onClick={() => openFieldModal(index)}
+              transition="all 0.15s"
+            >
+              <HStack justify="space-between" align="start">
+                <HStack spacing={3} align="start">
+                  <Icon
+                    as={FieldIcon}
+                    color={filled ? filledFieldFg : 'paper.500'}
+                    mt={0.5}
+                  />
+                  <Box minW={0}>
+                    <Text fontSize="sm" fontWeight="medium">
+                      {field.name}
+                    </Text>
+                    {filled && (
+                      <Text fontSize="xs" color={filledFieldFg} noOfLines={1}>
+                        {values[String(index)]}
+                      </Text>
+                    )}
+                  </Box>
+                </HStack>
+                <HStack spacing={1} flexShrink={0}>
+                  {field.required && !filled && (
+                    <Badge colorScheme="orange" fontSize="2xs">
+                      Requerido
+                    </Badge>
+                  )}
+                  {filled && <Icon as={FiCheck} color={filledFieldFg} />}
+                </HStack>
+              </HStack>
+            </ListItem>
+          );
+        })}
+      </List>
+    </Box>
+  );
 
+  return (
+    <VStack spacing={4} align="stretch">
       <Box
         display="grid"
-        gridTemplateColumns={{ base: '1fr', lg: '1fr 320px' }}
+        gridTemplateColumns={
+          hideFieldsList ? '1fr' : { base: '1fr', lg: '1fr 320px' }
+        }
         gap={4}
       >
         {pdfBlobUrl ? (
@@ -309,7 +412,7 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
             borderColor={borderColor}
             borderRadius="lg"
             overflow="auto"
-            bg="gray.100"
+            bg={pdfPanelBg}
             h="65vh"
             minH="320px"
             position="relative"
@@ -327,7 +430,7 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
               >
                 <VStack spacing={4}>
                   <Spinner size="xl" colorScheme="brand" thickness="3px" />
-                  <Text fontSize="sm" color="gray.500">Cargando PDF…</Text>
+                  <Text fontSize="sm" color={mutedColor}>Cargando PDF…</Text>
                 </VStack>
               </Box>
             )}
@@ -385,7 +488,7 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
                             w={`${pos.width}%`}
                             h={`${pos.height}%`}
                             borderWidth="2px"
-                            borderColor={filled ? 'green.400' : 'brand.400'}
+                            borderColor={filled ? filledFieldBorder : 'brand.400'}
                             bg={bg}
                             opacity={0.9}
                             borderRadius="sm"
@@ -395,10 +498,10 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
                             alignItems="center"
                             justifyContent="center"
                             fontSize="xs"
-                            color={filled ? 'green.700' : 'brand.700'}
+                            color={filled ? filledFieldFg : 'brand.700'}
                             fontWeight="medium"
                             onClick={() => openFieldModal(index)}
-                            _hover={{ opacity: 1, borderColor: filled ? 'green.500' : 'brand.500' }}
+                            _hover={{ opacity: 1, borderColor: filled ? filledFieldFg : 'brand.500' }}
                             transition="all 0.15s"
                             overflow="hidden"
                           >
@@ -408,7 +511,7 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
                                 position="absolute"
                                 top="1px"
                                 right="1px"
-                                color="green.500"
+                                color={filledFieldFg}
                                 boxSize={3}
                               />
                             )}
@@ -431,73 +534,72 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
             p={8}
             textAlign="center"
           >
-            <Text color="gray.500">Este formulario no tiene un PDF asociado.</Text>
+            <Text color={mutedColor}>Este formulario no tiene un PDF asociado.</Text>
           </Box>
         )}
 
-        <Box>
-          <Text fontWeight="semibold" mb={3} fontSize="sm" color="gray.600">
-            Campos del formulario
-          </Text>
-          <List spacing={2}>
-            {fields.map((field, index) => {
-              const filled = (values[String(index)] ?? '').trim() !== '';
-              const FieldIcon = FIELD_TYPE_ICONS[field.type.toUpperCase()] ?? FiType;
-              return (
-                <ListItem
-                  key={index}
-                  p={3}
-                  borderWidth="1px"
-                  borderColor={filled ? 'green.200' : borderColor}
-                  borderRadius="lg"
-                  cursor="pointer"
-                  bg={filled ? filledFieldBg : undefined}
-                  _hover={{ bg: filled ? filledFieldBg : 'gray.50' }}
-                  onClick={() => openFieldModal(index)}
-                  transition="all 0.15s"
-                >
-                  <HStack justify="space-between">
-                    <HStack spacing={3}>
-                      <Icon as={FieldIcon} color={filled ? 'green.500' : 'gray.400'} />
-                      <Box>
-                        <Text fontSize="sm" fontWeight="medium">{field.name}</Text>
-                        {filled && (
-                          <Text fontSize="xs" color="green.600" noOfLines={1}>
-                            {values[String(index)]}
-                          </Text>
-                        )}
-                      </Box>
-                    </HStack>
-                    <HStack spacing={1}>
-                      {field.required && !filled && (
-                        <Badge colorScheme="orange" fontSize="2xs">Requerido</Badge>
-                      )}
-                      {filled && <Icon as={FiCheck} color="green.500" />}
-                    </HStack>
-                  </HStack>
-                </ListItem>
-              );
-            })}
-          </List>
-        </Box>
+        {!hideFieldsList && <Box>{fieldsListSection}</Box>}
       </Box>
 
-      <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>{activeField?.name ?? 'Campo'}</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={4}>
+      <Modal isOpen={isOpen} onClose={onClose} size="md" isCentered scrollBehavior="inside">
+        <ModalOverlay bg="blackAlpha.400" />
+        <ModalContent
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="10px"
+          boxShadow="0 20px 60px -20px rgba(15, 23, 42, 0.25)"
+          overflow="hidden"
+        >
+          <ModalCloseButton
+            top="14px"
+            right="14px"
+            color="text.muted"
+            _hover={{ color: 'text.strong', bg: 'surface.hover' }}
+          />
+          <ModalHeader
+            px={6}
+            pt={5}
+            pb={4}
+            pr={12}
+            borderBottom="1px solid"
+            borderColor={borderColor}
+          >
+            <Text
+              as="span"
+              display="block"
+              fontFamily="mono"
+              fontSize="11px"
+              color={labelColor}
+              letterSpacing="0.08em"
+              textTransform="uppercase"
+              fontWeight={500}
+              mb={2}
+            >
+              Campo del formulario
+              {activeField?.required ? ' · Obligatorio' : ''}
+            </Text>
+            <Heading as="h2" fontSize="xl" fontWeight={600} letterSpacing="-0.02em" color={inkStrong}>
+              {activeField?.name ?? 'Campo'}
+            </Heading>
+            {activeField && (
+              <Text fontSize="sm" color={mutedColor} mt={2}>
+                Tipo: {activeField.type}
+              </Text>
+            )}
+          </ModalHeader>
+          <ModalBody px={6} py={5} bg={modalBodyBg}>
             {activeField && (
               <FormControl>
-                <FormLabel fontSize="sm" color="gray.500">
-                  {activeField.type.toUpperCase()} {activeField.required && '(requerido)'}
+                <FormLabel fontSize="sm" fontWeight={500} color={inkStrong} mb={3}>
+                  Valor
                 </FormLabel>
                 {activeFieldType === 'checkbox' ? (
                   <ChakraCheckbox
                     isChecked={modalValue === 'true'}
                     onChange={(e) => setModalValue(e.target.checked ? 'true' : 'false')}
                     size="lg"
+                    colorScheme="brand"
                   >
                     {activeField.name}
                   </ChakraCheckbox>
@@ -506,7 +608,11 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
                     type="date"
                     value={modalValue}
                     onChange={(e) => setModalValue(e.target.value)}
-                    size="lg"
+                    size="md"
+                    borderColor={borderColor}
+                    bg={cardBg}
+                    _hover={{ borderColor: 'paper.400' }}
+                    _focusVisible={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                     autoFocus
                   />
                 ) : activeFieldType === 'number' ? (
@@ -515,7 +621,11 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
                     value={modalValue}
                     onChange={(e) => setModalValue(e.target.value)}
                     placeholder={`Ingresa ${activeField.name.toLowerCase()}`}
-                    size="lg"
+                    size="md"
+                    borderColor={borderColor}
+                    bg={cardBg}
+                    _hover={{ borderColor: 'paper.400' }}
+                    _focusVisible={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                     autoFocus
                   />
                 ) : (
@@ -523,21 +633,56 @@ const FormNoteFiller: React.FC<FormNoteFillerProps> = ({ formId, initialValues, 
                     value={modalValue}
                     onChange={(e) => setModalValue(e.target.value)}
                     placeholder={`Ingresa ${activeField.name.toLowerCase()}`}
-                    size="lg"
+                    size="md"
+                    borderColor={borderColor}
+                    bg={cardBg}
+                    _hover={{ borderColor: 'paper.400' }}
+                    _focusVisible={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
                     autoFocus
                   />
                 )}
               </FormControl>
             )}
           </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onClose}>Cancelar</Button>
-            <Button colorScheme="brand" onClick={saveFieldValue}>Guardar</Button>
+          <ModalFooter
+            px={6}
+            py={4}
+            borderTop="1px solid"
+            borderColor={borderColor}
+            bg={cardBg}
+          >
+            <HStack justify="flex-end" w="full" spacing={2}>
+              <Button
+                variant="outline"
+                size="sm"
+                h="36px"
+                borderColor="line.strong"
+                color="text.strong"
+                bg={cardBg}
+                _hover={{ borderColor: 'paper.600' }}
+                onClick={onClose}
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                h="36px"
+                colorScheme="brand"
+                bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
+                onClick={saveFieldValue}
+              >
+                Guardar
+              </Button>
+            </HStack>
           </ModalFooter>
         </ModalContent>
       </Modal>
     </VStack>
   );
-};
+});
+
+FormNoteFiller.displayName = 'FormNoteFiller';
 
 export default FormNoteFiller;

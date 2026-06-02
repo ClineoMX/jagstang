@@ -4,6 +4,7 @@
  */
 
 import { API_BASE_URL, AUTH_API_BASE_URL, API_KEY } from '../config/api';
+import { fetchWithTimeout, ApiTimeoutError } from '../utils/apiStatus';
 
 export interface ApiError {
   message: string;
@@ -33,6 +34,172 @@ class ApiService {
     }
 
     return headers;
+  }
+
+  /**
+   * Consume Server-Sent Events (SSE) desde un ReadableStream.
+   * Soporta frames tipo:
+   *   event: <name>
+   *   data: <payload>
+   *   data: <payload line 2>
+   *
+   * (líneas separadas por \n y eventos separados por \n\n)
+   */
+  private async consumeSseStream(args: {
+    response: Response;
+    onMessage: (msg: { event?: string; data: string }) => void;
+    signal?: AbortSignal;
+  }) {
+    const { response, onMessage, signal } = args;
+    if (!response.body) {
+      throw { message: 'Respuesta sin body (stream no disponible)', status: 0 } as ApiError;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    const flush = () => {
+      // Procesa eventos completos separados por doble salto de línea
+      let idx = buffer.indexOf('\n\n');
+      while (idx !== -1) {
+        const rawEvent = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 2);
+        idx = buffer.indexOf('\n\n');
+
+        const lines = rawEvent.split('\n');
+        let eventName: string | undefined;
+        const dataLines: string[] = [];
+
+        for (const ln of lines) {
+          const line = ln.replace(/\r$/, '');
+          if (!line || line.startsWith(':')) continue; // comentario/keepalive
+          if (line.startsWith('event:')) {
+            eventName = line.slice('event:'.length).trim() || undefined;
+            continue;
+          }
+          if (line.startsWith('data:')) {
+            dataLines.push(line.slice('data:'.length).trimStart());
+            continue;
+          }
+        }
+
+        const data = dataLines.join('\n');
+        onMessage({ event: eventName, data });
+      }
+    };
+
+    while (true) {
+      if (signal?.aborted) {
+        try {
+          await reader.cancel();
+        } catch {
+          // ignore
+        }
+        return;
+      }
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      flush();
+    }
+    // intenta procesar lo que falte (sin \n\n final)
+    if (buffer.trim()) {
+      buffer += '\n\n';
+      flush();
+    }
+  }
+
+  /**
+   * Consume un stream que envía objetos JSON concatenados (sin newlines),
+   * por ejemplo: {"type":"chunk","data":"..."}{"type":"chunk","data":"..."}
+   *
+   * Extrae objetos completos con un parser incremental basado en conteo de llaves,
+   * respetando strings y escapes.
+   */
+  private async consumeConcatenatedJsonObjects(args: {
+    response: Response;
+    onObject: (obj: unknown) => void;
+    signal?: AbortSignal;
+  }) {
+    const { response, onObject, signal } = args;
+    if (!response.body) {
+      throw { message: 'Respuesta sin body (stream no disponible)', status: 0 } as ApiError;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    const tryExtract = () => {
+      // Avanza hasta el primer "{"
+      let start = buffer.indexOf('{');
+      if (start === -1) {
+        buffer = buffer.trimStart();
+        return;
+      }
+      if (start > 0) buffer = buffer.slice(start);
+
+      let depth = 0;
+      let inString = false;
+      let escape = false;
+      for (let i = 0; i < buffer.length; i++) {
+        const ch = buffer[i];
+
+        if (inString) {
+          if (escape) {
+            escape = false;
+          } else if (ch === '\\') {
+            escape = true;
+          } else if (ch === '"') {
+            inString = false;
+          }
+          continue;
+        }
+
+        if (ch === '"') {
+          inString = true;
+          continue;
+        }
+        if (ch === '{') depth += 1;
+        if (ch === '}') depth -= 1;
+
+        if (depth === 0) {
+          const raw = buffer.slice(0, i + 1);
+          buffer = buffer.slice(i + 1);
+          try {
+            onObject(JSON.parse(raw));
+          } catch {
+            // si algo salió mal, reinyecta y espera más data
+            buffer = raw + buffer;
+            return;
+          }
+          // Puede haber más objetos concatenados; intenta de nuevo recursivamente.
+          tryExtract();
+          return;
+        }
+      }
+    };
+
+    while (true) {
+      if (signal?.aborted) {
+        try {
+          await reader.cancel();
+        } catch {
+          // ignore
+        }
+        return;
+      }
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      tryExtract();
+    }
+
+    // último intento por si el stream cerró justo al final
+    if (buffer.trim()) {
+      tryExtract();
+    }
   }
 
   private getPublicHeaders(): HeadersInit {
@@ -65,7 +232,7 @@ class ApiService {
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         ...options,
         headers,
       });
@@ -95,6 +262,9 @@ class ApiService {
       }
       return {} as T;
     } catch (error) {
+      if (error instanceof ApiTimeoutError) {
+        throw { message: error.message, status: 0 } as ApiError;
+      }
       if (error && typeof error === 'object' && 'status' in error) {
         throw error;
       }
@@ -110,10 +280,10 @@ class ApiService {
   /**
    * List all patients with pagination
    */
-  async listPatients(params?: { page?: number; limit?: number }) {
+  async listPatients(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -132,11 +302,40 @@ class ApiService {
   }
 
   /**
+   * Enriched patient rows for the patients table UI (see api.md GET /patients/table/).
+   */
+  async listPatientsTable(params?: { page?: number; size?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
+    const query = queryParams.toString();
+    return this.request<{
+      count: number;
+      size: number;
+      results: Array<{
+        id: string;
+        slug: string;
+        name: string;
+        lastname: string;
+        lastname_m: string | null;
+        phone?: string;
+        birth_date?: string;
+        gender?: string;
+        blood_type?: string;
+        is_recurrent: boolean;
+        last_visit?: string;
+        email?: string;
+      }>;
+    }>(`/patients/table/${query ? `?${query}` : ''}`);
+  }
+
+  /**
    * Get a specific patient by ID
    */
   async getPatient(patientId: string) {
     return this.request<{
       id: string;
+      slug: string;
       name: string;
       lastname: string;
       lastname_m: string | null;
@@ -168,24 +367,25 @@ class ApiService {
   }
 
   /**
-   * Get patient profile (api.md: GET /patients/<patient_id>/profile/)
-   * Incluye phone, is_recurrent y avatar_url (si null/vacío se muestran iniciales).
+   * Update patient — PUT /patients/<id>/ (mismo shape que POST create)
    */
-  async getPatientProfile(patientId: string) {
-    return this.request<{
+  async updatePatient(
+    patientId: string,
+    data: {
+      name: string;
+      lastname: string;
+      lastname_m?: string;
       phone?: string;
-      phone_number?: string;
-      is_recurrent?: boolean;
-      avatar_url?: string | null;
-    }>(`/patients/${patientId}/profile/`);
-  }
-
-  /**
-   * Update patient profile (PATCH /patients/<patient_id>/profile/)
-   */
-  async updatePatientProfile(patientId: string, data: { phone?: string }) {
-    return this.request(`/patients/${patientId}/profile/`, {
-      method: 'PATCH',
+    }
+  ) {
+    return this.request<{
+      id: string;
+      name: string;
+      lastname: string;
+      lastname_m?: string | null;
+      phone?: string;
+    }>(`/patients/${patientId}/`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     });
   }
@@ -234,16 +434,43 @@ class ApiService {
     });
   }
 
+  // ============ PATIENT VITALS (summary) ============
+
+  /** GET/PUT /patients/<id>/vitals/ — see api.md */
+  async getPatientVitals(patientId: string) {
+    return this.request<{
+      blood_type?: string | null;
+      allergies?: Array<{ name: string; created_at: string }> | null;
+      medications?: Array<{ name: string; created_at: string }> | null;
+      chronic_conditions?: Array<{ name: string; created_at: string }> | null;
+    }>(`/patients/${patientId}/vitals/`);
+  }
+
+  async upsertPatientVitals(
+    patientId: string,
+    data: {
+      blood_type: string | null;
+      allergies: Array<{ name: string; created_at: string }>;
+      medications: Array<{ name: string; created_at: string }>;
+      chronic_conditions: Array<{ name: string; created_at: string }>;
+    }
+  ) {
+    return this.request<void>(`/patients/${patientId}/vitals/`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
   // ============ CONTACTS ============
 
   /**
    * List contacts for the current doctor
    * GET /doctor/contacts/
    */
-  async listContacts(params?: { page?: number; limit?: number }) {
+  async listContacts(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -353,10 +580,10 @@ class ApiService {
    * List appointments for the current doctor
    * GET /doctor/appointments/
    */
-  async listAppointments(params?: { page?: number; limit?: number }) {
+  async listAppointments(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -440,10 +667,10 @@ class ApiService {
    * Get doctor notes (recent, this month)
    * GET /doctor/notes/recent/
    */
-  async getDoctorNotesRecent(params?: { page?: number; limit?: number }) {
+  async getDoctorNotesRecent(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       results: Array<{
@@ -592,7 +819,7 @@ class ApiService {
    */
   async getDoctorAsset(assetId: string): Promise<Blob> {
     const url = `${API_BASE_URL}/doctor/assets/${assetId}/`;
-    const response = await fetch(url, { headers: this.getAuthHeaders() });
+    const response = await fetchWithTimeout(url, { headers: this.getAuthHeaders() });
     if (!response.ok) {
       throw { message: 'Error al descargar el asset', status: response.status } as ApiError;
     }
@@ -646,12 +873,25 @@ class ApiService {
   }
 
   /**
+   * GET /doctor/compliance/overall_score/
+   * Score agregado de cumplimiento NOM del doctor.
+   */
+  async getDoctorComplianceOverallScore() {
+    return this.request<{
+      doctor_id: string;
+      overall_score: number;
+      patient_count: number;
+      computed_at: string;
+    }>('/doctor/compliance/overall_score/');
+  }
+
+  /**
    * List all notes for a patient
    */
-  async listNotes(patientId: string, params?: { page?: number; limit?: number }) {
+  async listNotes(patientId: string, params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -670,6 +910,7 @@ class ApiService {
         signed_by?: string;
         created_at: string;
         updated_at?: string;
+        attachments?: unknown[];
       }>;
     }>(`/patients/${patientId}/notes/${query ? `?${query}` : ''}`);
   }
@@ -688,6 +929,7 @@ class ApiService {
       signed_by?: string;
       created_at: string;
       updated_at: string;
+      attachments?: unknown[];
     }>(`/patients/${patientId}/notes/${noteId}/`);
   }
 
@@ -754,6 +996,19 @@ class ApiService {
   }
 
   /**
+   * Update the date of a medical note (draft only)
+   */
+  async updateNoteDate(patientId: string, noteId: string, customDate: string) {
+    return this.request<{ custom_date: string }>(
+      `/patients/${patientId}/notes/${noteId}/date/`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ custom_date: customDate }),
+      }
+    );
+  }
+
+  /**
    * Sign a medical note
    */
   async signNote(patientId: string, noteId: string, save_anyway = false) {
@@ -773,6 +1028,175 @@ class ApiService {
       missing_fields: string[];
       reasoning: Record<string, string>;
     }>(`/patients/${patientId}/notes/${noteId}/analysis/`);
+  }
+
+  /**
+   * GET /patients/<id>/notes/summary/
+   * SSE stream para recibir el resumen generado por un LLM.
+   *
+   * Nota: usamos fetch + stream porque EventSource no soporta headers (y esta API requiere auth headers).
+   *
+   * Contrato esperado (flexible):
+   * - `data:` contiene texto incremental (delta) o JSON con { delta }.
+   * - `event: done` o `data: [DONE]` indica fin.
+   * - `event: error` o JSON con { error } puede indicar error.
+   */
+  async streamPatientNotesSummary(args: {
+    patientId: string;
+    signal?: AbortSignal;
+    onDelta: (delta: string) => void;
+    onDone?: () => void;
+    onError?: (err: ApiError) => void;
+  }) {
+    const { patientId, signal, onDelta, onDone, onError } = args;
+    const url = `${API_BASE_URL}/patients/${patientId}/notes/summary/`;
+
+    const response = await fetchWithTimeout(url, {
+      method: 'GET',
+      headers: {
+        ...this.getAuthHeaders(),
+        Accept: 'text/event-stream',
+      },
+      signal,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({
+        message: response.statusText,
+      }));
+      const apiErr = {
+        message: errorData.message || errorData.detail || 'An error occurred',
+        status: response.status,
+        errors: errorData.errors,
+      } as ApiError;
+      onError?.(apiErr);
+      throw apiErr;
+    }
+
+    const safeDone = () => {
+      try {
+        onDone?.();
+      } catch {
+        // ignore
+      }
+    };
+
+    try {
+      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+
+      if (contentType.includes('text/event-stream')) {
+        await this.consumeSseStream({
+          response,
+          signal,
+          onMessage: ({ event, data }) => {
+            if (!data && !event) return;
+            if (event === 'done' || data === '[DONE]') {
+              safeDone();
+              return;
+            }
+            if (event === 'error') {
+              const apiErr = { message: data || 'Error en SSE', status: 0 } as ApiError;
+              onError?.(apiErr);
+              return;
+            }
+
+            // Intentar JSON (por si el backend manda {delta}, {text}, {error}, etc)
+            const trimmed = (data || '').trim();
+            if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+              try {
+                const parsed = JSON.parse(trimmed) as any;
+                if (parsed?.error) {
+                  const apiErr = {
+                    message: String(parsed.error),
+                    status: 0,
+                  } as ApiError;
+                  onError?.(apiErr);
+                  return;
+                }
+
+                // Formato esperado observado: { type: "chunk"|"done"|"error", data: "..." }
+                if (typeof parsed?.type === 'string') {
+                  const t = parsed.type;
+                  const d = typeof parsed?.data === 'string' ? parsed.data : '';
+                  if (t === 'chunk') {
+                    if (d) onDelta(d);
+                    return;
+                  }
+                  if (t === 'done') {
+                    // El evento `done` puede traer el texto completo final;
+                    // no lo concatenamos (provocaría duplicado).
+                    safeDone();
+                    return;
+                  }
+                  if (t === 'error') {
+                    const apiErr = {
+                      message: d || 'Error en stream',
+                      status: 0,
+                    } as ApiError;
+                    onError?.(apiErr);
+                    return;
+                  }
+                }
+
+                const delta = parsed?.delta ?? parsed?.text ?? parsed?.content;
+                if (typeof delta === 'string' && delta.length) {
+                  onDelta(delta);
+                  return;
+                }
+                onDelta(trimmed);
+                return;
+              } catch {
+                // si no parsea, cae a texto plano
+              }
+            }
+
+            onDelta(data);
+          },
+        });
+      } else {
+        // Fallback: backend manda JSON streaming concatenado (no SSE).
+        await this.consumeConcatenatedJsonObjects({
+          response,
+          signal,
+          onObject: (obj) => {
+            const o = obj as any;
+            const t = typeof o?.type === 'string' ? o.type : undefined;
+            const d = typeof o?.data === 'string' ? o.data : '';
+
+            if (t === 'chunk') {
+              if (d) onDelta(d);
+              return;
+            }
+            if (t === 'done') {
+              // Algunos backends mandan el texto completo en `done` como
+              // confirmación final; no se concatena para no duplicar.
+              safeDone();
+              return;
+            }
+            if (t === 'error') {
+              const apiErr = { message: d || 'Error en stream', status: 0 } as ApiError;
+              onError?.(apiErr);
+              return;
+            }
+
+            // Unknown object: intenta mapear campos comunes
+            const delta = o?.delta ?? o?.text ?? o?.content;
+            if (typeof delta === 'string' && delta.length) {
+              onDelta(delta);
+            }
+          },
+        });
+      }
+      safeDone();
+    } catch (err: any) {
+      if (signal?.aborted) return;
+      const apiErr: ApiError =
+        err && typeof err === 'object' && 'status' in err
+          ? (err as ApiError)
+          : ({ message: err?.message || 'Error de streaming', status: 0 } as ApiError);
+      onError?.(apiErr);
+      throw apiErr;
+    }
   }
 
   /**
@@ -801,11 +1225,11 @@ class ApiService {
    */
   async listPatientAssets(
     patientId: string,
-    params?: { page?: number; limit?: number }
+    params?: { page?: number; size?: number }
   ) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
 
     return this.request<{
@@ -821,6 +1245,19 @@ class ApiService {
       page: number;
       size: number;
     }>(`/patients/${patientId}/assets/${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * GET /patients/<patient_id>/assets/<asset_id>/
+   * Descarga un asset como blob (raw object).
+   */
+  async getPatientAsset(patientId: string, assetId: string): Promise<Blob> {
+    const url = `${API_BASE_URL}/patients/${patientId}/assets/${assetId}/`;
+    const response = await fetchWithTimeout(url, { headers: this.getAuthHeaders() });
+    if (!response.ok) {
+      throw { message: 'Error al descargar el asset', status: response.status } as ApiError;
+    }
+    return response.blob();
   }
 
   /**
@@ -844,11 +1281,11 @@ class ApiService {
    */
   async listPatientConsents(
     patientId: string,
-    params?: { page?: number; limit?: number }
+    params?: { page?: number; size?: number }
   ) {
     const queryParams = new URLSearchParams();
     if (params?.page != null) queryParams.append('page', params.page.toString());
-    if (params?.limit != null) queryParams.append('limit', params.limit.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       results: Array<{
@@ -877,7 +1314,7 @@ class ApiService {
     const url = `${AUTH_API_BASE_URL}${endpoint}`;
 
     try {
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         ...options,
         headers: {
           ...this.getPublicHeaders(),
@@ -901,6 +1338,9 @@ class ApiService {
       }
       return {} as T;
     } catch (error) {
+      if (error instanceof ApiTimeoutError) {
+        throw { message: error.message, status: 0 } as ApiError;
+      }
       if (error && typeof error === 'object' && 'status' in error) {
         throw error;
       }

@@ -22,8 +22,6 @@ export const API_ENDPOINTS = {
   PATIENTS_LIST: '/patients/',
   PATIENTS_CREATE: '/patients/',
   PATIENTS_GET: (id: string) => `/patients/${id}/`,
-  PATIENTS_PROFILE: (id: string) => `/patients/${id}/profile/`,
-  PATIENTS_UPDATE_PROFILE: (id: string) => `/patients/${id}/profile/`,
   
   // Notas (disponibles)
   NOTES_LIST: (patientId: string) => `/${patientId}/notes/`,

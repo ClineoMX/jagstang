@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import type { MedicalNote, NoteCompletenessAnalysis } from '../types';
+import { mapApiAttachments } from '../utils/mapNoteAttachments';
 
 export const useNotes = (patientId: string | undefined) => {
   const [notes, setNotes] = useState<MedicalNote[]>([]);
@@ -12,15 +13,18 @@ export const useNotes = (patientId: string | undefined) => {
       id: n.id,
       patientId: pid,
       doctorId: '',
-      title: n.title || `${n.note_type || n.type || 'Nota'} - ${n.created_at?.slice(0, 10) || ''}`,
+      title:
+        n.title ||
+        `${n.note_type || n.type || 'Nota'} - ${n.created_at?.slice(0, 10) || ''}`,
       type: (n.note_type || n.type) as any,
       content: n.content || '',
-      status: (n.status === 'signed' || n.is_signed) ? 'signed' : 'draft',
+      status: n.status === 'signed' || n.is_signed ? 'signed' : 'draft',
       isSigned: n.status === 'signed' || n.is_signed,
       signedAt: n.signed_at,
       signedBy: n.signed_by,
       createdAt: n.created_at,
       updatedAt: n.updated_at,
+      attachments: mapApiAttachments(n.attachments, { patientId: pid, noteId: n.id }),
     }));
 
   useEffect(() => {
@@ -44,7 +48,10 @@ export const useNotes = (patientId: string | undefined) => {
         const response = await apiService.listNotes(patientId);
         if (controller.signal.aborted) return;
         const transformed = transformNotes(response.results, patientId);
-        transformed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        transformed.sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
         setNotes(transformed);
       } catch (err) {
         if (controller.signal.aborted) return;
@@ -64,7 +71,10 @@ export const useNotes = (patientId: string | undefined) => {
     if (!patientId) return;
     const response = await apiService.listNotes(patientId);
     const transformed = transformNotes(response.results, patientId);
-    transformed.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    transformed.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
     setNotes(transformed);
   };
 
@@ -112,9 +122,17 @@ export const useNotes = (patientId: string | undefined) => {
     await reloadNotes();
   };
 
-  const getNoteAnalysis = async (noteId: string): Promise<NoteCompletenessAnalysis> => {
+  const getNoteAnalysis = async (
+    noteId: string
+  ): Promise<NoteCompletenessAnalysis> => {
     if (!patientId) throw new Error('Patient ID is required');
     return await apiService.getNoteAnalysis(patientId, noteId);
+  };
+
+  const updateNoteDate = async (noteId: string, customDate: string) => {
+    if (!patientId) throw new Error('Patient ID is required');
+    await apiService.updateNoteDate(patientId, noteId, customDate);
+    await reloadNotes();
   };
 
   return {
@@ -125,5 +143,6 @@ export const useNotes = (patientId: string | undefined) => {
     updateNote,
     signNote,
     getNoteAnalysis,
+    updateNoteDate,
   };
 };

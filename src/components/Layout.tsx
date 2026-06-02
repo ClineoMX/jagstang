@@ -2,18 +2,17 @@ import React from 'react';
 import {
   Box,
   Flex,
-  IconButton,
   VStack,
   Text,
   Avatar,
   Tooltip,
-  Divider,
   Menu,
   MenuButton,
   MenuList,
   MenuItem,
-  useColorMode,
+  MenuDivider,
   useColorModeValue,
+  useBreakpointValue,
   Icon,
 } from '@chakra-ui/react';
 import {
@@ -21,12 +20,10 @@ import {
   FiUsers,
   FiCalendar,
   FiLogOut,
-  FiSun,
-  FiMoon,
   FiUser,
   FiActivity,
   FiBook,
-  FiFileText,
+  FiBookOpen,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -50,69 +47,146 @@ const NavItem: React.FC<NavItemProps> = ({
   isActive,
   onClick,
 }) => {
-  const activeBg = useColorModeValue('whiteAlpha.200', 'whiteAlpha.100');
-  const hoverBg = useColorModeValue('whiteAlpha.100', 'whiteAlpha.50');
-
   return (
-    <VStack
-      spacing={2}
-      cursor="pointer"
+    <Box
+      as="button"
       onClick={onClick}
-      py={4}
-      px={3}
-      borderRadius="xl"
-      bg={isActive ? activeBg : 'transparent'}
-      _hover={{ bg: isActive ? activeBg : hoverBg }}
-      transition="all 0.2s"
       position="relative"
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      gap="6px"
+      py="10px"
+      px="8px"
+      borderRadius="8px"
+      bg={isActive ? 'rgba(76,183,215,0.12)' : 'transparent'}
+      color={isActive ? 'sidebar.fg' : 'sidebar.muted'}
+      transition="color .12s, background .12s"
+      _hover={{
+        color: 'sidebar.fg',
+        bg: isActive ? 'rgba(76,183,215,0.18)' : 'rgba(255,255,255,0.04)',
+      }}
+      _before={
+        isActive
+          ? {
+              content: '""',
+              position: 'absolute',
+              left: '-10px',
+              top: '14px',
+              bottom: '14px',
+              width: '3px',
+              bg: 'brand.400',
+              borderRadius: '0 2px 2px 0',
+            }
+          : undefined
+      }
     >
-      {isActive && (
-        <Box
-          position="absolute"
-          left={0}
-          top="50%"
-          transform="translateY(-50%)"
-          w="4px"
-          h="60%"
-          bg="white"
-          borderRadius="0 4px 4px 0"
-        />
-      )}
       <Icon
         as={ItemIcon}
-        boxSize={6}
-        color={isActive ? 'white' : 'whiteAlpha.700'}
+        boxSize="20px"
+        strokeWidth={1.75}
+        color={isActive ? 'brand.400' : 'currentColor'}
       />
       <Text
-        fontSize="xs"
-        fontWeight={isActive ? 'semibold' : 'medium'}
-        color={isActive ? 'white' : 'whiteAlpha.700'}
+        fontSize="10.5px"
+        fontWeight={500}
+        letterSpacing="0.01em"
+        lineHeight="1"
         textAlign="center"
-        lineHeight="1.2"
       >
         {label}
       </Text>
-    </VStack>
+    </Box>
+  );
+};
+
+interface BottomNavItemProps {
+  icon: React.ElementType;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+const BottomNavItem: React.FC<BottomNavItemProps> = ({
+  icon: ItemIcon,
+  label,
+  isActive,
+  onClick,
+}) => {
+  return (
+    <Box
+      as="button"
+      onClick={onClick}
+      position="relative"
+      flex={1}
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+      gap="3px"
+      py="8px"
+      color={isActive ? 'sidebar.fg' : 'sidebar.muted'}
+      transition="color .12s"
+      _active={{ bg: 'rgba(255,255,255,0.04)' }}
+      _before={
+        isActive
+          ? {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: '24%',
+              right: '24%',
+              height: '2px',
+              bg: 'brand.400',
+              borderRadius: '0 0 2px 2px',
+            }
+          : undefined
+      }
+    >
+      <Icon
+        as={ItemIcon}
+        boxSize="20px"
+        strokeWidth={1.75}
+        color={isActive ? 'brand.400' : 'currentColor'}
+      />
+      <Text
+        fontSize="10px"
+        fontWeight={500}
+        letterSpacing="0.01em"
+        lineHeight="1"
+      >
+        {label}
+      </Text>
+    </Box>
   );
 };
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { colorMode, toggleColorMode } = useColorMode();
   const { doctor, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const sidebarBg = useColorModeValue('secondary.800', 'secondary.900');
-  const bgColor = useColorModeValue('background.light', 'background.dark');
+  const bgColor = useColorModeValue('surface.page', 'background.dark');
+
+  // Tokens del menú flotante (alineados con AuthLayout)
+  const menuBg = useColorModeValue('white', 'paper.800');
+  const menuBorder = useColorModeValue('line.light', 'whiteAlpha.200');
+  /** Texto del menú: debe contrastar con `menuBg` (no heredar `sidebar.fg` del padre). */
+  const menuFg = useColorModeValue('ink.700', 'paper.50');
+  const menuLabelColor = useColorModeValue('paper.600', 'paper.400');
+  const menuNameColor = useColorModeValue('ink.700', 'paper.50');
+  const menuItemHoverBg = useColorModeValue('paper.100', 'whiteAlpha.100');
+  const menuIconColor = useColorModeValue('paper.600', 'paper.400');
 
   const hideNom = (doctor?.role ?? '').toUpperCase() === 'WELLNESS';
   const navItems = [
     { icon: FiHome, label: 'Home', path: '/' },
     { icon: FiUsers, label: 'Pacientes', path: '/patients' },
     { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
-    { icon: FiFileText, label: 'Formularios', path: '/formularios' },
     { icon: FiBook, label: 'Contactos', path: '/contacts' },
-    ...(hideNom ? [] : [{ icon: FiActivity, label: 'NOM', path: '/compliance' }]),
+    ...(hideNom
+      ? []
+      : [{ icon: FiActivity, label: 'NOM', path: '/compliance' }]),
   ];
 
   const handleLogout = () => {
@@ -120,118 +194,250 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     navigate('/login');
   };
 
-  return (
-    <Flex h="100vh" overflow="hidden">
-      {/* Sidebar */}
-      <Box
-        w="100px"
-        bg={sidebarBg}
-        display="flex"
-        flexDirection="column"
-        boxShadow="xl"
-      >
-        {/* Logo/Header */}
-        <Flex
-          h="100px"
-          alignItems="center"
-          justifyContent="center"
-          mb={8}
+  const isItemActive = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return (
+      location.pathname === path ||
+      (path === '/contacts' && location.pathname.startsWith('/contacts')) ||
+      (path === '/patients' && location.pathname.startsWith('/patients'))
+    );
+  };
+
+  const role = (doctor?.role ?? '').toUpperCase();
+
+  /** Rail: visible desde `md`; un poco más chico en tablet que en escritorio ancho. */
+  const railLogoPx = useBreakpointValue({ md: 10, lg: 12 }) ?? 12;
+  /** Header móvil: barra 56px; 24px se ve pesado en teléfonos estrechos. */
+  const mobileHeaderLogoPx = useBreakpointValue({ base: 8 }) ?? 8;
+
+  const userMenu = doctor && (
+    <Menu
+      placement="bottom-end"
+      gutter={8}
+      // `absolute` (default de Popper) queda dentro del rail con `overflowY: auto`
+      // y el `MenuList` se recorta al ancho del sidebar; `fixed` evita ese clip.
+      strategy="fixed"
+    >
+      <MenuButton as={Box} cursor="pointer">
+        <Tooltip
+          label={`${doctor.firstName} ${doctor.lastName}`}
+          placement="bottom"
         >
-          <Box
-            p={2}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
+          <Avatar
+            size="sm"
+            w="36px"
+            h="36px"
+            name={`${doctor.firstName} ${doctor.lastName}`}
+            src={doctor.avatar || undefined}
+            bgGradient="linear(135deg, brand.400, brand.700)"
+            color="white"
+            fontSize="13px"
+            fontWeight={600}
+            _hover={{ transform: 'scale(1.05)' }}
+            transition="all 0.2s"
+          />
+        </Tooltip>
+      </MenuButton>
+      <MenuList
+        bg={menuBg}
+        color={menuFg}
+        border="1px solid"
+        borderColor={menuBorder}
+        borderRadius="8px"
+        boxShadow="lg"
+        py={2}
+        minW="240px"
+        sx={{
+          '& .chakra-menu__icon-wrapper': { color: menuIconColor },
+        }}
+      >
+        <Box px={3} py={2}>
+          <Text
+            fontSize="13.5px"
+            fontWeight={600}
+            color={menuNameColor}
+            lineHeight="1.3"
+            noOfLines={1}
           >
-            <ClineoLogo variant="icon" color="white" size={12} />
-          </Box>
+            {doctor.firstName} {doctor.lastName}
+          </Text>
+          {role && (
+            <Text
+              fontFamily="mono"
+              fontSize="10.5px"
+              letterSpacing="0.08em"
+              textTransform="uppercase"
+              color={menuLabelColor}
+              mt={0.5}
+            >
+              {role}
+            </Text>
+          )}
+        </Box>
+        <MenuDivider borderColor={menuBorder} my={1} />
+        <MenuItem
+          icon={<FiUser />}
+          onClick={() => navigate('/profile')}
+          fontSize="13.5px"
+          color={menuFg}
+          bg={menuBg}
+          _hover={{ bg: menuItemHoverBg, color: menuFg }}
+          _focus={{ bg: menuItemHoverBg, color: menuFg }}
+        >
+          Información personal
+        </MenuItem>
+        <MenuItem
+          icon={<FiBookOpen />}
+          onClick={() => navigate('/library')}
+          fontSize="13.5px"
+          color={menuFg}
+          bg={menuBg}
+          _hover={{ bg: menuItemHoverBg, color: menuFg }}
+          _focus={{ bg: menuItemHoverBg, color: menuFg }}
+        >
+          Biblioteca
+        </MenuItem>
+        <MenuDivider borderColor={menuBorder} my={1} />
+        <MenuItem
+          icon={<FiLogOut />}
+          onClick={handleLogout}
+          fontSize="13.5px"
+          color={menuFg}
+          bg={menuBg}
+          _hover={{ bg: menuItemHoverBg, color: menuFg }}
+          _focus={{ bg: menuItemHoverBg, color: menuFg }}
+        >
+          Cerrar sesión
+        </MenuItem>
+      </MenuList>
+    </Menu>
+  );
+
+  return (
+    <Flex direction={{ base: 'column', md: 'row' }} minH="100vh">
+      {/* Mobile top header (sticky) */}
+      <Flex
+        display={{ base: 'flex', md: 'none' }}
+        position="sticky"
+        top={0}
+        zIndex={20}
+        h="56px"
+        px={4}
+        bg="sidebar.bg"
+        color="sidebar.fg"
+        borderBottom="1px solid"
+        borderColor="whiteAlpha.100"
+        alignItems="center"
+        justifyContent="space-between"
+        flexShrink={0}
+      >
+        <Flex
+          as="button"
+          alignItems="center"
+          gap={2}
+          onClick={() => navigate('/')}
+        >
+          <ClineoLogo variant="icon" color="white" size={mobileHeaderLogoPx} />
+        </Flex>
+        <Flex alignItems="center" gap={1}>
+          {userMenu}
+        </Flex>
+      </Flex>
+
+      {/* Desktop sidebar rail: no estirar con páginas altas (p. ej. Calendario); el pie queda anclado al viewport */}
+      <Box
+        display={{ base: 'none', md: 'flex' }}
+        w="92px"
+        bg="sidebar.bg"
+        color="sidebar.fg"
+        flexDirection="column"
+        pt="18px"
+        pb="20px"
+        flexShrink={0}
+        alignSelf="flex-start"
+        minH={{ md: '100vh' }}
+        maxH={{ md: '100vh' }}
+        position={{ md: 'sticky' }}
+        top={{ md: 0 }}
+        overflowY={{ md: 'auto' }}
+      >
+        <Flex h="64px" alignItems="center" justifyContent="center">
+          <ClineoLogo variant="icon" color="white" size={railLogoPx} />
         </Flex>
 
-        {/* Navigation */}
-        <VStack spacing={2} px={2} flex={1} align="stretch">
+        <VStack
+          as="nav"
+          spacing="2px"
+          px="10px"
+          flex={1}
+          align="stretch"
+          pt="12px"
+        >
           {navItems.map((item) => (
             <NavItem
               key={item.path}
               icon={item.icon}
               label={item.label}
               path={item.path}
-              isActive={
-                location.pathname === item.path ||
-                (item.path === '/contacts' && location.pathname.startsWith('/contacts')) ||
-                (item.path === '/formularios' && location.pathname.startsWith('/formularios'))
-              }
+              isActive={isItemActive(item.path)}
               onClick={() => navigate(item.path)}
             />
           ))}
         </VStack>
 
-        {/* Footer */}
-        <VStack spacing={4} p={3} pb={6}>
-          <Tooltip label="Cambiar tema" placement="right">
-            <IconButton
-              aria-label="Toggle color mode"
-              icon={colorMode === 'light' ? <FiMoon /> : <FiSun />}
-              onClick={toggleColorMode}
-              variant="ghost"
-              colorScheme="whiteAlpha"
-              color="whiteAlpha.700"
-              _hover={{ bg: 'whiteAlpha.100', color: 'white' }}
-              borderRadius="xl"
-              size="md"
-            />
-          </Tooltip>
-
-          <Divider borderColor="whiteAlpha.200" />
-
-          {doctor && (
-            <Menu>
-              <MenuButton as={Box} cursor="pointer">
-                <Tooltip
-                  label={`${doctor.firstName} ${doctor.lastName}`}
-                  placement="right"
-                >
-                  <Avatar
-                    size="md"
-                    name={`${doctor.firstName} ${doctor.lastName}`}
-                    src={doctor.avatar || undefined}
-                    bg="brand.400"
-                    color="white"
-                    border="2px solid"
-                    borderColor="whiteAlpha.300"
-                    _hover={{
-                      borderColor: 'white',
-                      transform: 'scale(1.05)',
-                    }}
-                    transition="all 0.2s"
-                    sx={{
-                      '& span': {
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '100%',
-                        height: '100%',
-                      },
-                    }}
-                  />
-                </Tooltip>
-              </MenuButton>
-              <MenuList>
-                <MenuItem icon={<FiUser />} onClick={() => navigate('/profile')}>
-                  Mi Perfil
-                </MenuItem>
-                <MenuItem icon={<FiLogOut />} onClick={handleLogout}>
-                  Cerrar Sesión
-                </MenuItem>
-              </MenuList>
-            </Menu>
-          )}
+        <VStack
+          spacing="10px"
+          px="10px"
+          pt="10px"
+          borderTop="1px solid"
+          borderColor="whiteAlpha.100"
+          align="center"
+        >
+          {userMenu}
         </VStack>
       </Box>
 
-      {/* Main Content */}
-      <Box flex={1} bg={bgColor} overflow="auto">
+      {/* Page content */}
+      <Box
+        flex={1}
+        bg={bgColor}
+        minW={0}
+        // Reservar espacio para el bottom-nav fijo en mobile (64px + safe area)
+        pb={{
+          base: 'calc(64px + env(safe-area-inset-bottom))',
+          md: 0,
+        }}
+      >
         {children}
       </Box>
+
+      {/* Mobile bottom tab bar (fixed) */}
+      <Flex
+        display={{ base: 'flex', md: 'none' }}
+        position="fixed"
+        bottom={0}
+        left={0}
+        right={0}
+        zIndex={20}
+        bg="sidebar.bg"
+        color="sidebar.fg"
+        borderTop="1px solid"
+        borderColor="whiteAlpha.200"
+        h="64px"
+        pb="env(safe-area-inset-bottom)"
+        alignItems="stretch"
+        justifyContent="space-around"
+      >
+        {navItems.map((item) => (
+          <BottomNavItem
+            key={item.path}
+            icon={item.icon}
+            label={item.label}
+            isActive={isItemActive(item.path)}
+            onClick={() => navigate(item.path)}
+          />
+        ))}
+      </Flex>
     </Flex>
   );
 };

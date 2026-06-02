@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import theme from './theme';
+import { renderAppToast } from './components/AppToast';
 
 // Pages
 import Login from './pages/Login';
@@ -15,8 +16,12 @@ import PatientDetail from './pages/PatientDetail';
 import PatientForm from './pages/PatientForm';
 import CalendarPage from './pages/Calendar';
 import NoteForm from './pages/NoteForm';
+import FormNoteForm from './pages/FormNoteForm';
 import DoctorProfile from './pages/DoctorProfile';
-import FormulariosPage from './pages/FormulariosPage';
+import Library from './pages/Library';
+import DocumentsList from './pages/library/DocumentsList';
+import FormsList from './pages/library/FormsList';
+import FormEditor from './pages/library/FormEditor';
 import Compliance from './pages/Compliance';
 import ContactList from './pages/ContactList';
 import ContactForm from './pages/ContactForm';
@@ -24,6 +29,7 @@ import TemplateFillForm from './pages/TemplateFillForm';
 
 // Components
 import Layout from './components/Layout';
+import BetaPausedOverlay from './components/BetaPausedOverlay';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -43,9 +49,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
 };
 
 // Public Route Component
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -121,7 +125,7 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/patients/:id"
+        path="/patients/:patientSlug"
         element={
           <ProtectedRoute>
             <Layout>
@@ -131,7 +135,7 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/patients/:patientId/notes/new"
+        path="/patients/:patientSlug/notes/new"
         element={
           <ProtectedRoute>
             <Layout>
@@ -141,11 +145,31 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/patients/:patientId/notes/:noteId/edit"
+        path="/patients/:patientSlug/notes/:noteId/edit"
         element={
           <ProtectedRoute>
             <Layout>
               <NoteForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patients/:patientSlug/notes/new-form"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormNoteForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/patients/:patientSlug/notes/:noteId/edit-form"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormNoteForm />
             </Layout>
           </ProtectedRoute>
         }
@@ -181,14 +205,54 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
-        path="/formularios"
+        path="/library"
         element={
           <ProtectedRoute>
             <Layout>
-              <FormulariosPage />
+              <Library />
             </Layout>
           </ProtectedRoute>
         }
+      >
+        <Route index element={<Navigate to="/library/documents" replace />} />
+        <Route path="documents" element={<DocumentsList />} />
+        <Route
+          path="templates"
+          element={<Navigate to="/library/documents" replace />}
+        />
+        <Route path="forms" element={<FormsList />} />
+      </Route>
+      <Route
+        path="/library/templates/new"
+        element={<Navigate to="/library/documents" replace />}
+      />
+      <Route
+        path="/library/templates/:id"
+        element={<Navigate to="/library/documents" replace />}
+      />
+      <Route
+        path="/library/forms/new"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormEditor />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/library/forms/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <FormEditor />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/formularios"
+        element={<Navigate to="/library/forms" replace />}
       />
       <Route
         path="/templates/fill"
@@ -237,17 +301,59 @@ const AppRoutes: React.FC = () => {
   );
 };
 
+/** Matches Chakra theme `md` (48em): compact viewports get top-right toasts. */
+const MD_UP_MEDIA = '(min-width: 48em)';
+
+const ChakraAppShell: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [toastPosition, setToastPosition] = useState<
+    'top-right' | 'bottom-right'
+  >(() => {
+    if (typeof window === 'undefined') return 'bottom-right';
+    return window.matchMedia(MD_UP_MEDIA).matches
+      ? 'bottom-right'
+      : 'top-right';
+  });
+
+  useEffect(() => {
+    const mq = window.matchMedia(MD_UP_MEDIA);
+    const sync = () =>
+      setToastPosition(mq.matches ? 'bottom-right' : 'top-right');
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  return (
+    <ChakraProvider
+      theme={theme}
+      toastOptions={{
+        defaultOptions: {
+          position: toastPosition,
+          duration: 4000,
+          isClosable: true,
+          render: renderAppToast,
+        },
+      }}
+    >
+      {children}
+    </ChakraProvider>
+  );
+};
+
 const App: React.FC = () => {
   return (
     <>
       <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-      <ChakraProvider theme={theme}>
+      <ChakraAppShell>
         <AuthProvider>
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
+          <BetaPausedOverlay />
         </AuthProvider>
-      </ChakraProvider>
+      </ChakraAppShell>
     </>
   );
 };

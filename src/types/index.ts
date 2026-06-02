@@ -27,6 +27,8 @@ export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
 export interface Patient {
   id: string;
+  /** Friendly identifier for display/URLs (API ops still use `id`). */
+  slug?: string;
   firstName: string;
   lastName: string;
   lastNameMaternal?: string;

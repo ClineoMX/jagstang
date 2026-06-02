@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  ModalCloseButton,
-  Button,
   VStack,
   FormControl,
   FormLabel,
   Input,
   useToast,
-  HStack,
   Spinner,
   Text,
+  useColorModeValue,
+  Box,
 } from '@chakra-ui/react';
 import { apiService } from '../services/api';
 import { usePatient } from '../hooks/usePatients';
 import PhoneNumberField, { phoneNumberFieldUtils } from './PhoneNumberField';
+import FormDrawer from './FormDrawer';
 
 interface PatientFormModalProps {
   isOpen: boolean;
@@ -28,6 +22,11 @@ interface PatientFormModalProps {
   onSuccess?: () => void;
 }
 
+/**
+ * Drawer-based patient form. The component name/props are kept for API
+ * compatibility with existing callers, but internally the modal has been
+ * replaced by a right-side `FormDrawer` per the new UX guidelines.
+ */
 const PatientFormModal: React.FC<PatientFormModalProps> = ({
   isOpen,
   onClose,
@@ -38,8 +37,13 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
   const isEditing = !!patientId;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { patient: apiPatient, profile: apiProfile, loading: loadingPatient } =
-    usePatient(patientId);
+  const labelColor = useColorModeValue('paper.600', 'paper.500');
+  const subColor = useColorModeValue('paper.700', 'paper.400');
+
+  const {
+    patient: apiPatient,
+    loading: loadingPatient,
+  } = usePatient(patientId);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -52,7 +56,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setFirstName(apiPatient.firstName);
       setLastName(apiPatient.lastName);
       setLastNameMaternal(apiPatient.lastNameMaternal ?? '');
-      setLoadedPhoneE164(apiPatient.phone ?? apiProfile?.phone ?? null);
+      setLoadedPhoneE164(apiPatient.phone ?? null);
       setPhone({ countryIso2: 'MX', nationalNumber: '' });
     } else if (!isEditing) {
       setFirstName('');
@@ -61,7 +65,7 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
       setLoadedPhoneE164(null);
       setPhone({ countryIso2: 'MX', nationalNumber: '' });
     }
-  }, [isEditing, patientId, isOpen, apiPatient, apiProfile]);
+  }, [isEditing, patientId, isOpen, apiPatient]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,12 +84,20 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const phoneE164 = phoneNumberFieldUtils.toE164(phone.countryIso2, phone.nationalNumber);
+      const phoneE164 = phoneNumberFieldUtils.toE164(
+        phone.countryIso2,
+        phone.nationalNumber
+      );
       if (isEditing && patientId) {
-        await apiService.updatePatientProfile(patientId, { phone: phoneE164 });
+        await apiService.updatePatient(patientId, {
+          name: firstName.trim(),
+          lastname: lastName.trim(),
+          lastname_m: lastNameMaternal.trim() || undefined,
+          ...(phoneE164 && { phone: phoneE164 }),
+        });
         toast({
           title: 'Paciente actualizado',
-          description: 'El paciente ha sido actualizado exitosamente',
+          description: 'Los datos del paciente se guardaron correctamente.',
           status: 'success',
           duration: 3000,
           isClosable: true,
@@ -108,10 +120,12 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
 
       onClose();
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'Ocurrió un error al guardar el paciente',
+        description:
+          (error instanceof Error && error.message) ||
+          'Ocurrió un error al guardar el paciente',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -121,74 +135,130 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
     }
   };
 
+  if (loadingPatient && isEditing) {
+    return (
+      <FormDrawer
+        isOpen={isOpen}
+        onClose={onClose}
+        crumb="Pacientes"
+        title="Editar paciente"
+        hideDefaultActions
+      >
+        <VStack spacing={4} py={12}>
+          <Spinner size="lg" color="brand.500" />
+          <Text color={subColor}>Cargando datos del paciente...</Text>
+        </VStack>
+      </FormDrawer>
+    );
+  }
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md">
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>
-          {isEditing ? 'Editar Paciente' : 'Nuevo Paciente'}
-        </ModalHeader>
-        <ModalCloseButton />
-        {loadingPatient && isEditing ? (
-          <ModalBody pb={6}>
-            <VStack spacing={4} py={8}>
-              <Spinner size="xl" color="brand.500" />
-              <Text>Cargando datos del paciente...</Text>
-            </VStack>
-          </ModalBody>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <ModalBody pb={6}>
-              <VStack spacing={4} align="stretch">
-                <FormControl isRequired>
-                  <FormLabel>Nombre(s)</FormLabel>
-                  <Input
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Ej: Juan Carlos"
-                  />
-                </FormControl>
+    <FormDrawer
+      isOpen={isOpen}
+      onClose={onClose}
+      crumb="Pacientes"
+      title={isEditing ? 'Editar paciente' : 'Nuevo paciente'}
+      sub={
+        isEditing
+          ? 'Nombre, apellidos y teléfono (mismo formato que al crear un paciente).'
+          : 'Registra un nuevo paciente en tu lista.'
+      }
+      onSubmit={handleSubmit}
+      submitLabel={isEditing ? 'Guardar cambios' : 'Crear paciente'}
+      submitLoadingText={isEditing ? 'Guardando…' : 'Creando…'}
+      isSubmitting={isSubmitting}
+    >
+      <VStack spacing={5} align="stretch">
+        <FormControl isRequired>
+          <FormLabel
+            fontSize="11px"
+            fontFamily="mono"
+            letterSpacing="0.08em"
+            textTransform="uppercase"
+            color={labelColor}
+            fontWeight={500}
+            mb={1.5}
+          >
+            Nombre(s)
+          </FormLabel>
+          <Input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="Ej: Juan Carlos"
+            size="sm"
+            h="36px"
+            borderColor="line.strong"
+            _hover={{ borderColor: 'paper.600' }}
+            _focus={{
+              borderColor: 'brand.500',
+              boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+            }}
+          />
+        </FormControl>
 
-                <FormControl isRequired>
-                  <FormLabel>Apellido paterno</FormLabel>
-                  <Input
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Ej: Pérez"
-                  />
-                </FormControl>
+        <FormControl isRequired>
+          <FormLabel
+            fontSize="11px"
+            fontFamily="mono"
+            letterSpacing="0.08em"
+            textTransform="uppercase"
+            color={labelColor}
+            fontWeight={500}
+            mb={1.5}
+          >
+            Apellido paterno
+          </FormLabel>
+          <Input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Ej: Pérez"
+            size="sm"
+            h="36px"
+            borderColor="line.strong"
+            _hover={{ borderColor: 'paper.600' }}
+            _focus={{
+              borderColor: 'brand.500',
+              boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+            }}
+          />
+        </FormControl>
 
-                <FormControl>
-                  <FormLabel>Apellido materno</FormLabel>
-                  <Input
-                    value={lastNameMaternal}
-                    onChange={(e) => setLastNameMaternal(e.target.value)}
-                    placeholder="Ej: Martínez"
-                  />
-                </FormControl>
+        <FormControl>
+          <FormLabel
+            fontSize="11px"
+            fontFamily="mono"
+            letterSpacing="0.08em"
+            textTransform="uppercase"
+            color={labelColor}
+            fontWeight={500}
+            mb={1.5}
+          >
+            Apellido materno
+          </FormLabel>
+          <Input
+            value={lastNameMaternal}
+            onChange={(e) => setLastNameMaternal(e.target.value)}
+            placeholder="Ej: Martínez"
+            size="sm"
+            h="36px"
+            borderColor="line.strong"
+            _hover={{ borderColor: 'paper.600' }}
+            _focus={{
+              borderColor: 'brand.500',
+              boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+            }}
+          />
+        </FormControl>
 
-                <PhoneNumberField value={phone} onChange={setPhone} e164Value={loadedPhoneE164} />
-              </VStack>
-            </ModalBody>
-            <ModalFooter>
-              <HStack spacing={3}>
-                <Button variant="ghost" onClick={onClose} isDisabled={isSubmitting}>
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  colorScheme="brand"
-                  isLoading={isSubmitting}
-                  loadingText={isEditing ? 'Guardando...' : 'Creando...'}
-                >
-                  {isEditing ? 'Guardar Cambios' : 'Crear Paciente'}
-                </Button>
-              </HStack>
-            </ModalFooter>
-          </form>
-        )}
-      </ModalContent>
-    </Modal>
+        <Box>
+          <PhoneNumberField
+            value={phone}
+            onChange={setPhone}
+            e164Value={loadedPhoneE164}
+          />
+        </Box>
+      </VStack>
+    </FormDrawer>
   );
 };
 

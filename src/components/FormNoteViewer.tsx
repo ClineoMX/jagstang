@@ -1,4 +1,12 @@
-import { useState, useEffect, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from 'react';
 import {
   Box,
   VStack,
@@ -34,14 +42,21 @@ interface FormNoteViewerProps {
 }
 
 export interface FormNoteViewerHandle {
+  /** Descarga el PDF sin abrir el diálogo de impresión. */
   download: () => Promise<void>;
+  /** Abre el diálogo de impresión del sistema (incluye “Guardar como PDF” donde el SO lo ofrece). */
+  printPdf: () => Promise<void>;
 }
 
 const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
   ({ formId, values, title }, ref) => {
   const toast = useToast();
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const filledFieldBg = useColorModeValue('green.50', 'green.900');
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
+  const mutedColor = useColorModeValue('paper.600', 'paper.400');
+  const filledFieldBg = 'statusSoft.okBg';
+  const filledFieldFg = 'statusSoft.okFg';
+  const filledFieldBorder = 'statusSoft.okBorder';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,54 +144,167 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
     setPdfLoadError(true);
   }, []);
 
-  const handleDownload = useCallback(async () => {
-    if (!pdfBlob || fieldsWithPosition.length === 0) return;
-    try {
-      const doc = await PDFDocument.load(await pdfBlob.arrayBuffer());
-      const font = await doc.embedFont(StandardFonts.Helvetica);
+  const buildExportPdfBlob = useCallback(async (): Promise<Blob> => {
+    if (!pdfBlob) throw new Error('NOT_READY');
+    if (fieldsWithPosition.length === 0) return pdfBlob;
 
-      for (const field of fieldsWithPosition) {
-        const pos = field.position!;
-        const page = doc.getPage(getPositionPageIndex(pos));
-        const { width: pageWidth, height: pageHeight } = page.getSize();
+    const doc = await PDFDocument.load(await pdfBlob.arrayBuffer());
+    const font = await doc.embedFont(StandardFonts.Helvetica);
 
-        const x = (pos.x / 100) * pageWidth + 2;
-        const boxHeight = (pos.height / 100) * pageHeight;
-        const yPdf = pageHeight - (pos.y / 100) * pageHeight - boxHeight;
-        const boxWidth = (pos.width / 100) * pageWidth - 4;
+    for (const field of fieldsWithPosition) {
+      const pos = field.position!;
+      const page = doc.getPage(getPositionPageIndex(pos));
+      const { width: pageWidth, height: pageHeight } = page.getSize();
 
-        let displayValue = (field.value || '').trim() || '—';
-        const fontSize = Math.min(10, Math.max(6, boxHeight * 0.5));
-        const maxChars = Math.floor(boxWidth / (fontSize * 0.5));
-        if (displayValue.length > maxChars) {
-          displayValue = displayValue.slice(0, Math.max(0, maxChars - 1)) + '…';
-        }
-        const textWidth = font.widthOfTextAtSize(displayValue, fontSize);
+      const x = (pos.x / 100) * pageWidth + 2;
+      const boxHeight = (pos.height / 100) * pageHeight;
+      const yPdf = pageHeight - (pos.y / 100) * pageHeight - boxHeight;
+      const boxWidth = (pos.width / 100) * pageWidth - 4;
 
-        page.drawText(displayValue, {
-          x: Math.min(x + boxWidth - textWidth, x + 2),
-          y: yPdf + (boxHeight - fontSize) / 2,
-          size: fontSize,
-          font,
-          color: rgb(0.2, 0.2, 0.2),
-        });
+      let displayValue = (field.value || '').trim() || '—';
+      const fontSize = Math.min(10, Math.max(6, boxHeight * 0.5));
+      const maxChars = Math.floor(boxWidth / (fontSize * 0.5));
+      if (displayValue.length > maxChars) {
+        displayValue = displayValue.slice(0, Math.max(0, maxChars - 1)) + '…';
       }
+      const textWidth = font.widthOfTextAtSize(displayValue, fontSize);
 
-      const filledPdf = await doc.save();
-      const blob = new Blob([new Uint8Array(filledPdf)], { type: 'application/pdf' });
+      page.drawText(displayValue, {
+        x: Math.min(x + boxWidth - textWidth, x + 2),
+        y: yPdf + (boxHeight - fontSize) / 2,
+        size: fontSize,
+        font,
+        color: rgb(0.2, 0.2, 0.2),
+      });
+    }
+
+    const filledPdf = await doc.save();
+    return new Blob([new Uint8Array(filledPdf)], { type: 'application/pdf' });
+  }, [pdfBlob, fieldsWithPosition]);
+
+  const safeFilename = useMemo(
+    () =>
+      `${(title || 'documento').replace(/[^a-zA-Z0-9áéíóúñÑ\s-]/g, '').trim() || 'documento'}.pdf`,
+    [title]
+  );
+
+  const handleDownload = useCallback(async () => {
+    try {
+      const blob = await buildExportPdfBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${(title || 'documento').replace(/[^a-zA-Z0-9áéíóúñÑ\s-]/g, '')}.pdf`;
+      a.download = safeFilename;
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: 'PDF descargado', status: 'success', duration: 2000 });
-    } catch {
-      toast({ title: 'Error al generar el PDF', status: 'error', duration: 3000 });
+    } catch (e) {
+      if (e instanceof Error && e.message === 'NOT_READY') {
+        toast({
+          title: 'El PDF aún no está listo',
+          status: 'info',
+          duration: 2500,
+        });
+      } else {
+        toast({ title: 'Error al generar el PDF', status: 'error', duration: 3000 });
+      }
     }
-  }, [pdfBlob, fieldsWithPosition, title, toast]);
+  }, [buildExportPdfBlob, safeFilename, toast]);
 
-  useImperativeHandle(ref, () => ({ download: handleDownload }), [handleDownload]);
+  const handlePrintPdf = useCallback(async () => {
+    let objectUrl: string | null = null;
+    let iframe: HTMLIFrameElement | null = null;
+
+    const cleanup = () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+      }
+      if (iframe?.parentNode) iframe.parentNode.removeChild(iframe);
+      iframe = null;
+    };
+
+    try {
+      const blob = await buildExportPdfBlob();
+      objectUrl = URL.createObjectURL(blob);
+
+      iframe = document.createElement('iframe');
+      iframe.setAttribute('title', 'Impresión de documento');
+      iframe.style.cssText =
+        'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+      iframe.src = objectUrl;
+      document.body.appendChild(iframe);
+
+      const win = iframe.contentWindow;
+      if (!win) {
+        cleanup();
+        toast({
+          title: 'No se pudo abrir la impresión',
+          status: 'error',
+          duration: 4000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      let cleanedUp = false;
+      const safeCleanup = () => {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        cleanup();
+      };
+
+      let didPrint = false;
+      const runPrint = () => {
+        if (didPrint) return;
+        didPrint = true;
+        try {
+          win.focus();
+          win.print();
+        } catch {
+          toast({
+            title: 'Error al abrir el diálogo de impresión',
+            status: 'error',
+            duration: 4000,
+            isClosable: true,
+          });
+          safeCleanup();
+        }
+      };
+
+      win.addEventListener('afterprint', () => safeCleanup(), { once: true });
+      window.setTimeout(() => safeCleanup(), 90_000);
+
+      iframe.addEventListener('load', () => {
+        window.setTimeout(runPrint, 500);
+      });
+      window.setTimeout(() => {
+        if (!didPrint) runPrint();
+      }, 2800);
+    } catch (e) {
+      cleanup();
+      if (e instanceof Error && e.message === 'NOT_READY') {
+        toast({
+          title: 'El PDF aún no está listo',
+          status: 'info',
+          duration: 2500,
+        });
+      } else {
+        toast({
+          title: 'Error al preparar el PDF para imprimir',
+          status: 'error',
+          duration: 4000,
+          isClosable: true,
+        });
+      }
+    }
+  }, [buildExportPdfBlob, toast]);
+
+  useImperativeHandle(
+    ref,
+    () => ({ download: handleDownload, printPdf: handlePrintPdf }),
+    [handleDownload, handlePrintPdf]
+  );
 
   const pdfReady = Boolean(pdfBlobUrl && pdfContainerWidth > 0 && numPages != null);
 
@@ -184,7 +312,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
     return (
       <VStack py={12} spacing={3}>
         <Spinner size="xl" colorScheme="brand" thickness="3px" />
-        <Text fontSize="sm" color="gray.500">Cargando documento…</Text>
+        <Text fontSize="sm" color={mutedColor}>Cargando documento…</Text>
       </VStack>
     );
   }
@@ -200,7 +328,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
 
   if (!pdfBlobUrl) {
     return (
-      <Text color="gray.500" py={4}>
+      <Text color={mutedColor} py={4}>
         Este documento no tiene un PDF asociado.
       </Text>
     );
@@ -211,10 +339,10 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
       <Box
       ref={pdfContainerRef}
       borderWidth="1px"
-      borderColor={useColorModeValue('gray.200', 'gray.600')}
+      borderColor={useColorModeValue('line.light', 'line.dark')}
       borderRadius="lg"
       overflow="auto"
-      bg="gray.100"
+      bg={pdfPanelBg}
       maxH="70vh"
       minH="320px"
       position="relative"
@@ -232,7 +360,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
         >
           <VStack spacing={4}>
             <Spinner size="xl" colorScheme="brand" thickness="3px" />
-            <Text fontSize="sm" color="gray.500">Cargando PDF…</Text>
+            <Text fontSize="sm" color={mutedColor}>Cargando PDF…</Text>
           </VStack>
         </Box>
       )}
@@ -285,7 +413,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
                       w={`${pos.width}%`}
                       h={`${pos.height}%`}
                       borderWidth="1px"
-                      borderColor="gray.300"
+                      borderColor={filledFieldBorder}
                       bg={filledFieldBg}
                       opacity={0.95}
                       borderRadius="sm"
@@ -294,7 +422,7 @@ const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
                       alignItems="center"
                       justifyContent="center"
                       fontSize="xs"
-                      color="gray.700"
+                      color={filledFieldFg}
                       fontWeight="medium"
                       overflow="hidden"
                       pointerEvents="none"
