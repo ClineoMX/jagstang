@@ -1,76 +1,67 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
-import type { ApiAppointment } from '../types';
+import {
+  getClinicDataSnapshot,
+  loadAppointments,
+  refreshAppointments,
+  subscribeClinicData,
+} from '../lib/clinicDataStore';
+
+function useClinicDataTick() {
+  const [, setTick] = useState(0);
+  useEffect(() => subscribeClinicData(() => setTick((n) => n + 1)), []);
+}
 
 export const useAppointments = () => {
-  const [appointments, setAppointments] = useState<ApiAppointment[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchAppointments = useCallback(async (signal?: AbortSignal) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiService.listAppointments({
-        size: 500,
-      });
-      if (signal?.aborted) return;
-
-      setAppointments(response.results);
-      setCount(response.count);
-    } catch (err) {
-      if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : 'Error al cargar citas');
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
-  }, []);
+  useClinicDataTick();
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchAppointments(controller.signal);
-    return () => controller.abort();
-  }, [fetchAppointments]);
+    void loadAppointments();
+  }, []);
+
+  const snap = getClinicDataSnapshot();
 
   const createAppointment = useCallback(
-    async (patient: string, starts_at: string, duration: string) => {
-      await apiService.createAppointment({ patient, starts_at, duration });
-      await fetchAppointments();
+    async (
+      patient: string,
+      starts_at: string,
+      duration: string,
+      additional_notes?: string
+    ) => {
+      const trimmed = additional_notes?.trim();
+      await apiService.createAppointment({
+        patient,
+        starts_at,
+        duration,
+        ...(trimmed ? { additional_notes: trimmed } : {}),
+      });
+      await refreshAppointments();
     },
-    [fetchAppointments]
+    []
   );
 
   const updateAppointmentStatus = useCallback(
-    async (id: string, status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED') => {
+    async (
+      id: string,
+      status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
+    ) => {
       await apiService.updateAppointmentStatus(id, status);
-      await fetchAppointments();
+      await refreshAppointments();
     },
-    [fetchAppointments]
+    []
   );
 
-  const deleteAppointment = useCallback(
-    async (id: string) => {
-      await apiService.deleteAppointment(id);
-      await fetchAppointments();
-    },
-    [fetchAppointments]
-  );
+  const deleteAppointment = useCallback(async (id: string) => {
+    await apiService.deleteAppointment(id);
+    await refreshAppointments();
+  }, []);
 
   return {
-    appointments,
-    count,
-    loading,
-    error,
-    refetch: () => fetchAppointments(),
+    appointments: snap.appointments,
+    count: snap.appointmentsCount,
+    loading: snap.appointmentsLoading,
+    error: snap.appointmentsError,
+    refetch: () => refreshAppointments(),
     createAppointment,
     updateAppointmentStatus,
     deleteAppointment,

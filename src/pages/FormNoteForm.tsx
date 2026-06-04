@@ -154,6 +154,10 @@ const FormNoteForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const fillerRef = useRef<FormNoteFillerHandle | null>(null);
+  const followUpOfRef = useRef<string | null>(
+    (location.state as { followUpFromNoteId?: string } | null)
+      ?.followUpFromNoteId ?? null
+  );
 
   const [noteCreatedAt, setNoteCreatedAt] = useState<string | null>(null);
   const [isEditingDate, setIsEditingDate] = useState(false);
@@ -378,6 +382,7 @@ const FormNoteForm: React.FC = () => {
           content: payload,
           type: 'document',
           title: title || undefined,
+          isFollowUpOf: followUpOfRef.current ?? undefined,
         });
         setCurrentNoteId(created.id);
         if (created.title) setTitle(created.title);

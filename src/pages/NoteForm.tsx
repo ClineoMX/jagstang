@@ -38,6 +38,8 @@ import {
   FiChevronDown,
   FiChevronUp,
   FiEdit3,
+  FiList,
+  FiType,
 } from 'react-icons/fi';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -54,12 +56,20 @@ import PatientClinicalSummary from '../components/PatientClinicalSummary';
 import CollapsibleSideCard from '../components/CollapsibleSideCard';
 import { apiService } from '../services/api';
 import { normalizePatientSlug } from '../utils/patientSlug';
+import { STRUCTURED_NOTE_EDITOR_ENABLED } from '../config/features';
 import { useAuth } from '../contexts/AuthContext';
 import PageHead from '../components/PageHead';
 import {
   mergeNoteBodyForEditor,
   serializeNoteBodyForApi,
 } from '../utils/noteReceta';
+import StructuredNoteEditor, { StructuredNomMeter } from '../components/StructuredNoteEditor';
+import {
+  getSchema,
+  parseStructuredContent,
+  type StructuredFormValues,
+  type StructuredVitals,
+} from '../data/noteSchemas';
 
 const NoteForm: React.FC = () => {
   const { patientSlug, noteId } = useParams<{
@@ -144,6 +154,10 @@ const NoteForm: React.FC = () => {
   const [formsLoading, setFormsLoading] = useState(false);
   const [formFieldValues, setFormFieldValues] = useState<FormFieldValue[]>([]);
 
+  // Structured form (Proposal A) state
+  const [noteEditorMode, setNoteEditorMode] = useState<'structured' | 'text'>('text');
+  const [structuredValues, setStructuredValues] = useState<StructuredFormValues>({});
+
   const [savedTitle, setSavedTitle] = useState('');
   const [savedContent, setSavedContent] = useState('');
   const [savedType, setSavedType] = useState<NoteType>('evolution');
@@ -214,6 +228,7 @@ const NoteForm: React.FC = () => {
 
   const isLoadingAnalysisAfterSaveRef = useRef(false);
   const followUpLoadedRef = useRef(false);
+  const followUpOfRef = useRef<string | null>(null);
 
   const role = (doctor?.role ?? '').toUpperCase();
   const isWellness = role === 'WELLNESS';
@@ -223,6 +238,7 @@ const NoteForm: React.FC = () => {
 
   const hasChanges = () => {
     if (useFormMode) return title !== savedTitle || content !== savedContent;
+    if (noteEditorMode === 'structured') return title !== savedTitle || noteType !== savedType;
     return (
       title !== savedTitle || content !== savedContent || noteType !== savedType
     );
@@ -273,12 +289,21 @@ const NoteForm: React.FC = () => {
         return;
       }
 
-      setContent(mergeNoteBodyForEditor(rawContent));
+      // Detect structured form content
+      const structuredData = parseStructuredContent(rawContent);
+      if (structuredData) {
+        setNoteEditorMode('structured');
+        setStructuredValues(structuredData.values ?? {});
+        setContent('');
+      } else {
+        setNoteEditorMode('text');
+        setContent(mergeNoteBodyForEditor(rawContent));
+      }
 
       setTitle(note.title);
       setNoteType(note.type);
       setSavedTitle(note.title);
-      setSavedContent(mergeNoteBodyForEditor(rawContent));
+      setSavedContent(mergeNoteBodyForEditor(structuredData ? '' : rawContent));
       setSavedType(note.type);
       setCurrentNoteId(note.id);
       setNoteStatus(note.status);
@@ -336,6 +361,7 @@ const NoteForm: React.FC = () => {
         }
 
         followUpLoadedRef.current = true;
+        followUpOfRef.current = followUpNoteId;
 
         if (isFormNote) {
           // Las notas por formulario tienen su propio editor; el seguimiento
@@ -343,7 +369,10 @@ const NoteForm: React.FC = () => {
           // elija de nuevo (los valores de campos suelen requerir actualizarse).
           void parsedFormValues;
           void restoredFormId;
-          navigate(`${patientPathBase}/notes/new-form`, { replace: true });
+          navigate(`${patientPathBase}/notes/new-form`, {
+            replace: true,
+            state: { followUpFromNoteId: followUpNoteId },
+          });
           return;
         }
 
@@ -497,6 +526,25 @@ const NoteForm: React.FC = () => {
     [selectedFormId]
   );
 
+  const lastVitals = useMemo(() => {
+    const sorted = [...notes]
+      .filter((n) => n.id !== currentNoteId && n.status === 'signed')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    for (const note of sorted) {
+      const parsed = parseStructuredContent(note.content ?? '');
+      const vit = parsed?.values?.vitals as StructuredVitals | undefined;
+      if (vit && (vit.bp_sys || vit.hr)) {
+        return {
+          vitals: vit,
+          recordedAt: format(new Date(note.createdAt), "d 'de' MMM, yyyy", { locale: es }),
+        };
+      }
+    }
+    return null;
+  }, [notes, currentNoteId]);
+
+  const activeSchema = useMemo(() => getSchema(noteType), [noteType]);
+
   if (patientLoading || isLoadingNote || (noteId && notesLoading)) {
     return (
       <Container maxW="1280px" py={10}>
@@ -548,6 +596,8 @@ const NoteForm: React.FC = () => {
         });
         return;
       }
+    } else if (noteEditorMode === 'structured') {
+      // structured mode — always valid (empty note is OK as draft)
     } else if (!content.trim()) {
       toast({
         title: 'Error',
@@ -560,14 +610,24 @@ const NoteForm: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    if (!useFormMode) {
+    const isAiAnalysisMode = !useFormMode && noteEditorMode === 'text';
+    if (isAiAnalysisMode) {
       isLoadingAnalysisAfterSaveRef.current = true;
       setIsLoadingAnalysis(true);
       setCompletenessAnalysis(null);
     }
-    const contentToSave = useFormMode
-      ? content
-      : serializeNoteBodyForApi(content);
+    let contentToSave: string;
+    if (noteEditorMode === 'structured') {
+      contentToSave = JSON.stringify({
+        structured: true,
+        schemaType: noteType,
+        values: structuredValues,
+      });
+    } else if (useFormMode) {
+      contentToSave = content;
+    } else {
+      contentToSave = serializeNoteBodyForApi(content);
+    }
     try {
       if (currentNoteId) {
         await updateNote(currentNoteId, {
@@ -580,7 +640,7 @@ const NoteForm: React.FC = () => {
         setSavedType(noteType);
         setNoteStatus('draft');
         setLastSavedAt(new Date());
-        if (currentNoteId && !useFormMode) {
+        if (currentNoteId && isAiAnalysisMode) {
           await loadCompletenessAnalysisWithContent(currentNoteId, true);
         }
         toast({
@@ -596,6 +656,7 @@ const NoteForm: React.FC = () => {
           type: noteType,
           title: title || undefined,
           files: attachments.length > 0 ? attachments : undefined,
+          isFollowUpOf: followUpOfRef.current ?? undefined,
         });
         setCurrentNoteId(newNote.id);
         setSavedTitle(newNote.title ?? title);
@@ -604,7 +665,7 @@ const NoteForm: React.FC = () => {
         setSavedType(noteType);
         setNoteStatus('draft');
         setLastSavedAt(new Date());
-        if (newNote.id && !useFormMode) {
+        if (newNote.id && isAiAnalysisMode) {
           await loadCompletenessAnalysisWithContent(newNote.id, true);
         }
         toast({
@@ -784,7 +845,7 @@ const NoteForm: React.FC = () => {
             fontSize="12px"
             color={subColor}
           >
-            <HStack spacing={4}>
+            <HStack spacing={4} flexWrap="wrap">
               <Text fontFamily="mono" letterSpacing="0.04em" color={labelColor}>
                 Tipo
               </Text>
@@ -815,6 +876,61 @@ const NoteForm: React.FC = () => {
                   </>
                 )}
               </Select>
+
+              {/* Form / Texto mode toggle (solo edición de borradores ya estructurados) */}
+              {STRUCTURED_NOTE_EDITOR_ENABLED && !useFormMode && activeSchema && (
+                <>
+                  <Box w="1px" h="14px" bg={softBorder} flexShrink={0} />
+                  <HStack
+                    spacing={0}
+                    bg={cardBg}
+                    border="1px solid"
+                    borderColor={softBorder}
+                    borderRadius="8px"
+                    p="2px"
+                  >
+                    <Button
+                      size="xs"
+                      variant="unstyled"
+                      display="inline-flex"
+                      alignItems="center"
+                      gap={1}
+                      px={3}
+                      h="26px"
+                      fontSize="12px"
+                      fontWeight={600}
+                      borderRadius="6px"
+                      bg={noteEditorMode === 'structured' ? 'brand.600' : 'transparent'}
+                      color={noteEditorMode === 'structured' ? 'white' : labelColor}
+                      _hover={noteEditorMode !== 'structured' ? { bg: 'surface.hover' } : {}}
+                      onClick={() => setNoteEditorMode('structured')}
+                    >
+                      <Icon as={FiList} boxSize="12px" mr={1} />
+                      Formulario
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="unstyled"
+                      display="inline-flex"
+                      alignItems="center"
+                      gap={1}
+                      px={3}
+                      h="26px"
+                      fontSize="12px"
+                      fontWeight={600}
+                      borderRadius="6px"
+                      bg={noteEditorMode === 'text' ? 'brand.600' : 'transparent'}
+                      color={noteEditorMode === 'text' ? 'white' : labelColor}
+                      _hover={noteEditorMode !== 'text' ? { bg: 'surface.hover' } : {}}
+                      onClick={() => setNoteEditorMode('text')}
+                    >
+                      <Icon as={FiType} boxSize="12px" mr={1} />
+                      Texto
+                    </Button>
+                  </HStack>
+                </>
+              )}
+
               {useFormMode && (
                 <>
                   <Box w="1px" h="14px" bg={softBorder} />
@@ -918,23 +1034,34 @@ const NoteForm: React.FC = () => {
             </HStack>
           </Box>
 
-          <Box px="16px" py="8px" minH="480px">
+          <Box minH="480px">
             {useFormMode && selectedFormId ? (
-              <FormNoteFiller
-                formId={selectedFormId}
-                initialValues={formFieldValues}
-                onValuesChange={handleFormValuesChange}
+              <Box px="16px" py="8px">
+                <FormNoteFiller
+                  formId={selectedFormId}
+                  initialValues={formFieldValues}
+                  onValuesChange={handleFormValuesChange}
+                />
+              </Box>
+            ) : !useFormMode && noteEditorMode === 'structured' && activeSchema ? (
+              <StructuredNoteEditor
+                noteType={noteType}
+                values={structuredValues}
+                onChange={setStructuredValues}
+                lastVitals={lastVitals}
               />
             ) : !useFormMode ? (
-              <RichTextEditor
-                value={content}
-                onChange={setContent}
-                placeholder="Escribe el contenido de la nota médica..."
-                minHeight="440px"
-                onAttachFiles={(files) =>
-                  setAttachments((prev) => [...prev, ...files])
-                }
-              />
+              <Box px="16px" py="8px">
+                <RichTextEditor
+                  value={content}
+                  onChange={setContent}
+                  placeholder="Escribe el contenido de la nota médica..."
+                  minHeight="440px"
+                  onAttachFiles={(files) =>
+                    setAttachments((prev) => [...prev, ...files])
+                  }
+                />
+              </Box>
             ) : (
               <Box p={6}>
                 <Text color={subColor}>
@@ -1115,6 +1242,19 @@ const NoteForm: React.FC = () => {
             />
           </CollapsibleSideCard>
 
+          {/* NOM-004 panel: client-side for structured mode, AI for text */}
+          {!useFormMode && noteEditorMode === 'structured' && activeSchema ? (
+            <Box
+              bg={cardBg}
+              border="1px solid"
+              borderColor={borderColor}
+              borderRadius="8px"
+              px={4}
+              py={3.5}
+            >
+              <StructuredNomMeter schema={activeSchema} values={structuredValues} />
+            </Box>
+          ) : (
           <Box
             bg={cardBg}
             border="1px solid"
@@ -1243,6 +1383,7 @@ const NoteForm: React.FC = () => {
               )}
             </Collapse>
           </Box>
+          )} {/* end NOM-004 text mode panel */}
 
           {previousNotes.length > 0 && (
             <SideCard heading="Notas anteriores">

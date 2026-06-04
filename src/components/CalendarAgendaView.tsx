@@ -1,5 +1,12 @@
 import React, { useMemo } from 'react';
-import { Box, HStack, Text, VStack, useColorModeValue } from '@chakra-ui/react';
+import {
+  Box,
+  HStack,
+  Text,
+  VStack,
+  Skeleton,
+  useColorModeValue,
+} from '@chakra-ui/react';
 import {
   addDays,
   differenceInMinutes,
@@ -18,6 +25,8 @@ interface CalendarAgendaViewProps {
   appointments: ApiAppointment[];
   patientName: (id: string) => string;
   patientMeta?: (id: string) => string;
+  /** When true, patient names aren't ready yet; show a skeleton instead. */
+  patientsLoading?: boolean;
   onSelect: (apt: ApiAppointment) => void;
 }
 
@@ -62,6 +71,7 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
   appointments,
   patientName,
   patientMeta,
+  patientsLoading = false,
   onSelect,
 }) => {
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
@@ -157,12 +167,34 @@ const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                       </Text>
                     </Box>
                     <Box minW={0}>
-                      <Text fontWeight={500} fontSize="14px" color="text.strong">
-                        {patientName(apt.patient_id)}
-                      </Text>
-                      {patientMeta && (
+                      {patientsLoading ? (
+                        <Skeleton
+                          height="16px"
+                          width="160px"
+                          borderRadius="3px"
+                        />
+                      ) : (
+                        <Text
+                          fontWeight={500}
+                          fontSize="14px"
+                          color="text.strong"
+                        >
+                          {patientName(apt.patient_id)}
+                        </Text>
+                      )}
+                      {patientMeta && !patientsLoading && (
                         <Text fontSize="12.5px" color={subColor} mt="1px">
                           {patientMeta(apt.patient_id)}
+                        </Text>
+                      )}
+                      {apt.additional_notes?.trim() && (
+                        <Text
+                          fontSize="12.5px"
+                          color={subColor}
+                          mt="1px"
+                          noOfLines={2}
+                        >
+                          {apt.additional_notes.trim()}
                         </Text>
                       )}
                     </Box>

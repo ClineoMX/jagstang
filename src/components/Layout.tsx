@@ -28,6 +28,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ClineoLogo from './ClineoLogo';
+import { LIBRARY_NAV_ENABLED } from '../config/features';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -184,6 +185,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { icon: FiUsers, label: 'Pacientes', path: '/patients' },
     { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
     { icon: FiBook, label: 'Contactos', path: '/contacts' },
+    ...(LIBRARY_NAV_ENABLED
+      ? [{ icon: FiBookOpen, label: 'Biblioteca', path: '/library' }]
+      : []),
     ...(hideNom
       ? []
       : [{ icon: FiActivity, label: 'NOM', path: '/compliance' }]),
@@ -199,7 +203,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return (
       location.pathname === path ||
       (path === '/contacts' && location.pathname.startsWith('/contacts')) ||
-      (path === '/patients' && location.pathname.startsWith('/patients'))
+      (path === '/patients' && location.pathname.startsWith('/patients')) ||
+      (path === '/library' && location.pathname.startsWith('/library'))
     );
   };
 
@@ -239,6 +244,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Tooltip>
       </MenuButton>
       <MenuList
+        zIndex={1400}
         bg={menuBg}
         color={menuFg}
         border="1px solid"
@@ -359,6 +365,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         maxH={{ md: '100vh' }}
         position={{ md: 'sticky' }}
         top={{ md: 0 }}
+        zIndex={{ md: 30 }}
         overflowY={{ md: 'auto' }}
       >
         <Flex h="64px" alignItems="center" justifyContent="center">

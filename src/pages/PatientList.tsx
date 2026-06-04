@@ -52,10 +52,12 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import PatientFormModal from '../components/PatientFormModal';
+import PatientAppointmentDrawer from '../components/PatientAppointmentDrawer';
 import PageHead from '../components/PageHead';
 import StatusBadge from '../components/StatusBadge';
 import TablePagination from '../components/TablePagination';
 import { usePatients } from '../hooks/usePatients';
+import { useAppointments } from '../hooks/useAppointments';
 import type { Patient } from '../types';
 
 const calcAge = (dob?: string): number | null => {
@@ -168,10 +170,20 @@ const PatientList: React.FC = () => {
   const subColor = useColorModeValue('paper.700', 'paper.400');
   const inkStrong = useColorModeValue('paper.900', 'paper.50');
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isCreateOpen,
+    onOpen: onCreateOpen,
+    onClose: onCreateClose,
+  } = useDisclosure();
+  const {
+    isOpen: isEditOpen,
+    onOpen: onEditOpen,
+    onClose: onEditClose,
+  } = useDisclosure();
   const [editingPatientId, setEditingPatientId] = useState<string | undefined>();
 
   const { patients, loading, error, refetch } = usePatients();
+  const { createAppointment } = useAppointments();
 
   const filteredPatients = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -309,7 +321,7 @@ const PatientList: React.FC = () => {
   const handleEdit = (e: React.MouseEvent, patient: Patient) => {
     e.stopPropagation();
     setEditingPatientId(patient.id);
-    onOpen();
+    onEditOpen();
   };
 
   return (
@@ -443,7 +455,7 @@ const PatientList: React.FC = () => {
               _hover={{ bg: 'brand.700' }}
               onClick={() => {
                 setEditingPatientId(undefined);
-                onOpen();
+                onCreateOpen();
               }}
             >
               Nuevo paciente
@@ -504,7 +516,7 @@ const PatientList: React.FC = () => {
                 _hover={{ bg: 'brand.700' }}
                 onClick={() => {
                   setEditingPatientId(undefined);
-                  onOpen();
+                  onCreateOpen();
                 }}
               >
                 Nuevo paciente
@@ -917,10 +929,17 @@ const PatientList: React.FC = () => {
         </Box>
       )}
 
+      <PatientAppointmentDrawer
+        isOpen={isCreateOpen}
+        onClose={onCreateClose}
+        onSuccess={refetch}
+        entry="patients"
+        createAppointment={createAppointment}
+      />
       <PatientFormModal
-        isOpen={isOpen}
+        isOpen={isEditOpen && !!editingPatientId}
         onClose={() => {
-          onClose();
+          onEditClose();
           setEditingPatientId(undefined);
         }}
         patientId={editingPatientId}

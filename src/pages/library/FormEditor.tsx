@@ -31,7 +31,6 @@ const FormEditor: React.FC = () => {
           borderColor="line.strong"
           color="ink.700"
           fontWeight={500}
-          _hover={{ bg: 'paper.100' }}
         >
           Volver
         </Button>

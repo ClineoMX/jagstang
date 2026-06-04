@@ -11,6 +11,7 @@ export interface PatientIdentity {
   residence_country?: string;
   residence_city?: string;
   occupation?: string;
+  referred_by?: string;
   education?: string;
   marital_status?: string;
   religion?: string;
@@ -31,6 +32,7 @@ export const IDENTITY_FIELD_LABELS: Record<string, string> = {
   residence_country: 'País de residencia',
   residence_city: 'Ciudad de residencia',
   occupation: 'Ocupación',
+  referred_by: 'Referido por',
   education: 'Educación',
   marital_status: 'Estado civil',
   religion: 'Religión',

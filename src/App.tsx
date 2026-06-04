@@ -22,6 +22,8 @@ import Library from './pages/Library';
 import DocumentsList from './pages/library/DocumentsList';
 import FormsList from './pages/library/FormsList';
 import FormEditor from './pages/library/FormEditor';
+import NotesList from './pages/library/NotesList';
+import NoteBuilderPage from './pages/library/NoteBuilderPage';
 import Compliance from './pages/Compliance';
 import ContactList from './pages/ContactList';
 import ContactForm from './pages/ContactForm';
@@ -221,6 +223,7 @@ const AppRoutes: React.FC = () => {
           element={<Navigate to="/library/documents" replace />}
         />
         <Route path="forms" element={<FormsList />} />
+        <Route path="notes" element={<NotesList />} />
       </Route>
       <Route
         path="/library/templates/new"
@@ -246,6 +249,26 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute>
             <Layout>
               <FormEditor />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/library/notes/new"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NoteBuilderPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/library/notes/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <NoteBuilderPage />
             </Layout>
           </ProtectedRoute>
         }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Doctor, LoginCredentials } from '../types';
 import { apiService } from '../services/api';
+import { warmClinicData, clearClinicData } from '../lib/clinicDataStore';
 
 /** Decode X-Clineo-Identity token (JWT payload or JSON) to get name, family_name, gender, avatar_url */
 function decodeIdentityToken(
@@ -118,6 +119,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }
     setIsLoading(false);
+    if (storedToken) {
+      warmClinicData();
+    }
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
@@ -150,6 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       };
       setDoctor(doctorData);
       localStorage.setItem('doctor', JSON.stringify(doctorData));
+      warmClinicData();
     } catch (error: any) {
       if (error.message) {
         throw error;
@@ -161,6 +166,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
+    clearClinicData();
     setDoctor(null);
     localStorage.removeItem('doctor');
     localStorage.removeItem('token');

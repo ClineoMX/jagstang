@@ -1,4 +1,6 @@
-import React, { useRef, useState, useMemo, useEffect } from 'react';
+import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
+import { flushSync } from 'react-dom';
+import { upsertPatient } from '../lib/clinicDataStore';
 import {
   Box,
   Container,
@@ -6,6 +8,7 @@ import {
   HStack,
   VStack,
   Text,
+  Heading,
   Button,
   AlertDialog,
   AlertDialogOverlay,
@@ -50,14 +53,14 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppointments } from '../hooks/useAppointments';
 import { usePatients } from '../hooks/usePatients';
-import AppointmentFormModal from '../components/AppointmentFormModal';
+import PatientAppointmentDrawer from '../components/PatientAppointmentDrawer';
 import PageHead from '../components/PageHead';
 import MiniCalendar from '../components/MiniCalendar';
 import CalendarDayView from '../components/CalendarDayView';
 import CalendarAgendaView from '../components/CalendarAgendaView';
 import StatusBadge from '../components/StatusBadge';
 import FormDrawer from '../components/FormDrawer';
-import type { ApiAppointment } from '../types';
+import type { ApiAppointment, Patient } from '../types';
 import { normalizePatientSlug } from '../utils/patientSlug';
 
 const locales = { es };
@@ -133,7 +136,8 @@ const CalendarPage: React.FC = () => {
     updateAppointmentStatus,
     deleteAppointment,
   } = useAppointments();
-  const { patients } = usePatients();
+  const { patients, loading: patientsLoading, refetch: refetchPatients } =
+    usePatients();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
     isOpen: isNewOpen,
@@ -179,6 +183,17 @@ const CalendarPage: React.FC = () => {
     () => Object.fromEntries(patients.map((p) => [p.id, p])),
     [patients]
   );
+
+  const cachePatient = useCallback((patient: Patient) => {
+    flushSync(() => {
+      upsertPatient(patient);
+    });
+  }, []);
+
+  const handleNewAppointmentSuccess = useCallback(async () => {
+    await refetchPatients();
+    onNewClose();
+  }, [refetchPatients, onNewClose]);
 
   const patientName = (id: string) => {
     const p = patientsMap[id];
@@ -648,6 +663,7 @@ const CalendarPage: React.FC = () => {
                 day={currentDate}
                 appointments={filteredAppointments}
                 patientName={patientName}
+                patientsLoading={patientsLoading}
                 onSelect={openEvent}
                 startHour={0}
                 endHour={24}
@@ -662,6 +678,7 @@ const CalendarPage: React.FC = () => {
               appointments={filteredAppointments}
               patientName={patientName}
               patientMeta={patientMeta}
+              patientsLoading={patientsLoading}
               onSelect={openEvent}
             />
           )}
@@ -671,32 +688,91 @@ const CalendarPage: React.FC = () => {
               px={{ base: 3, md: 4 }}
               py={3}
               sx={{
-                '& .rbc-calendar': { fontFamily: 'inherit' },
+                '& .rbc-calendar': {
+                  fontFamily: 'inherit',
+                  color: 'text.body',
+                  bg: 'surface.card',
+                },
                 '& .rbc-header': {
                   padding: '10px 4px',
                   fontSize: '12px',
                   fontWeight: 600,
                   color: 'text.body',
+                  bg: 'surface.tableHeader',
                   borderBottom: '1px solid',
                   borderColor: borderColor,
                   textTransform: 'capitalize',
                 },
-                '& .rbc-today': { backgroundColor: 'statusSoft.infoBg' },
-                '& .rbc-off-range-bg': { backgroundColor: 'surface.hover' },
-                '& .rbc-date-cell': { padding: '6px 8px', fontSize: '12.5px' },
+                '& .rbc-header + .rbc-header': {
+                  borderColor: borderColor,
+                },
+                '& .rbc-today': { bg: 'statusSoft.infoBg' },
+                '& .rbc-off-range': { color: 'text.muted' },
+                '& .rbc-off-range-bg': { bg: 'surface.sunken' },
+                '& .rbc-date-cell': {
+                  padding: '6px 8px',
+                  fontSize: '12.5px',
+                  color: 'text.body',
+                },
                 '& .rbc-event': { padding: '3px 6px', borderRadius: '4px' },
                 '& .rbc-month-view, & .rbc-time-view': {
                   border: '1px solid',
                   borderColor: borderColor,
                   borderRadius: '6px',
                   overflow: 'hidden',
+                  bg: 'surface.card',
                 },
-                '& .rbc-day-bg, & .rbc-month-row, & .rbc-header + .rbc-header':
-                  {
-                    borderColor: borderColor,
-                  },
+                '& .rbc-day-bg, & .rbc-month-row': {
+                  borderColor: borderColor,
+                  bg: 'surface.card',
+                },
+                '& .rbc-time-header, & .rbc-time-content': {
+                  bg: 'surface.card',
+                  borderColor: borderColor,
+                },
                 '& .rbc-time-header-content, & .rbc-time-header-gutter': {
                   borderColor: borderColor,
+                  bg: 'surface.card',
+                },
+                '& .rbc-time-gutter, & .rbc-time-gutter .rbc-timeslot-group': {
+                  bg: 'surface.card',
+                  borderColor: borderColor,
+                },
+                '& .rbc-label': {
+                  color: 'text.muted',
+                  fontSize: '11px',
+                },
+                '& .rbc-timeslot-group': {
+                  borderBottom: '1px solid',
+                  borderColor: borderColor,
+                },
+                '& .rbc-day-slot .rbc-time-slot': {
+                  borderTop: '1px solid',
+                  borderTopColor: borderColor,
+                },
+                '& .rbc-time-content > * + * > *': {
+                  borderLeft: '1px solid',
+                  borderLeftColor: borderColor,
+                },
+                '& .rbc-time-header > .rbc-row:first-child': {
+                  borderBottomColor: borderColor,
+                },
+                '& .rbc-allday-cell': {
+                  bg: 'surface.card',
+                  borderColor: borderColor,
+                },
+                '& .rbc-current-time-indicator': {
+                  bg: 'brand.400',
+                },
+                '& .rbc-overlay': {
+                  bg: 'surface.card',
+                  border: '1px solid',
+                  borderColor: borderColor,
+                  color: 'text.body',
+                  boxShadow: 'lg',
+                },
+                '& .rbc-overlay-header': {
+                  borderBottomColor: borderColor,
                 },
               }}
             >
@@ -841,7 +917,11 @@ const CalendarPage: React.FC = () => {
                       ? `${patient.firstName} ${patient.lastName}`
                       : `Paciente (${selectedEvent.resource.patient_id.slice(0, 8)}…)`}
                   </Text>
-                  {patient?.slug?.trim() ? (
+                  {!patient ? (
+                    <Text fontSize="11.5px" color={labelColor} mt="1px">
+                      Paciente no encontrado
+                    </Text>
+                  ) : patient.slug?.trim() ? (
                     <Text
                       fontFamily="mono"
                       fontSize="10.5px"
@@ -853,7 +933,7 @@ const CalendarPage: React.FC = () => {
                     </Text>
                   ) : (
                     <Text fontSize="11.5px" color={labelColor} mt="1px">
-                      Paciente no encontrado
+                      Primera vez
                     </Text>
                   )}
                 </Box>
@@ -955,6 +1035,34 @@ const CalendarPage: React.FC = () => {
                     </Text>
                   </HStack>
                 ))}
+                {selectedEvent.resource.additional_notes?.trim() && (
+                  <Box
+                    px={4}
+                    py={3}
+                    borderTop="1px solid"
+                    borderColor={borderColor}
+                  >
+                    <Text
+                      fontFamily="mono"
+                      fontSize="10.5px"
+                      letterSpacing="0.06em"
+                      textTransform="uppercase"
+                      color={labelColor}
+                      fontWeight={500}
+                      mb={2}
+                    >
+                      Notas adicionales
+                    </Text>
+                    <Text
+                      fontSize="13px"
+                      color="text.strong"
+                      lineHeight="1.5"
+                      whiteSpace="pre-wrap"
+                    >
+                      {selectedEvent.resource.additional_notes?.trim()}
+                    </Text>
+                  </Box>
+                )}
               </VStack>
             </Box>
 
@@ -1032,30 +1140,72 @@ const CalendarPage: React.FC = () => {
         isOpen={isCancelOpen}
         leastDestructiveRef={cancelRef}
         onClose={isCancelling ? () => {} : onCancelClose}
+        isCentered
       >
-        <AlertDialogOverlay>
-          <AlertDialogContent borderRadius="10px">
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Cancelar cita
+        <AlertDialogOverlay bg="blackAlpha.600">
+          <AlertDialogContent
+            bg="surface.card"
+            border="1px solid"
+            borderColor={borderColor}
+            borderRadius="12px"
+            boxShadow="0 12px 40px rgba(10,11,13,.35)"
+            mx={4}
+          >
+            <AlertDialogHeader px={6} pt={6} pb={2}>
+              <Text
+                as="p"
+                fontFamily="mono"
+                fontSize="11px"
+                color="brand.fg"
+                letterSpacing="0.08em"
+                textTransform="uppercase"
+                mb={2}
+                fontWeight={500}
+              >
+                Agenda
+              </Text>
+              <Heading
+                as="h2"
+                fontSize="20px"
+                fontWeight={600}
+                letterSpacing="-0.015em"
+                lineHeight="1.25"
+                color="text.strong"
+              >
+                Cancelar cita
+              </Heading>
             </AlertDialogHeader>
-            <AlertDialogBody>
-              ¿Seguro que quieres cancelar esta cita? Esta acción la marcará
-              como cancelada.
+            <AlertDialogBody px={6} py={2}>
+              <Text fontSize="14px" color="text.body" lineHeight={1.6}>
+                ¿Seguro que quieres cancelar esta cita? Esta acción la marcará
+                como cancelada.
+              </Text>
             </AlertDialogBody>
-            <AlertDialogFooter>
+            <AlertDialogFooter px={6} pt={4} pb={6} gap={2}>
               <Button
                 ref={cancelRef}
+                variant="outline"
+                size="sm"
+                h="36px"
+                borderColor="line.strong"
+                color="text.strong"
+                bg={cardBg}
+                _hover={{ borderColor: 'border.strong' }}
                 onClick={onCancelClose}
                 isDisabled={isCancelling}
               >
                 Volver
               </Button>
               <Button
-                colorScheme="red"
+                size="sm"
+                h="36px"
+                bg="statusSoft.critFg"
+                color="white"
+                _hover={{ bg: 'statusSoft.critFg', opacity: 0.9 }}
+                _active={{ opacity: 0.8 }}
                 onClick={handleConfirmCancelAppointment}
-                ml={3}
                 isLoading={isCancelling}
-                loadingText="Cancelando..."
+                loadingText="Cancelando…"
               >
                 Cancelar cita
               </Button>
@@ -1064,10 +1214,12 @@ const CalendarPage: React.FC = () => {
         </AlertDialogOverlay>
       </AlertDialog>
 
-      <AppointmentFormModal
+      <PatientAppointmentDrawer
         isOpen={isNewOpen}
         onClose={onNewClose}
-        onSuccess={onNewClose}
+        onPatientCreated={cachePatient}
+        onSuccess={handleNewAppointmentSuccess}
+        entry="agenda"
         initialDate={slotDate}
         initialTime={slotTime}
         initialPatientId={initialPatientId}

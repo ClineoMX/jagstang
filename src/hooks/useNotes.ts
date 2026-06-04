@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import type { MedicalNote, NoteCompletenessAnalysis } from '../types';
 import { mapApiAttachments } from '../utils/mapNoteAttachments';
+import { parseFollowUpFromApi } from '../utils/noteFollowUp';
 
 export const useNotes = (patientId: string | undefined) => {
   const [notes, setNotes] = useState<MedicalNote[]>([]);
@@ -24,6 +25,7 @@ export const useNotes = (patientId: string | undefined) => {
       signedBy: n.signed_by,
       createdAt: n.created_at,
       updatedAt: n.updated_at,
+      isFollowUpOf: parseFollowUpFromApi(n.is_follow_up_of),
       attachments: mapApiAttachments(n.attachments, { patientId: pid, noteId: n.id }),
     }));
 
@@ -83,6 +85,7 @@ export const useNotes = (patientId: string | undefined) => {
     type: string;
     title?: string;
     files?: File[];
+    isFollowUpOf?: string;
   }) => {
     if (!patientId) throw new Error('Patient ID is required');
 
@@ -91,6 +94,7 @@ export const useNotes = (patientId: string | undefined) => {
       note_type: data.type,
       title: data.title,
       files: data.files,
+      is_follow_up_of: data.isFollowUpOf,
     });
     await reloadNotes();
     return {

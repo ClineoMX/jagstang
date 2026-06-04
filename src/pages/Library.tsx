@@ -12,6 +12,7 @@ interface LibraryTab {
 const TABS: LibraryTab[] = [
   { id: 'documents', label: 'Documentos', path: '/library/documents' },
   { id: 'forms', label: 'Formularios', path: '/library/forms' },
+  { id: 'notes', label: 'Notas', path: '/library/notes' },
 ];
 
 const Library: React.FC = () => {

@@ -124,7 +124,6 @@ const DoctorProfile: React.FC = () => {
                   borderColor="line.strong"
                   color="ink.700"
                   fontWeight={500}
-                  _hover={{ bg: 'paper.100' }}
                 >
                   Cambiar foto
                 </Button>

@@ -444,6 +444,29 @@ const theme = extendTheme({
             transform: 'translateY(0)',
           },
         }),
+        outline: {
+          borderColor: 'border.default',
+          color: 'text.body',
+          bg: 'transparent',
+          _hover: {
+            bg: 'surface.hover',
+            borderColor: 'brand.300',
+            color: 'text.strong',
+          },
+          _active: {
+            bg: 'surface.activeHover',
+          },
+        },
+        ghost: {
+          color: 'text.body',
+          _hover: {
+            bg: 'surface.hover',
+            color: 'text.strong',
+          },
+          _active: {
+            bg: 'surface.activeHover',
+          },
+        },
       },
     },
     Card: {
@@ -639,6 +662,16 @@ const theme = extendTheme({
           insetEnd: 2,
           color: 'text.muted',
           _hover: { color: 'text.strong', bg: 'surface.hover' },
+        },
+      },
+    },
+    Drawer: {
+      sizes: {
+        split: {
+          dialog: {
+            maxW: '880px',
+            w: '100%',
+          },
         },
       },
     },

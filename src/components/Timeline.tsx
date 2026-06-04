@@ -14,6 +14,18 @@ export interface TimelineItem {
   /** Optional chips rendered above body. */
   chips?: string[];
   onClick?: () => void;
+  /** Stable id shared by every note in the same follow-up chain. */
+  chainId?: string;
+  /** 1-based position of this note within its follow-up chain. */
+  chainIndex?: number;
+  /** Total number of notes in this follow-up chain. */
+  chainTotal?: number;
+  /** Accent color (hex) shared by the chain. */
+  chainColor?: string;
+  /** Short follow-up label, e.g. "Nota de evolución: 4 jun 2026 2/3". */
+  chainLabel?: string;
+  /** Opens / scrolls to the parent note when the chain chip is clicked. */
+  onChainLabelClick?: () => void;
 }
 
 interface TimelineProps {
@@ -206,6 +218,7 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
                 {group.items.map((item, itemIndex) => (
                   <Box
                     key={item.id}
+                    id={item.id}
                     as="button"
                     onClick={item.onClick}
                     display="grid"
@@ -271,7 +284,7 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
                         w="10px"
                         h="10px"
                         borderRadius="full"
-                        bg={kindDotColor(item.kind)}
+                        bg={item.chainColor ?? kindDotColor(item.kind)}
                         border="2px solid"
                         borderColor={cardBg}
                         zIndex={1}
@@ -282,6 +295,8 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
                       bg={cardBg}
                       border="1px solid"
                       borderColor={lineColor}
+                      borderLeft={item.chainColor ? '3px solid' : undefined}
+                      borderLeftColor={item.chainColor}
                       borderRadius="6px"
                       p="10px 14px"
                       minW={0}
@@ -301,6 +316,69 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
                         mb="2px"
                       >
                         <Text>{kindLabel(item.kind)}</Text>
+                        {item.chainColor && item.chainLabel && (
+                            <HStack
+                              as="span"
+                              role={item.onChainLabelClick ? 'button' : undefined}
+                              tabIndex={item.onChainLabelClick ? 0 : undefined}
+                              spacing="5px"
+                              px="6px"
+                              py="1px"
+                              borderRadius="3px"
+                              bg={`${item.chainColor}22`}
+                              color={item.chainColor}
+                              align="center"
+                              textTransform="none"
+                              letterSpacing="normal"
+                              fontSize="10px"
+                              lineHeight="1.35"
+                              maxW="100%"
+                              cursor={
+                                item.onChainLabelClick ? 'pointer' : 'default'
+                              }
+                              title={
+                                item.onChainLabelClick
+                                  ? 'Ver nota anterior en la cadena'
+                                  : undefined
+                              }
+                              _hover={
+                                item.onChainLabelClick
+                                  ? { textDecoration: 'underline' }
+                                  : undefined
+                              }
+                              onClick={
+                                item.onChainLabelClick
+                                  ? (e) => {
+                                      e.stopPropagation();
+                                      item.onChainLabelClick?.();
+                                    }
+                                  : undefined
+                              }
+                              onKeyDown={
+                                item.onChainLabelClick
+                                  ? (e) => {
+                                      if (
+                                        e.key === 'Enter' ||
+                                        e.key === ' '
+                                      ) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        item.onChainLabelClick?.();
+                                      }
+                                    }
+                                  : undefined
+                              }
+                            >
+                              <Box
+                                w="5px"
+                                h="5px"
+                                borderRadius="full"
+                                bg={item.chainColor}
+                                flexShrink={0}
+                              />
+                              <Text noOfLines={2}>{item.chainLabel}</Text>
+                            </HStack>
+                          )}
                       </HStack>
                       <Text
                         fontSize="14px"

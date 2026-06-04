@@ -4,7 +4,6 @@ import {
   Button,
   Drawer,
   DrawerBody,
-  DrawerCloseButton,
   DrawerContent,
   DrawerFooter,
   DrawerHeader,
@@ -15,7 +14,7 @@ import {
   useColorModeValue,
 } from '@chakra-ui/react';
 
-export type FormDrawerSize = 'sm' | 'md' | 'lg' | 'xl';
+export type FormDrawerSize = 'sm' | 'md' | 'lg' | 'xl' | 'split';
 
 interface FormDrawerProps {
   isOpen: boolean;
@@ -28,6 +27,13 @@ interface FormDrawerProps {
   sub?: React.ReactNode;
   /** Drawer width. Defaults to "md". */
   size?: FormDrawerSize;
+  /**
+   * Overrides the content max-width (e.g. "460px"). Combined with
+   * `animateWidth`, lets the drawer grow/shrink smoothly between layouts.
+   */
+  contentMaxW?: string;
+  /** Animate changes to the content width (max-width transition). */
+  animateWidth?: boolean;
   /** Submit button label. Defaults to "Guardar". */
   submitLabel?: string;
   /** Loading state for the submit button; disables Cancel too. */
@@ -74,6 +80,8 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
   title,
   sub,
   size = 'md',
+  contentMaxW,
+  animateWidth = false,
   submitLabel = 'Guardar',
   isSubmitting = false,
   submitLoadingText = 'Guardando…',
@@ -123,13 +131,14 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
         flexDirection="column"
         maxH="100vh"
         minH={bodyFillHeight ? '100dvh' : undefined}
+        maxW={contentMaxW ?? (size === 'split' ? '880px' : undefined)}
+        w={contentMaxW || size === 'split' ? '100%' : undefined}
+        transition={
+          animateWidth
+            ? 'max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+            : undefined
+        }
       >
-        <DrawerCloseButton
-          top="14px"
-          right="14px"
-          color="text.muted"
-          _hover={{ color: 'brand.600', bg: 'brand.50' }}
-        />
         <DrawerHeader
           px={6}
           pt={6}
@@ -137,7 +146,7 @@ const FormDrawer: React.FC<FormDrawerProps> = ({
           borderBottom="1px solid"
           borderColor={borderColor}
         >
-          <Box pr={8}>
+          <Box>
             {crumb && (
               <Text
                 as="p"

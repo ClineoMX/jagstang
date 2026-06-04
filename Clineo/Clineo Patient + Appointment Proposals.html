@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clineo · Paciente + Cita — Propuestas</title>
+  <meta name="ext-resource-dependency" content="assets/svg/clineo-icon.svg" data-resource-id="railLogo" />
+  <link rel="stylesheet" href="proposals/tokens.css" />
+  <link rel="stylesheet" href="unified/unified.css" />
+  <template id="__bundler_thumbnail" data-bg-color="#0a0b0d">
+    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1200" height="800" fill="#0a0b0d"/>
+      <rect x="360" y="250" width="230" height="300" rx="20" fill="#ffffff"/>
+      <rect x="610" y="250" width="230" height="300" rx="20" fill="#f6f5f1" stroke="#27292f" stroke-width="2"/>
+      <rect x="392" y="290" width="120" height="16" rx="6" fill="#2e7f99"/>
+      <rect x="392" y="324" width="166" height="34" rx="8" fill="#eceef2"/>
+      <rect x="642" y="290" width="90" height="16" rx="6" fill="#2e7f99"/>
+      <rect x="642" y="330" width="40" height="30" rx="6" fill="#4cb7d7"/>
+      <rect x="690" y="330" width="40" height="30" rx="6" fill="#eceef2"/>
+      <rect x="738" y="330" width="40" height="30" rx="6" fill="#eceef2"/>
+      <rect x="642" y="368" width="40" height="30" rx="6" fill="#eceef2"/>
+      <rect x="690" y="368" width="40" height="30" rx="6" fill="#eceef2"/>
+      <rect x="738" y="368" width="40" height="30" rx="6" fill="#4cb7d7"/>
+      <circle cx="600" cy="150" r="42" fill="#4cb7d7"/>
+      <path d="M583 150 l12 12 l22 -24" stroke="#0a0b0d" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </template>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="unified/data.js"></script>
+  <script src="unified/icons.js"></script>
+  <script type="text/babel" src="unified/shared.jsx"></script>
+  <script type="text/babel" src="unified/proposalA.jsx"></script>
+  <script type="text/babel" src="unified/proposalB.jsx"></script>
+  <script type="text/babel" src="unified/proposalC.jsx"></script>
+  <script type="text/babel" src="unified/app.jsx"></script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import {
   InputGroup,
   InputLeftElement,
   Select,
+  Textarea,
   useToast,
   HStack,
   Icon,
@@ -39,7 +40,8 @@ interface AppointmentFormModalProps {
   createAppointment: (
     patient: string,
     starts_at: string,
-    duration: string
+    duration: string,
+    additional_notes?: string
   ) => Promise<void>;
 }
 
@@ -83,6 +85,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState<string>('30m');
+  const [additionalNotes, setAdditionalNotes] = useState('');
   const [patientId, setPatientId] = useState('');
   const [patientSearch, setPatientSearch] = useState('');
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
@@ -119,6 +122,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
       setDate(initialDate ?? '');
       setTime(initialTime ?? '');
       setDuration('30m');
+      setAdditionalNotes('');
       setPatientId(initialPatientId ?? '');
       setPatientSearch('');
       setIsPatientDropdownOpen(false);
@@ -155,7 +159,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
     try {
       const localDate = new Date(`${date}T${time}:00`);
       const starts_at = localDate.toISOString();
-      await createAppointment(patientId, starts_at, duration);
+      await createAppointment(patientId, starts_at, duration, additionalNotes);
 
       toast({
         title: 'Cita creada',
@@ -236,6 +240,26 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
               </option>
             ))}
           </Select>
+        </FormControl>
+
+        <FormControl>
+          <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+            Notas adicionales
+          </FormLabel>
+          <Textarea
+            value={additionalNotes}
+            onChange={(e) => setAdditionalNotes(e.target.value)}
+            placeholder="Contexto o indicaciones para la cita…"
+            rows={3}
+            fontSize="13px"
+            borderColor="line.strong"
+            resize="vertical"
+            _hover={{ borderColor: 'paper.600' }}
+            _focus={{
+              borderColor: 'brand.500',
+              boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+            }}
+          />
         </FormControl>
 
         <FormControl isRequired>

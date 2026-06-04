@@ -403,6 +403,7 @@ class ApiService {
       residence_country?: string;
       residence_city?: string;
       occupation?: string;
+      referred_by?: string;
       education?: string;
       marital_status?: string;
       religion?: string;
@@ -593,6 +594,7 @@ class ApiService {
         starts_at: string;
         ends_at: string;
         status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+        additional_notes?: string | null;
       }>;
       count: number;
       page: number;
@@ -608,6 +610,7 @@ class ApiService {
     patient: string;
     starts_at: string;
     duration: string;
+    additional_notes?: string;
   }) {
     return this.request<void>('/doctor/appointments/', {
       method: 'POST',
@@ -626,6 +629,7 @@ class ApiService {
       starts_at: string;
       ends_at: string;
       status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+      additional_notes?: string | null;
     }>(`/doctor/appointments/${id}/`);
   }
 
@@ -911,6 +915,14 @@ class ApiService {
         created_at: string;
         updated_at?: string;
         attachments?: unknown[];
+        is_follow_up_of?:
+          | string
+          | {
+              id: string;
+              note_type: string;
+              title: string;
+              custom_date: string;
+            };
       }>;
     }>(`/patients/${patientId}/notes/${query ? `?${query}` : ''}`);
   }
@@ -930,6 +942,14 @@ class ApiService {
       created_at: string;
       updated_at: string;
       attachments?: unknown[];
+      is_follow_up_of?:
+        | string
+        | {
+            id: string;
+            note_type: string;
+            title: string;
+            custom_date: string;
+          };
     }>(`/patients/${patientId}/notes/${noteId}/`);
   }
 
@@ -938,13 +958,22 @@ class ApiService {
    */
   async createNote(
     patientId: string,
-    data: { content: string; note_type: string; title?: string; files?: File[] }
+    data: {
+      content: string;
+      note_type: string;
+      title?: string;
+      files?: File[];
+      is_follow_up_of?: string;
+    }
   ) {
     const formData = new FormData();
     formData.append('content', data.content);
     formData.append('note_type', data.note_type);
     if (data.title) {
       formData.append('title', data.title);
+    }
+    if (data.is_follow_up_of) {
+      formData.append('is_follow_up_of', data.is_follow_up_of);
     }
     if (data.files?.length) {
       data.files.forEach((file) => formData.append('files', file));

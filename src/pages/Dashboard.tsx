@@ -16,7 +16,7 @@ import { FiPlus } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { differenceInMinutes, format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import PatientFormModal from '../components/PatientFormModal';
+import PatientAppointmentDrawer from '../components/PatientAppointmentDrawer';
 import PageHead from '../components/PageHead';
 import TodayStrip from '../components/TodayStrip';
 import Nudge from '../components/Nudge';
@@ -91,7 +91,7 @@ const Dashboard: React.FC = () => {
   const { doctor } = useAuth();
 
   const { patients, refetch } = usePatients();
-  const { appointments } = useAppointments();
+  const { appointments, createAppointment } = useAppointments();
   const [notesCount, setNotesCount] = useState<number | null>(null);
   const [notesDraft, setNotesDraft] = useState<number>(0);
   const [recentNotes, setRecentNotes] = useState<RecentNote[]>([]);
@@ -449,6 +449,16 @@ const Dashboard: React.FC = () => {
                       <Text fontSize="12.5px" color={mutedColor} mt="1px">
                         {p?.isRecurrent ? 'Recurrente' : 'Primera vez'}
                       </Text>
+                      {apt.additional_notes?.trim() && (
+                        <Text
+                          fontSize="12.5px"
+                          color={mutedColor}
+                          mt="1px"
+                          noOfLines={2}
+                        >
+                          {apt.additional_notes.trim()}
+                        </Text>
+                      )}
                     </Box>
                     <StatusBadge tone={statusToTone(apt.status)}>
                       {statusLabel(apt.status)}
@@ -581,7 +591,13 @@ const Dashboard: React.FC = () => {
         </Box>
       </SimpleGrid>
 
-      <PatientFormModal isOpen={isOpen} onClose={onClose} onSuccess={refetch} />
+      <PatientAppointmentDrawer
+        isOpen={isOpen}
+        onClose={onClose}
+        onSuccess={refetch}
+        entry="patients"
+        createAppointment={createAppointment}
+      />
     </Container>
   );
 };

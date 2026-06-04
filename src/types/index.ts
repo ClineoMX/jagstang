@@ -65,6 +65,7 @@ export interface ApiAppointment {
   starts_at: string;
   ends_at: string;
   status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  additional_notes?: string | null;
 }
 
 export interface Appointment {
@@ -107,6 +108,14 @@ export interface NoteTemplate {
 
 export type NoteStatus = 'draft' | 'signed';
 
+/** Parent note summary returned in list/detail `is_follow_up_of`. */
+export interface NoteFollowUpRef {
+  id: string;
+  noteType: string;
+  title: string;
+  customDate: string;
+}
+
 export interface MedicalNote {
   id: string;
   patientId: string;
@@ -125,6 +134,8 @@ export interface MedicalNote {
   signature?: string; // RSA signature
   hash?: string; // Hash for comparing versions
   attachments?: Attachment[];
+  /** Parent note this one follows up on (from API); send only `id` on create. */
+  isFollowUpOf?: NoteFollowUpRef;
   createdAt: string;
   updatedAt: string;
 }

@@ -150,7 +150,6 @@ const TemplateEditor: React.FC = () => {
           borderColor="line.strong"
           color="ink.700"
           fontWeight={500}
-          _hover={{ bg: 'paper.100' }}
         >
           Volver
         </Button>
@@ -225,7 +224,6 @@ const TemplateEditor: React.FC = () => {
               borderColor="line.strong"
               color="ink.700"
               fontWeight={500}
-              _hover={{ bg: 'paper.100' }}
             >
               Cancelar
             </Button>

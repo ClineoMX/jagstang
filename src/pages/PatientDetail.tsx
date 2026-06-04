@@ -90,9 +90,14 @@ import StatusBadge from '../components/StatusBadge';
 import NoteAttachmentsList from '../components/NoteAttachmentsList';
 import { mergeNoteBodyForEditor } from '../utils/noteReceta';
 import { normalizePatientSlug } from '../utils/patientSlug';
+import {
+  formatFollowUpChainLabel,
+  formatFollowUpChainRootLabel,
+} from '../utils/noteFollowUp';
 import InterrogationFormDrawer from '../components/InterrogationFormDrawer';
 import PatientDocuments from '../components/PatientDocuments';
 import PatientFormModal from '../components/PatientFormModal';
+import PatientAppointmentDrawer from '../components/PatientAppointmentDrawer';
 import { usePatientNotesSummary } from '../hooks/usePatientNotesSummary';
 import StreamingMarkdown from '../components/StreamingMarkdown';
 import SummaryLoadingSkeleton from '../components/SummaryLoadingSkeleton';
@@ -287,7 +292,7 @@ const PatientDetail: React.FC = () => {
     refetch: refetchPatient,
   } = usePatient(patientId);
   const { notes, loading: notesLoading, createNote, updateNoteDate } = useNotes(patientId);
-  const { appointments } = useAppointments();
+  const { appointments, createAppointment } = useAppointments();
   const {
     consents: patientConsents,
     loading: consentsLoading,
@@ -380,6 +385,12 @@ const PatientDetail: React.FC = () => {
     onClose: onPatientEditClose,
   } = useDisclosure();
 
+  const {
+    isOpen: isNewApptOpen,
+    onOpen: onNewApptOpen,
+    onClose: onNewApptClose,
+  } = useDisclosure();
+
   const [identityForm, setIdentityForm] = useState<Record<string, string>>({});
   const [isSavingIdentity, setIsSavingIdentity] = useState(false);
   const [emergencyPhone, setEmergencyPhone] = useState({
@@ -415,25 +426,124 @@ const PatientDetail: React.FC = () => {
     onOpen();
   };
 
+  const chainInfoById = useMemo(() => {
+    // Accent palette (fixed hex so chips can derive an alpha tint and colors
+    // stay legible in both light and dark mode).
+    const palette = ['#6366F1', '#10B981', '#A855F7', '#F97316', '#0EA5E9'];
+    const byId = new Map(notes.map((n) => [n.id, n]));
+    // Undirected adjacency between a note and its follow-up parent.
+    const adjacency = new Map<string, Set<string>>();
+    const link = (a: string, b: string) => {
+      if (!adjacency.has(a)) adjacency.set(a, new Set());
+      adjacency.get(a)!.add(b);
+    };
+    for (const n of notes) {
+      const parentId = n.isFollowUpOf?.id;
+      if (parentId && byId.has(parentId)) {
+        link(n.id, parentId);
+        link(parentId, n.id);
+      }
+    }
+
+    const info = new Map<
+      string,
+      {
+        chainId: string;
+        index: number;
+        total: number;
+        color: string;
+        chainLabel: string;
+      }
+    >();
+    const visited = new Set<string>();
+    const components: string[][] = [];
+    for (const n of notes) {
+      if (visited.has(n.id) || !adjacency.has(n.id)) continue;
+      const stack = [n.id];
+      const members: string[] = [];
+      while (stack.length) {
+        const id = stack.pop()!;
+        if (visited.has(id)) continue;
+        visited.add(id);
+        members.push(id);
+        for (const next of adjacency.get(id) ?? []) {
+          if (!visited.has(next)) stack.push(next);
+        }
+      }
+      if (members.length >= 2) components.push(members);
+    }
+
+    // Order members chronologically and assign stable colors per chain.
+    const dateOf = (id: string) =>
+      new Date(byId.get(id)?.createdAt ?? 0).getTime();
+    components
+      .map((members) => [...members].sort((a, b) => dateOf(a) - dateOf(b)))
+      .sort((a, b) => dateOf(a[0]) - dateOf(b[0]))
+      .forEach((members, chainIdx) => {
+        const color = palette[chainIdx % palette.length];
+        const chainId = members[0];
+        members.forEach((id, i) => {
+          const index = i + 1;
+          const total = members.length;
+          const note = byId.get(id);
+          const chainLabel = note?.isFollowUpOf
+            ? formatFollowUpChainLabel(note.isFollowUpOf, index, total)
+            : formatFollowUpChainRootLabel(index, total);
+          info.set(id, {
+            chainId,
+            index,
+            total,
+            color,
+            chainLabel,
+          });
+        });
+      });
+    return info;
+  }, [notes]);
+
   const timelineItems: TimelineItem[] = useMemo(() => {
     if (!patientId) return [];
-    const fromNotes: TimelineItem[] = notes.map((n) => ({
-      id: `note-${n.id}`,
-      kind: n.status === 'signed' ? ('signed' as const) : ('draft' as const),
-      date: new Date(n.createdAt),
-      title: n.title,
-      body:
-        n.type === 'document'
-          ? 'Formulario'
-          : stripHtml(n.content).slice(0, 180),
-      onClick: () => {
-        if (n.status === 'draft') {
-          navigate(`${patientPathBase}/notes/${n.id}/edit`);
-        } else {
-          handleViewNote(n);
-        }
-      },
-    }));
+    const fromNotes: TimelineItem[] = notes.map((n) => {
+      const chain = chainInfoById.get(n.id);
+      return {
+        id: `note-${n.id}`,
+        kind: n.status === 'signed' ? ('signed' as const) : ('draft' as const),
+        date: new Date(n.createdAt),
+        title: n.title,
+        body:
+          n.type === 'document'
+            ? 'Formulario'
+            : stripHtml(n.content).slice(0, 180),
+        onClick: () => {
+          if (n.status === 'draft') {
+            navigate(`${patientPathBase}/notes/${n.id}/edit`);
+          } else {
+            handleViewNote(n);
+          }
+        },
+        chainId: chain?.chainId,
+        chainIndex: chain?.index,
+        chainTotal: chain?.total,
+        chainColor: chain?.color,
+        chainLabel: chain?.chainLabel,
+        onChainLabelClick: n.isFollowUpOf?.id
+          ? () => {
+              const parentId = n.isFollowUpOf!.id;
+              document.getElementById(`note-${parentId}`)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
+              const parent = notes.find((x) => x.id === parentId);
+              if (!parent) return;
+              if (parent.status === 'draft') {
+                navigate(`${patientPathBase}/notes/${parent.id}/edit`);
+              } else {
+                handleViewNote(parent);
+              }
+            }
+          : undefined,
+      };
+    });
 
     const fromAppointments: TimelineItem[] = appointments
       .filter((apt) => apt.patient_id === patientId)
@@ -444,11 +554,13 @@ const PatientDetail: React.FC = () => {
           0,
           Math.round((end.getTime() - start.getTime()) / 60000)
         );
+        const notes = apt.additional_notes?.trim();
         return {
           id: `apt-${apt.id}`,
           kind: 'event' as const,
           date: start,
           title: `Cita · ${format(start, 'HH:mm')}`,
+          body: notes || undefined,
           chips: [
             `${mins} min`,
             apt.status === 'CONFIRMED'
@@ -465,7 +577,7 @@ const PatientDetail: React.FC = () => {
 
     return [...fromNotes, ...fromAppointments];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, notes, appointments, patientPathBase]);
+  }, [patientId, notes, appointments, patientPathBase, chainInfoById]);
 
   if (patientLoading) {
     return (
@@ -593,6 +705,7 @@ const PatientDetail: React.FC = () => {
       options: MARITAL_STATUS_LABELS,
     },
     { key: 'occupation', label: 'Ocupación' },
+    { key: 'referred_by', label: 'Referido por' },
     { key: 'education_level', label: 'Nivel de estudios' },
     { key: 'education', label: 'Educación' },
     { key: 'religion', label: 'Religión' },
@@ -717,9 +830,7 @@ const PatientDetail: React.FC = () => {
               borderColor="line.strong"
               color="text.strong"
               bg={cardBg}
-              onClick={() =>
-                navigate('/calendar', { state: { patientId: patient.id } })
-              }
+              onClick={onNewApptOpen}
               _hover={{ borderColor: 'paper.600' }}
               display={{ base: 'inline-flex', md: 'none' }}
             />
@@ -731,9 +842,7 @@ const PatientDetail: React.FC = () => {
               borderColor="line.strong"
               color="text.strong"
               bg={cardBg}
-              onClick={() =>
-                navigate('/calendar', { state: { patientId: patient.id } })
-              }
+              onClick={onNewApptOpen}
               _hover={{ borderColor: 'paper.600' }}
               display={{ base: 'none', md: 'inline-flex' }}
             >
@@ -1968,14 +2077,24 @@ const PatientDetail: React.FC = () => {
       </FormDrawer>
 
       {patient && (
-        <PatientFormModal
-          isOpen={isPatientEditOpen}
-          onClose={onPatientEditClose}
-          patientId={patient.id}
-          onSuccess={() => {
-            void refetchPatient();
-          }}
-        />
+        <>
+          <PatientFormModal
+            isOpen={isPatientEditOpen}
+            onClose={onPatientEditClose}
+            patientId={patient.id}
+            onSuccess={() => {
+              void refetchPatient();
+            }}
+          />
+          <PatientAppointmentDrawer
+            isOpen={isNewApptOpen}
+            onClose={onNewApptClose}
+            onSuccess={onNewApptClose}
+            entry="agenda"
+            initialPatientId={patient.id}
+            createAppointment={createAppointment}
+          />
+        </>
       )}
 
       {!isWellness && patient && (

@@ -1,90 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
-import type { Patient, Attachment, AttachmentType, BloodType, Gender } from '../types';
-
-const BLOOD_VALUES: readonly BloodType[] = [
-  'A+',
-  'A-',
-  'B+',
-  'B-',
-  'AB+',
-  'AB-',
-  'O+',
-  'O-',
-];
-
-function normalizeBloodType(raw: string | null | undefined): BloodType | undefined {
-  const t = raw?.trim();
-  if (!t) return undefined;
-  return (BLOOD_VALUES as readonly string[]).includes(t) ? (t as BloodType) : undefined;
-}
-
-function normalizeGender(raw: string | null | undefined): Gender | undefined {
-  if (!raw?.trim()) return undefined;
-  const g = raw.trim().toLowerCase();
-  if (['male', 'm', 'masculino', 'hombre'].includes(g)) return 'male';
-  if (['female', 'f', 'femenino', 'mujer'].includes(g)) return 'female';
-  if (['other', 'otro', 'o'].includes(g)) return 'other';
-  if (['prefer_not_to_say', 'prefiere no decir', 'prefiero no decir'].includes(g)) {
-    return 'prefer_not_to_say';
-  }
-  return undefined;
-}
-
-/** API uses zero / sentinel dates for “missing” values. */
-function isSentinelDate(iso: string | null | undefined): boolean {
-  if (!iso?.trim()) return true;
-  const y = iso.trim().slice(0, 4);
-  return y === '0000' || y === '0001';
-}
-
-function mapTableRowToPatient(
-  row: {
-    id: string;
-    slug?: string | null;
-    name: string;
-    lastname: string;
-    lastname_m: string | null;
-    phone?: string;
-    birth_date?: string;
-    gender?: string;
-    blood_type?: string;
-    is_recurrent: boolean;
-    last_visit?: string;
-    email?: string;
-  },
-  nowIso: string
-): Patient {
-  const phone = row.phone?.trim() ? row.phone.trim() : undefined;
-  const email = row.email?.trim() ? row.email.trim() : undefined;
-  const dateOfBirth =
-    row.birth_date && !isSentinelDate(row.birth_date) ? row.birth_date : undefined;
-  const lastVisit =
-    row.last_visit && !isSentinelDate(row.last_visit) ? row.last_visit : undefined;
-  const g = normalizeGender(row.gender);
-  const bt = normalizeBloodType(row.blood_type);
-  const slug =
-    row.slug && row.slug.trim()
-      ? row.slug.trim().replace(/^#/, '')
-      : undefined;
-
-  return {
-    id: row.id,
-    slug,
-    firstName: row.name,
-    lastName: row.lastname,
-    lastNameMaternal: row.lastname_m?.trim() ? row.lastname_m : undefined,
-    createdAt: nowIso,
-    updatedAt: nowIso,
-    isRecurrent: row.is_recurrent,
-    ...(phone && { phone }),
-    ...(email && { email }),
-    ...(dateOfBirth && { dateOfBirth }),
-    ...(g && { gender: g }),
-    ...(bt && { bloodType: bt }),
-    ...(lastVisit && { lastVisit }),
-  };
-}
+import type { Patient, Attachment, AttachmentType } from '../types';
+import {
+  getClinicDataSnapshot,
+  loadPatients,
+  refreshPatients,
+  subscribeClinicData,
+} from '../lib/clinicDataStore';
+import { isSentinelDate, normalizeGender } from '../utils/patientTableMapper';
 
 function mimeToFileType(mime: string): AttachmentType {
   if (!mime) return 'other';
@@ -94,56 +17,36 @@ function mimeToFileType(mime: string): AttachmentType {
   if (mime === 'application/pdf') return 'pdf';
   if (mime.includes('word') || mime === 'application/msword') return 'word';
   if (mime.includes('excel') || mime.includes('spreadsheet')) return 'excel';
-  if (mime.includes('powerpoint') || mime.includes('presentation')) return 'powerpoint';
+  if (mime.includes('powerpoint') || mime.includes('presentation'))
+    return 'powerpoint';
   if (mime.includes('dicom')) return 'dicom';
   if (mime.includes('hl7')) return 'hl7';
   if (mime.includes('xml')) return 'xml';
   return 'other';
 }
 
+function useClinicDataTick() {
+  const [, setTick] = useState(0);
+  useEffect(() => subscribeClinicData(() => setTick((n) => n + 1)), []);
+}
+
 export const usePatients = () => {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPatients = useCallback(async (signal?: AbortSignal) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiService.listPatientsTable({ size: 500 });
-      if (signal?.aborted) return;
-      const nowIso = new Date().toISOString();
-      setPatients(response.results.map((row) => mapTableRowToPatient(row, nowIso)));
-      setCount(response.count);
-    } catch (err) {
-      if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : 'Error al cargar pacientes');
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
-  }, []);
+  useClinicDataTick();
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchPatients(controller.signal);
-    return () => controller.abort();
-  }, [fetchPatients]);
+    void loadPatients();
+  }, []);
+
+  const snap = getClinicDataSnapshot();
+
+  const refetch = useCallback(() => refreshPatients(), []);
 
   return {
-    patients,
-    count,
-    loading,
-    error,
-    refetch: () => fetchPatients(),
+    patients: snap.patients,
+    count: snap.patientsCount,
+    loading: snap.patientsLoading,
+    error: snap.patientsError,
+    refetch,
   };
 };
 
@@ -174,8 +77,8 @@ export const usePatient = (patientId: string | undefined) => {
       ]);
       if (signal?.aborted) return;
 
-      const identityBirth = (identityData as any)?.birthdate;
-      const identityGender = (identityData as any)?.gender;
+      const identityBirth = (identityData as { birthdate?: string })?.birthdate;
+      const identityGender = (identityData as { gender?: string })?.gender;
       const dateOfBirth =
         typeof identityBirth === 'string' && !isSentinelDate(identityBirth)
           ? identityBirth
@@ -186,8 +89,9 @@ export const usePatient = (patientId: string | undefined) => {
       const transformedPatient: Patient = {
         id: patientData.id,
         slug:
-          typeof (patientData as any)?.slug === 'string' && (patientData as any).slug.trim()
-            ? (patientData as any).slug.trim().replace(/^#/, '')
+          typeof (patientData as { slug?: string }).slug === 'string' &&
+          (patientData as { slug?: string }).slug?.trim()
+            ? (patientData as { slug: string }).slug.trim().replace(/^#/, '')
             : undefined,
         firstName: patientData.name,
         lastName: patientData.lastname,

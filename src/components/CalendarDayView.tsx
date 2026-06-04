@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Text, useColorModeValue } from '@chakra-ui/react';
+import { Box, Text, Skeleton, useColorModeValue } from '@chakra-ui/react';
 import { differenceInMinutes, format, isSameDay } from 'date-fns';
 import type { ApiAppointment } from '../types';
 
@@ -7,6 +7,8 @@ interface CalendarDayViewProps {
   day: Date;
   appointments: ApiAppointment[];
   patientName: (id: string) => string;
+  /** When true, patient names aren't ready yet; show a skeleton instead. */
+  patientsLoading?: boolean;
   onSelect: (apt: ApiAppointment) => void;
   /** Hours shown (inclusive start, exclusive end). Defaults to 8 → 19. */
   startHour?: number;
@@ -60,6 +62,7 @@ const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   day,
   appointments,
   patientName,
+  patientsLoading = false,
   onSelect,
   startHour = 8,
   endHour = 19,
@@ -170,15 +173,19 @@ const CalendarDayView: React.FC<CalendarDayViewProps> = ({
               }}
               _hover={{ boxShadow: '0 2px 8px rgba(20,22,27,.06)' }}
             >
-              <Text
-                fontSize="12.5px"
-                fontWeight={600}
-                color={s.nameColor ?? 'text.strong'}
-                textDecoration={s.textDecoration}
-                noOfLines={1}
-              >
-                {name}
-              </Text>
+              {patientsLoading ? (
+                <Skeleton height="14px" width="120px" borderRadius="3px" />
+              ) : (
+                <Text
+                  fontSize="12.5px"
+                  fontWeight={600}
+                  color={s.nameColor ?? 'text.strong'}
+                  textDecoration={s.textDecoration}
+                  noOfLines={1}
+                >
+                  {name}
+                </Text>
+              )}
               <Text
                 fontFamily="mono"
                 fontSize="11.5px"
@@ -188,6 +195,11 @@ const CalendarDayView: React.FC<CalendarDayViewProps> = ({
               >
                 {format(start, 'HH:mm')} · {dur} min
               </Text>
+              {apt.additional_notes?.trim() && (
+                <Text fontSize="11px" color={metaColor} mt="1px" noOfLines={2}>
+                  {apt.additional_notes.trim()}
+                </Text>
+              )}
             </Box>
           );
         })}

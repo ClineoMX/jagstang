@@ -4,7 +4,6 @@ import {
   Button,
   Drawer,
   DrawerBody,
-  DrawerCloseButton,
   DrawerContent,
   DrawerHeader,
   DrawerOverlay,
@@ -230,7 +229,6 @@ const TemplatesList: React.FC = () => {
           borderLeft="1px solid"
           borderColor={drawerBorder}
         >
-          <DrawerCloseButton />
           <DrawerHeader
             borderBottom="1px solid"
             borderColor={drawerBorder}
