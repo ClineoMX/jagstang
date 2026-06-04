@@ -338,13 +338,18 @@ const Dashboard: React.FC = () => {
         templateColumns={{ base: '1fr', lg: '1.4fr 1fr' }}
         spacing={5}
       >
-        {/* Today's agenda */}
+        {/* Today's agenda — card opens full calendar; rows open patient */}
         <Box
           bg={cardBg}
           border="1px solid"
           borderColor={borderColor}
           borderRadius="8px"
           overflow="hidden"
+          cursor="pointer"
+          onClick={() => navigate('/calendar')}
+          aria-label="Abrir calendario completo"
+          _hover={{ borderColor: 'brand.300' }}
+          transition="border-color .1s"
         >
           <HStack
             justify="space-between"
@@ -389,11 +394,12 @@ const Dashboard: React.FC = () => {
                   <HStack
                     key={apt.id}
                     as="button"
-                    onClick={() =>
+                    onClick={(e) => {
+                      e.stopPropagation();
                       navigate(
                         `/patients/${normalizePatientSlug(p?.slug) || apt.patient_id}`
-                      )
-                    }
+                      );
+                    }}
                     display="grid"
                     gridTemplateColumns={{
                       base: '52px 1fr auto',
