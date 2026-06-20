@@ -197,7 +197,7 @@ const theme = extendTheme({
       // Light mode uses a cool, near-white neutral (Linear style): a subtle
       // gray-blue page behind white cards, matching the cool `paper.*` ramp
       // used for text. (Previously a warm beige #f6f5f1.)
-      'surface.page': { default: '#f7f8fa', _dark: 'paper.900' },
+      'surface.page': { default: '#f4f6f8', _dark: 'paper.900' },
       'surface.card': { default: 'white', _dark: 'paper.800' },
       'surface.raised': { default: 'paper.100', _dark: 'paper.700' },
       'surface.sunken': { default: 'paper.100', _dark: '#050608' },
