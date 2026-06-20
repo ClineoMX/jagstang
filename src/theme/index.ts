@@ -130,10 +130,10 @@ const colors = {
   },
 
   line: {
-    // Light mode borders/dividers should match the warm prototype paper lines.
-    // Prototype: --line #e4e1d8, --line-2 #d3cfc2
-    light: '#e4e1d8', // soft divider on warm light bg
-    strong: '#d3cfc2', // emphasis border on warm light bg
+    // Light-mode borders/dividers: cool, low-chroma neutrals (Linear style)
+    // rather than the warm prototype beige. Mirror the `paper.*` cool bias.
+    light: '#e7e9ed', // soft divider on cool light bg
+    strong: '#d6d9df', // emphasis border on cool light bg
     dark: '#2a2c33', // soft divider on dark bg
     darkStrong: '#3d4047', // emphasis border on dark bg
   },
@@ -194,15 +194,16 @@ const theme = extendTheme({
   semanticTokens: {
     colors: {
       // Surfaces ─────────────────────────────────────────────────────────────
-      // Prototype uses a warmer paper (#f6f5f1). Keep the neutral-cool `paper.*`
-      // ramp for text, but restore the warm light-mode page background.
-      'surface.page': { default: '#f6f5f1', _dark: 'paper.900' },
+      // Light mode uses a cool, near-white neutral (Linear style): a subtle
+      // gray-blue page behind white cards, matching the cool `paper.*` ramp
+      // used for text. (Previously a warm beige #f6f5f1.)
+      'surface.page': { default: '#f7f8fa', _dark: 'paper.900' },
       'surface.card': { default: 'white', _dark: 'paper.800' },
       'surface.raised': { default: 'paper.100', _dark: 'paper.700' },
       'surface.sunken': { default: 'paper.100', _dark: '#050608' },
-      // Table header background — slightly lighter than prototype `--paper-2`
-      // to keep tables feeling airy on the warm page background.
-      'surface.tableHeader': { default: '#f2f0ea', _dark: 'paper.800' },
+      // Table header background — a hair grayer than the page so headers read
+      // as a distinct band while staying airy on the cool light background.
+      'surface.tableHeader': { default: '#eef0f3', _dark: 'paper.800' },
       'surface.hover': { default: 'paper.100', _dark: 'whiteAlpha.50' },
       'surface.activeHover': { default: 'paper.200', _dark: 'whiteAlpha.100' },
       /** Cyan-tinted row hover (tables, dense lists). */
@@ -213,9 +214,8 @@ const theme = extendTheme({
       'text.body': { default: 'paper.700', _dark: 'paper.200' },
       'text.muted': { default: 'paper.600', _dark: 'paper.300' },
       'text.label': { default: 'paper.500', _dark: 'paper.400' },
-      // Slightly warmer than `paper.400` so placeholders/meta read “paper ink”
-      // on the warm `#f6f5f1` page background (closer to prototype `--ink-4`).
-      'text.faint': { default: '#a09c94', _dark: 'paper.500' },
+      // Cool low-contrast neutral for placeholders/meta on the light page bg.
+      'text.faint': { default: 'paper.400', _dark: 'paper.500' },
       'text.onBrand': { default: 'white', _dark: 'white' },
 
       // ink.* shadowed so legacy `color="ink.700"` (text-only token) flips
@@ -233,9 +233,9 @@ const theme = extendTheme({
       // Shadow the raw warm `line.*` tokens so that legacy hardcoded usages
       // like `borderColor="line.strong"` (inputs, buttons, drawers) flip to
       // a cool Clineo-cyan–tinted border in dark mode instead of staying on
-      // the warm beige (#d3cfc2 / #e4e1d8) defined for light mode.
-      'line.light': { default: '#e4e1d8', _dark: 'rgba(76, 183, 215, 0.14)' },
-      'line.strong': { default: '#d3cfc2', _dark: 'rgba(76, 183, 215, 0.28)' },
+      // the cool light-mode neutrals (#e7e9ed / #d6d9df).
+      'line.light': { default: '#e7e9ed', _dark: 'rgba(76, 183, 215, 0.14)' },
+      'line.strong': { default: '#d6d9df', _dark: 'rgba(76, 183, 215, 0.28)' },
 
       // Brand link / accent text (AA on either surface)
       link: { default: 'brand.600', _dark: 'brand.300' },

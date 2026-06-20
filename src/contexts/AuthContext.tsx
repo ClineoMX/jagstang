@@ -69,6 +69,7 @@ interface AuthContextType {
   doctor: Doctor | null;
   isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
+  loginWithMagicLink: (token: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -124,6 +125,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
+  const applyCredentials = (
+    response: { access: string; refresh: string; id: string },
+    emailGuess: string
+  ) => {
+    localStorage.setItem('token', response.access);
+    localStorage.setItem('refresh_token', response.refresh);
+    const idTokenValue =
+      typeof response.id === 'string' ? response.id : JSON.stringify(response.id);
+    localStorage.setItem('id_token', idTokenValue);
+
+    const identity = decodeIdentityToken(idTokenValue);
+    const doctorId = typeof response.id === 'string' ? response.id : emailGuess;
+    const doctorData: Doctor = {
+      id: doctorId,
+      firstName: identity?.name ?? '',
+      lastName: identity?.family_name ?? '',
+      email: emailGuess,
+      role: identity?.role,
+      gender: identity?.gender,
+      avatar: identity?.avatar_url,
+      speciality: '',
+      licenseNumber: '',
+      phone: '',
+    };
+    setDoctor(doctorData);
+    localStorage.setItem('doctor', JSON.stringify(doctorData));
+    warmClinicData();
+  };
+
   const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
@@ -132,34 +162,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password: credentials.password,
         method: 'email',
       });
-
-      localStorage.setItem('token', response.access);
-      localStorage.setItem('refresh_token', response.refresh);
-      const idTokenValue = typeof response.id === 'string' ? response.id : JSON.stringify(response.id);
-      localStorage.setItem('id_token', idTokenValue);
-
-      const identity = decodeIdentityToken(idTokenValue);
-      const doctorId = typeof response.id === 'string' ? response.id : credentials.email;
-      const doctorData: Doctor = {
-        id: doctorId,
-        firstName: identity?.name ?? '',
-        lastName: identity?.family_name ?? '',
-        email: credentials.email,
-        role: identity?.role,
-        gender: identity?.gender,
-        avatar: identity?.avatar_url,
-        speciality: '',
-        licenseNumber: '',
-        phone: '',
-      };
-      setDoctor(doctorData);
-      localStorage.setItem('doctor', JSON.stringify(doctorData));
-      warmClinicData();
+      applyCredentials(response, credentials.email);
     } catch (error: any) {
       if (error.message) {
         throw error;
       }
       throw new Error(error.message || 'Error al iniciar sesión');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithMagicLink = async (token: string) => {
+    setIsLoading(true);
+    try {
+      const response = await apiService.verifyMagicLink(token);
+      applyCredentials(response, '');
+    } catch (error: any) {
+      if (error.message) {
+        throw error;
+      }
+      throw new Error(error.message || 'Enlace inválido o expirado');
     } finally {
       setIsLoading(false);
     }
@@ -180,6 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         doctor,
         isAuthenticated: !!doctor,
         login,
+        loginWithMagicLink,
         logout,
         isLoading,
       }}

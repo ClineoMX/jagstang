@@ -9,6 +9,7 @@ import { renderAppToast } from './components/AppToast';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyMagicLink from './pages/VerifyMagicLink';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import PatientList from './pages/PatientList';
@@ -91,6 +92,14 @@ const AppRoutes: React.FC = () => {
         element={
           <PublicRoute>
             <ResetPassword />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/verify"
+        element={
+          <PublicRoute>
+            <VerifyMagicLink />
           </PublicRoute>
         }
       />

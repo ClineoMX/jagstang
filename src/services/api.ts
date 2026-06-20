@@ -1403,6 +1403,16 @@ class ApiService {
       body: JSON.stringify(data),
     });
   }
+
+  async verifyMagicLink(token: string) {
+    return this.authRequest<{ access: string; refresh: string; id: string }>(
+      '/auth/magiclink/verify/',
+      {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      }
+    );
+  }
 }
 
 export const apiService = new ApiService();
