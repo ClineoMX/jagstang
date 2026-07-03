@@ -48,6 +48,7 @@ interface NavItemProps {
   label: string;
   path: string;
   isActive: boolean;
+  isDisabled?: boolean;
   onClick: () => void;
 }
 
@@ -55,12 +56,17 @@ const NavItem: React.FC<NavItemProps> = ({
   icon: ItemIcon,
   label,
   isActive,
+  isDisabled,
   onClick,
 }) => {
   return (
     <Box
       as="button"
-      onClick={onClick}
+      onClick={isDisabled ? undefined : onClick}
+      disabled={isDisabled}
+      aria-disabled={isDisabled}
+      cursor={isDisabled ? 'not-allowed' : 'pointer'}
+      opacity={isDisabled ? 0.4 : 1}
       position="relative"
       display="flex"
       flexDirection="column"
@@ -72,10 +78,14 @@ const NavItem: React.FC<NavItemProps> = ({
       bg={isActive ? 'rgba(76,183,215,0.12)' : 'transparent'}
       color={isActive ? 'sidebar.fg' : 'sidebar.muted'}
       transition="color .12s, background .12s"
-      _hover={{
-        color: 'sidebar.fg',
-        bg: isActive ? 'rgba(76,183,215,0.18)' : 'rgba(255,255,255,0.04)',
-      }}
+      _hover={
+        isDisabled
+          ? undefined
+          : {
+              color: 'sidebar.fg',
+              bg: isActive ? 'rgba(76,183,215,0.18)' : 'rgba(255,255,255,0.04)',
+            }
+      }
       _before={
         isActive
           ? {
@@ -114,6 +124,7 @@ interface BottomNavItemProps {
   icon: React.ElementType;
   label: string;
   isActive: boolean;
+  isDisabled?: boolean;
   onClick: () => void;
 }
 
@@ -121,12 +132,17 @@ const BottomNavItem: React.FC<BottomNavItemProps> = ({
   icon: ItemIcon,
   label,
   isActive,
+  isDisabled,
   onClick,
 }) => {
   return (
     <Box
       as="button"
-      onClick={onClick}
+      onClick={isDisabled ? undefined : onClick}
+      disabled={isDisabled}
+      aria-disabled={isDisabled}
+      cursor={isDisabled ? 'not-allowed' : 'pointer'}
+      opacity={isDisabled ? 0.4 : 1}
       position="relative"
       flex={1}
       display="flex"
@@ -137,7 +153,7 @@ const BottomNavItem: React.FC<BottomNavItemProps> = ({
       py="8px"
       color={isActive ? 'sidebar.fg' : 'sidebar.muted'}
       transition="color .12s"
-      _active={{ bg: 'rgba(255,255,255,0.04)' }}
+      _active={isDisabled ? undefined : { bg: 'rgba(255,255,255,0.04)' }}
       _before={
         isActive
           ? {
@@ -197,9 +213,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ...(CALENDAR_NAV_ENABLED
       ? [{ icon: FiCalendar, label: 'Calendario', path: '/calendar' }]
       : []),
-    ...(TEAM_NAV_ENABLED
-      ? [{ icon: FiBriefcase, label: 'Equipo', path: '/team' }]
-      : []),
+    {
+      icon: FiBriefcase,
+      label: 'Equipo',
+      path: '/team',
+      disabled: !TEAM_NAV_ENABLED,
+    },
     ...(CONTACTS_NAV_ENABLED
       ? [{ icon: FiBook, label: 'Contactos', path: '/contacts' }]
       : []),
@@ -407,6 +426,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               label={item.label}
               path={item.path}
               isActive={isItemActive(item.path)}
+              isDisabled={item.disabled}
               onClick={() => navigate(item.path)}
             />
           ))}
@@ -461,6 +481,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             icon={item.icon}
             label={item.label}
             isActive={isItemActive(item.path)}
+            isDisabled={item.disabled}
             onClick={() => navigate(item.path)}
           />
         ))}

@@ -409,15 +409,11 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/team"
         element={
-          TEAM_NAV_ENABLED ? (
-            <ProtectedRoute>
-              <Layout>
-                <Team />
-              </Layout>
-            </ProtectedRoute>
-          ) : (
-            <Navigate to={DEFAULT_ROUTE} replace />
-          )
+          <ProtectedRoute>
+            <Layout>
+              <Team />
+            </Layout>
+          </ProtectedRoute>
         }
       />
       <Route

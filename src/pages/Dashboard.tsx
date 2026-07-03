@@ -326,7 +326,7 @@ const Dashboard: React.FC = () => {
         ]}
       />
 
-      {notesDraft > 0 && (
+      {COMPLIANCE_NAV_ENABLED && notesDraft > 0 && (
         <Nudge>
           Tienes <b>{notesDraft} notas en borrador</b>. Las notas sin firmar no
           cuentan para NOM‑004.{' '}
