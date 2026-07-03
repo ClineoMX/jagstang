@@ -24,11 +24,20 @@ import {
   FiActivity,
   FiBook,
   FiBookOpen,
+  FiBriefcase,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ClineoLogo from './ClineoLogo';
-import { LIBRARY_NAV_ENABLED } from '../config/features';
+import {
+  HOME_NAV_ENABLED,
+  PATIENTS_NAV_ENABLED,
+  CALENDAR_NAV_ENABLED,
+  TEAM_NAV_ENABLED,
+  CONTACTS_NAV_ENABLED,
+  LIBRARY_NAV_ENABLED,
+  COMPLIANCE_NAV_ENABLED,
+} from '../config/features';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -181,16 +190,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const hideNom = (doctor?.role ?? '').toUpperCase() === 'WELLNESS';
   const navItems = [
-    { icon: FiHome, label: 'Home', path: '/' },
-    { icon: FiUsers, label: 'Pacientes', path: '/patients' },
-    { icon: FiCalendar, label: 'Calendario', path: '/calendar' },
-    { icon: FiBook, label: 'Contactos', path: '/contacts' },
+    ...(HOME_NAV_ENABLED ? [{ icon: FiHome, label: 'Home', path: '/' }] : []),
+    ...(PATIENTS_NAV_ENABLED
+      ? [{ icon: FiUsers, label: 'Pacientes', path: '/patients' }]
+      : []),
+    ...(CALENDAR_NAV_ENABLED
+      ? [{ icon: FiCalendar, label: 'Calendario', path: '/calendar' }]
+      : []),
+    ...(TEAM_NAV_ENABLED
+      ? [{ icon: FiBriefcase, label: 'Equipo', path: '/team' }]
+      : []),
+    ...(CONTACTS_NAV_ENABLED
+      ? [{ icon: FiBook, label: 'Contactos', path: '/contacts' }]
+      : []),
     ...(LIBRARY_NAV_ENABLED
       ? [{ icon: FiBookOpen, label: 'Biblioteca', path: '/library' }]
       : []),
-    ...(hideNom
-      ? []
-      : [{ icon: FiActivity, label: 'NOM', path: '/compliance' }]),
+    ...(COMPLIANCE_NAV_ENABLED && !hideNom
+      ? [{ icon: FiActivity, label: 'NOM', path: '/compliance' }]
+      : []),
   ];
 
   const handleLogout = () => {
@@ -292,17 +310,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         >
           Información personal
         </MenuItem>
-        <MenuItem
-          icon={<FiBookOpen />}
-          onClick={() => navigate('/library')}
-          fontSize="13.5px"
-          color={menuFg}
-          bg={menuBg}
-          _hover={{ bg: menuItemHoverBg, color: menuFg }}
-          _focus={{ bg: menuItemHoverBg, color: menuFg }}
-        >
-          Biblioteca
-        </MenuItem>
+        {LIBRARY_NAV_ENABLED && (
+          <MenuItem
+            icon={<FiBookOpen />}
+            onClick={() => navigate('/library')}
+            fontSize="13.5px"
+            color={menuFg}
+            bg={menuBg}
+            _hover={{ bg: menuItemHoverBg, color: menuFg }}
+            _focus={{ bg: menuItemHoverBg, color: menuFg }}
+          >
+            Biblioteca
+          </MenuItem>
+        )}
         <MenuDivider borderColor={menuBorder} my={1} />
         <MenuItem
           icon={<FiLogOut />}

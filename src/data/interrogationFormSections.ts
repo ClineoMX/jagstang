@@ -97,3 +97,45 @@ export function buildInterrogationNoteHtml(
   }
   return parts.join('');
 }
+
+/** Extrae el texto de un bloque convirtiendo `<br>` en saltos de línea. */
+function blockToText(el: Element): string {
+  const clone = el.cloneNode(true) as Element;
+  clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+  return clone.textContent ?? '';
+}
+
+/**
+ * Inverso de `buildInterrogationNoteHtml`: reconstruye los valores por sección a
+ * partir del HTML guardado, emparejando por el título de cada `<h2>`. Las
+ * secciones cuyo encabezado no se encuentre quedan vacías (degradación segura si
+ * la nota fue editada con formato libre).
+ */
+export function parseInterrogationNoteHtml(
+  html: string
+): Record<string, string> {
+  const values = Object.fromEntries(
+    INTERROGATION_FORM_SECTIONS.map((s) => [s.id, ''])
+  ) as Record<string, string>;
+  if (!html || !html.trim()) return values;
+
+  const titleToId = new Map(
+    INTERROGATION_FORM_SECTIONS.map((s) => [s.title.trim().toLowerCase(), s.id])
+  );
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  for (const h2 of Array.from(doc.querySelectorAll('h2'))) {
+    const id = titleToId.get((h2.textContent ?? '').trim().toLowerCase());
+    if (!id) continue;
+    const chunks: string[] = [];
+    let node = h2.nextElementSibling;
+    while (node && node.tagName !== 'H2') {
+      chunks.push(blockToText(node));
+      node = node.nextElementSibling;
+    }
+    values[id] = chunks
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+  return values;
+}

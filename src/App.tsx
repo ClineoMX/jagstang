@@ -28,11 +28,43 @@ import NoteBuilderPage from './pages/library/NoteBuilderPage';
 import Compliance from './pages/Compliance';
 import ContactList from './pages/ContactList';
 import ContactForm from './pages/ContactForm';
+import Team from './pages/Team';
 import TemplateFillForm from './pages/TemplateFillForm';
 
 // Components
 import Layout from './components/Layout';
 import BetaPausedOverlay from './components/BetaPausedOverlay';
+import {
+  HOME_NAV_ENABLED,
+  PATIENTS_NAV_ENABLED,
+  CALENDAR_NAV_ENABLED,
+  TEAM_NAV_ENABLED,
+  CONTACTS_NAV_ENABLED,
+  LIBRARY_NAV_ENABLED,
+  COMPLIANCE_NAV_ENABLED,
+} from './config/features';
+
+/**
+ * Landing spot for anything whose feature flag is off (disabled routes,
+ * the `*` catch-all): the first enabled nav destination, in the same
+ * priority order as the sidebar. `/profile` is the last resort since it
+ * isn't flag-gated (reachable from the avatar menu regardless).
+ */
+const DEFAULT_ROUTE = HOME_NAV_ENABLED
+  ? '/'
+  : PATIENTS_NAV_ENABLED
+    ? '/patients'
+    : CALENDAR_NAV_ENABLED
+      ? '/calendar'
+      : TEAM_NAV_ENABLED
+        ? '/team'
+        : CONTACTS_NAV_ENABLED
+          ? '/contacts'
+          : LIBRARY_NAV_ENABLED
+            ? '/library'
+            : COMPLIANCE_NAV_ENABLED
+              ? '/compliance'
+              : '/profile';
 
 // Protected Route Component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -108,101 +140,141 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <Dashboard />
-            </Layout>
-          </ProtectedRoute>
+          HOME_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <Dashboard />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/patients"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <PatientList />
-            </Layout>
-          </ProtectedRoute>
+          PATIENTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <PatientList />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/patients/new"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <PatientForm />
-            </Layout>
-          </ProtectedRoute>
+          PATIENTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <PatientForm />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/patients/:patientSlug"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <PatientDetail />
-            </Layout>
-          </ProtectedRoute>
+          PATIENTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <PatientDetail />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/patients/:patientSlug/notes/new"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <NoteForm />
-            </Layout>
-          </ProtectedRoute>
+          PATIENTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <NoteForm />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/patients/:patientSlug/notes/:noteId/edit"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <NoteForm />
-            </Layout>
-          </ProtectedRoute>
+          PATIENTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <NoteForm />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/patients/:patientSlug/notes/new-form"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <FormNoteForm />
-            </Layout>
-          </ProtectedRoute>
+          PATIENTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <FormNoteForm />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/patients/:patientSlug/notes/:noteId/edit-form"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <FormNoteForm />
-            </Layout>
-          </ProtectedRoute>
+          PATIENTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <FormNoteForm />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/calendar"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <CalendarPage />
-            </Layout>
-          </ProtectedRoute>
+          CALENDAR_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <CalendarPage />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/compliance"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <Compliance />
-            </Layout>
-          </ProtectedRoute>
+          COMPLIANCE_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <Compliance />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
@@ -218,11 +290,15 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/library"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <Library />
-            </Layout>
-          </ProtectedRoute>
+          LIBRARY_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <Library />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       >
         <Route index element={<Navigate to="/library/documents" replace />} />
@@ -236,55 +312,89 @@ const AppRoutes: React.FC = () => {
       </Route>
       <Route
         path="/library/templates/new"
-        element={<Navigate to="/library/documents" replace />}
+        element={
+          LIBRARY_NAV_ENABLED ? (
+            <Navigate to="/library/documents" replace />
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
+        }
       />
       <Route
         path="/library/templates/:id"
-        element={<Navigate to="/library/documents" replace />}
+        element={
+          LIBRARY_NAV_ENABLED ? (
+            <Navigate to="/library/documents" replace />
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
+        }
       />
       <Route
         path="/library/forms/new"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <FormEditor />
-            </Layout>
-          </ProtectedRoute>
+          LIBRARY_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <FormEditor />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/library/forms/:id"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <FormEditor />
-            </Layout>
-          </ProtectedRoute>
+          LIBRARY_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <FormEditor />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/library/notes/new"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <NoteBuilderPage />
-            </Layout>
-          </ProtectedRoute>
+          LIBRARY_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <NoteBuilderPage />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/library/notes/:id"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <NoteBuilderPage />
-            </Layout>
-          </ProtectedRoute>
+          LIBRARY_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <NoteBuilderPage />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/formularios"
-        element={<Navigate to="/library/forms" replace />}
+        element={
+          LIBRARY_NAV_ENABLED ? (
+            <Navigate to="/library/forms" replace />
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
+        }
       />
       <Route
         path="/templates/fill"
@@ -297,38 +407,64 @@ const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/team"
+        element={
+          TEAM_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <Team />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
+        }
+      />
+      <Route
         path="/contacts"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <ContactList />
-            </Layout>
-          </ProtectedRoute>
+          CONTACTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <ContactList />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/contacts/new"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <ContactForm />
-            </Layout>
-          </ProtectedRoute>
+          CONTACTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <ContactForm />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
       <Route
         path="/contacts/:id/edit"
         element={
-          <ProtectedRoute>
-            <Layout>
-              <ContactForm />
-            </Layout>
-          </ProtectedRoute>
+          CONTACTS_NAV_ENABLED ? (
+            <ProtectedRoute>
+              <Layout>
+                <ContactForm />
+              </Layout>
+            </ProtectedRoute>
+          ) : (
+            <Navigate to={DEFAULT_ROUTE} replace />
+          )
         }
       />
 
-      {/* Catch all - redirect to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Catch all */}
+      <Route path="*" element={<Navigate to={DEFAULT_ROUTE} replace />} />
     </Routes>
   );
 };

@@ -431,7 +431,7 @@ function SignaturePad({
 // ── Vitals grid ───────────────────────────────────────────────────────────────
 
 function VitalsGrid({ lastVitals }: { lastVitals?: { vitals: StructuredVitals; recordedAt: string } | null }) {
-  const { values, setVital } = useFormCtx();
+  const { values, setVital, setValue } = useFormCtx();
   const vitals = (values.vitals as StructuredVitals) ?? {};
   const bmi = computeBMI(vitals);
   const borderColor = useColorModeValue('line.strong', 'whiteAlpha.300');
@@ -441,13 +441,16 @@ function VitalsGrid({ lastVitals }: { lastVitals?: { vitals: StructuredVitals; r
   const copyLast = useCallback(() => {
     if (!lastVitals) return;
     const lv = lastVitals.vitals;
-    const keys: Array<keyof StructuredVitals> = [
-      'bp_sys', 'bp_dia', 'hr', 'rr', 'temp', 'spo2', 'weight', 'height',
-    ];
-    keys.forEach((k) => {
-      if (lv[k]) setVital(k, lv[k]!);
+    // Merge every present value in a single update. Calling setVital() per key
+    // in a loop reads the same stale `values` closure each time, so only the
+    // last key would survive — commit the whole object once instead.
+    const next: StructuredVitals = { ...(values.vitals ?? {}) };
+    (Object.keys(lv) as Array<keyof StructuredVitals>).forEach((k) => {
+      const val = lv[k];
+      if (val) next[k] = val;
     });
-  }, [lastVitals, setVital]);
+    setValue('vitals', next);
+  }, [lastVitals, values.vitals, setValue]);
 
   return (
     <Box>
@@ -643,7 +646,11 @@ function FieldRenderer({
     case 'symptoms':
       return (
         <Box mb={4}>
-          <FieldLabel label={field.label} optional />
+          <FieldLabel
+            label={field.label}
+            required={field.required}
+            optional={!field.required}
+          />
           <Text fontSize="12px" color="text.muted" mb={2}>
             Toca para marcar los síntomas presentes.
           </Text>
@@ -672,7 +679,11 @@ function FieldRenderer({
     case 'select':
       return (
         <Box mb={4}>
-          <FieldLabel label={field.label} optional={!field.required} />
+          <FieldLabel
+            label={field.label}
+            required={field.required}
+            optional={!field.required}
+          />
           <Select
             value={String(v ?? '')}
             onChange={(e) => setValue(field.id, e.target.value)}
@@ -696,7 +707,11 @@ function FieldRenderer({
     case 'date':
       return (
         <Box mb={4}>
-          <FieldLabel label={field.label} optional={!field.required} />
+          <FieldLabel
+            label={field.label}
+            required={field.required}
+            optional={!field.required}
+          />
           <Input
             type="date"
             value={String(v ?? '')}
@@ -764,7 +779,11 @@ function FieldRenderer({
     default:
       return (
         <Box mb={4}>
-          <FieldLabel label={field.label} optional={!field.required} />
+          <FieldLabel
+            label={field.label}
+            required={field.required}
+            optional={!field.required}
+          />
           <Input
             value={String(v ?? '')}
             onChange={(e) => setValue(field.id, e.target.value)}

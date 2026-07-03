@@ -22,6 +22,7 @@ import {
   ModalContent,
   ModalHeader,
   ModalOverlay,
+  Spinner,
   Switch,
   Text,
   Textarea,
@@ -62,11 +63,12 @@ import type {
   StructuredFormValues,
 } from '../../data/noteSchemas';
 import {
-  getCustomNoteSchema,
   newField,
   newSection,
-  saveCustomNoteSchema,
+  parseTemplateContent,
+  serializeTemplateContent,
 } from '../../data/customNoteSchemas';
+import { apiService } from '../../services/api';
 
 // ── Field kind metadata ─────────────────────────────────────────────────────
 
@@ -421,25 +423,48 @@ const NoteBuilderPage: React.FC = () => {
   const [description, setDescription] = useState('');
   const [sections, setSections] = useState<SectionDef[]>([]);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [previewValues, setPreviewValues] = useState<StructuredFormValues>({});
 
   const preview = useDisclosure();
   const inspectorDrawer = useDisclosure();
 
-  // Load existing schema
+  // Load existing template from the backend
   useEffect(() => {
-    if (!isNew && id) {
-      const record = getCustomNoteSchema(id);
-      if (record) {
-        setName(record.name);
-        setDescription(record.description ?? '');
-        setSections(record.sections);
-      } else {
-        toast({ title: 'Esquema no encontrado', status: 'error' });
+    if (isNew || !id) return;
+    let cancelled = false;
+    setLoading(true);
+    apiService
+      .getDoctorTemplate(id)
+      .then((tpl) => {
+        if (cancelled) return;
+        setName(tpl.name);
+        const parsed = parseTemplateContent(tpl.content);
+        if (parsed) {
+          setDescription(parsed.description ?? '');
+          setSections(parsed.sections);
+        } else {
+          setDescription('');
+          setSections([]);
+          toast({
+            title: 'No se pudo leer el contenido de la plantilla',
+            description: 'Se abrió vacía — revisa y guarda de nuevo.',
+            status: 'warning',
+          });
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        toast({ title: 'Plantilla no encontrada', status: 'error' });
         navigate('/library/notes');
-      }
-    }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id, isNew, navigate, toast]);
 
   // ── Derived selection ────────────────────────────────────────────────────────
@@ -562,14 +587,30 @@ const NoteBuilderPage: React.FC = () => {
     }
     setSaving(true);
     try {
-      const saved = saveCustomNoteSchema({
-        id: isNew ? undefined : id,
-        name: name.trim(),
+      const content = serializeTemplateContent({
         description: description.trim() || undefined,
         sections,
       });
-      toast({ title: 'Esquema guardado', status: 'success' });
-      if (isNew) navigate(`/library/notes/${saved.id}`, { replace: true });
+      if (isNew) {
+        const created = await apiService.createDoctorTemplate({
+          name: name.trim(),
+          content,
+        });
+        toast({ title: 'Esquema guardado', status: 'success' });
+        navigate(`/library/notes/${created.id}`, { replace: true });
+      } else if (id) {
+        await apiService.updateDoctorTemplate(id, {
+          name: name.trim(),
+          content,
+        });
+        toast({ title: 'Esquema guardado', status: 'success' });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error al guardar el esquema',
+        description: error?.message || 'Ocurrió un error al guardar',
+        status: 'error',
+      });
     } finally {
       setSaving(false);
     }
@@ -643,7 +684,13 @@ const NoteBuilderPage: React.FC = () => {
         </>
       }
     >
+      {loading && (
+        <Flex justify="center" py={20}>
+          <Spinner size="xl" color="brand.500" />
+        </Flex>
+      )}
       <Grid
+        display={loading ? 'none' : 'grid'}
         templateColumns={{ base: '1fr', lg: '248px minmax(0, 1fr) 312px' }}
         gap={5}
         alignItems="start"

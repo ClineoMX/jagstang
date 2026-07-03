@@ -71,14 +71,13 @@ export const usePatient = (patientId: string | undefined) => {
     setLoading(true);
     setError(null);
     try {
-      const [patientData, identityData] = await Promise.all([
-        apiService.getPatient(patientId),
-        apiService.getPatientIdentity(patientId).catch(() => null),
-      ]);
+      const patientData = await apiService.getPatient(patientId);
       if (signal?.aborted) return;
 
-      const identityBirth = (identityData as { birthdate?: string })?.birthdate;
-      const identityGender = (identityData as { gender?: string })?.gender;
+      // v2.0: identity comes embedded in the unified patient view.
+      const identityData = patientData.identity_sheet ?? null;
+      const identityBirth = identityData?.birthdate;
+      const identityGender = identityData?.gender;
       const dateOfBirth =
         typeof identityBirth === 'string' && !isSentinelDate(identityBirth)
           ? identityBirth
@@ -147,7 +146,7 @@ export const usePatientAssets = (patientId: string | undefined) => {
         if (signal?.aborted) return;
         const transformed: Attachment[] = response.results.map((a) => ({
           id: a.id,
-          fileName: a.original_filename,
+          fileName: a.filename ?? a.original_filename ?? '',
           fileSize: a.file_size,
           fileType: mimeToFileType(a.mime_type),
           mimeType: a.mime_type,

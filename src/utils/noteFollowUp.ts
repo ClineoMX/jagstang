@@ -33,7 +33,7 @@ function formatFollowUpDate(iso: string): string {
   }
 }
 
-/** Normalizes list/detail `is_follow_up_of` (object or legacy id string). */
+/** Normalizes the note `parent` reference (object or legacy id string). */
 export function parseFollowUpFromApi(
   raw: unknown
 ): NoteFollowUpRef | undefined {

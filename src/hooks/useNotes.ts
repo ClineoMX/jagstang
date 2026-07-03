@@ -1,8 +1,26 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import type { MedicalNote, NoteCompletenessAnalysis } from '../types';
-import { mapApiAttachments } from '../utils/mapNoteAttachments';
 import { parseFollowUpFromApi } from '../utils/noteFollowUp';
+
+/** Shared with `usePatientInterrogatory`, which maps the same raw note shape. */
+export function transformNote(n: any, pid: string): MedicalNote {
+  return {
+    id: n.id,
+    patientId: pid,
+    doctorId: '',
+    title: n.title || `${n.note_type || n.type || 'Nota'}`,
+    type: (n.note_type || n.type) as any,
+    content: n.content || '',
+    status: n.status === 'signed' || n.is_signed ? 'signed' : 'draft',
+    isSigned: n.status === 'signed' || n.is_signed,
+    signedAt: n.signed_at,
+    signedBy: n.signed_by,
+    createdAt: n.created_at,
+    updatedAt: n.updated_at,
+    isFollowUpOf: parseFollowUpFromApi(n.parent),
+  };
+}
 
 export const useNotes = (patientId: string | undefined) => {
   const [notes, setNotes] = useState<MedicalNote[]>([]);
@@ -10,24 +28,7 @@ export const useNotes = (patientId: string | undefined) => {
   const [error, setError] = useState<string | null>(null);
 
   const transformNotes = (results: any[], pid: string): MedicalNote[] =>
-    results.map((n) => ({
-      id: n.id,
-      patientId: pid,
-      doctorId: '',
-      title:
-        n.title ||
-        `${n.note_type || n.type || 'Nota'} - ${n.created_at?.slice(0, 10) || ''}`,
-      type: (n.note_type || n.type) as any,
-      content: n.content || '',
-      status: n.status === 'signed' || n.is_signed ? 'signed' : 'draft',
-      isSigned: n.status === 'signed' || n.is_signed,
-      signedAt: n.signed_at,
-      signedBy: n.signed_by,
-      createdAt: n.created_at,
-      updatedAt: n.updated_at,
-      isFollowUpOf: parseFollowUpFromApi(n.is_follow_up_of),
-      attachments: mapApiAttachments(n.attachments, { patientId: pid, noteId: n.id }),
-    }));
+    results.map((n) => transformNote(n, pid));
 
   useEffect(() => {
     if (!patientId) {
@@ -84,8 +85,8 @@ export const useNotes = (patientId: string | undefined) => {
     content: string;
     type: string;
     title?: string;
-    files?: File[];
     isFollowUpOf?: string;
+    customDate?: string;
   }) => {
     if (!patientId) throw new Error('Patient ID is required');
 
@@ -93,8 +94,8 @@ export const useNotes = (patientId: string | undefined) => {
       content: data.content,
       note_type: data.type,
       title: data.title,
-      files: data.files,
-      is_follow_up_of: data.isFollowUpOf,
+      parent_id: data.isFollowUpOf,
+      custom_date: data.customDate,
     });
     await reloadNotes();
     return {
@@ -119,23 +120,38 @@ export const useNotes = (patientId: string | undefined) => {
       title?: string;
       content?: string;
       type?: string;
+      customDate?: string;
     }
   ) => {
     if (!patientId) throw new Error('Patient ID is required');
-    await apiService.updateNote(patientId, noteId, data);
+    await apiService.updateNote(patientId, noteId, {
+      title: data.title,
+      content: data.content,
+      type: data.type,
+      custom_date: data.customDate,
+    });
     await reloadNotes();
   };
 
+  /**
+   * v2.0: the analysis is embedded in the note (`analysis`) instead of a
+   * dedicated endpoint. It may be `null` until the backend finishes computing
+   * it; surface that as a 404 so callers can keep their existing retry logic.
+   */
   const getNoteAnalysis = async (
     noteId: string
   ): Promise<NoteCompletenessAnalysis> => {
     if (!patientId) throw new Error('Patient ID is required');
-    return await apiService.getNoteAnalysis(patientId, noteId);
+    const note = await apiService.getNote(patientId, noteId);
+    if (!note.analysis) {
+      throw { message: 'Analysis not ready', status: 404 };
+    }
+    return note.analysis;
   };
 
   const updateNoteDate = async (noteId: string, customDate: string) => {
     if (!patientId) throw new Error('Patient ID is required');
-    await apiService.updateNoteDate(patientId, noteId, customDate);
+    await apiService.updateNote(patientId, noteId, { custom_date: customDate });
     await reloadNotes();
   };
 
@@ -148,5 +164,6 @@ export const useNotes = (patientId: string | undefined) => {
     signNote,
     getNoteAnalysis,
     updateNoteDate,
+    reloadNotes,
   };
 };

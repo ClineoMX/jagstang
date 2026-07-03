@@ -52,6 +52,7 @@ import {
   FiPhone,
   FiPlus,
   FiMoreVertical,
+  FiMaximize2,
   FiUpload,
 } from 'react-icons/fi';
 import { FaWandMagicSparkles } from 'react-icons/fa6';
@@ -60,6 +61,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { usePatient, usePatients, usePatientAssets } from '../hooks/usePatients';
 import { useNotes } from '../hooks/useNotes';
+import { usePatientInterrogatory } from '../hooks/usePatientInterrogatory';
+import { useClientEvents, type ClientEvent } from '../hooks/useClientEvents';
 import { useAppointments } from '../hooks/useAppointments';
 import {
   usePatientConsents,
@@ -83,12 +86,19 @@ import PhoneNumberField, {
 import { useAuth } from '../contexts/AuthContext';
 import PageHead from '../components/PageHead';
 import PatientClinicalVitalsBar from '../components/PatientClinicalVitalsBar';
+import PatientSignosVitales from '../components/PatientSignosVitales';
 import { usePatientVitals } from '../hooks/usePatientVitals';
 import Timeline, { type TimelineItem } from '../components/Timeline';
 import FormDrawer from '../components/FormDrawer';
 import StatusBadge from '../components/StatusBadge';
-import NoteAttachmentsList from '../components/NoteAttachmentsList';
 import { mergeNoteBodyForEditor } from '../utils/noteReceta';
+import {
+  structuredNoteToHtml,
+  parseStructuredContent,
+  type NoteSchema,
+} from '../data/noteSchemas';
+import { parseTemplateContent } from '../data/customNoteSchemas';
+import { apiService } from '../services/api';
 import { normalizePatientSlug } from '../utils/patientSlug';
 import {
   formatFollowUpChainLabel,
@@ -124,7 +134,9 @@ const PatientDetail: React.FC = () => {
   /** Alinea divisores entre columnas (icono + título vs solo título) y con el borde 1px del card. */
   const cardSectionHeaderMinH = '48px';
 
-  const [activeTab, setActiveTab] = useState<'expediente' | 'documentos'>('expediente');
+  const [activeTab, setActiveTab] = useState<
+    'expediente' | 'signos' | 'documentos'
+  >('expediente');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -135,6 +147,16 @@ const PatientDetail: React.FC = () => {
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [editingDateValue, setEditingDateValue] = useState('');
   const [isUpdatingDate, setIsUpdatingDate] = useState(false);
+
+  // Fallback for custom-template notes saved before StructuredNoteContent
+  // embedded a schema snapshot at save time — resolve their templateId
+  // against the backend once so structuredNoteToHtml can still compose a
+  // readable preview instead of falling back to raw JSON. Declared here
+  // (rather than next to the effect that populates it, below `notes`)
+  // because handlePrintClinicalNotePdf's useCallback deps need it earlier.
+  const [templateSchemaCache, setTemplateSchemaCache] = useState<
+    Record<string, NoteSchema>
+  >({});
 
   const handleStartEditDate = () => {
     if (!selectedNote?.createdAt) return;
@@ -185,7 +207,10 @@ const PatientDetail: React.FC = () => {
 
   const handlePrintClinicalNotePdf = useCallback(() => {
     if (!selectedNote) return;
-    const html = mergeNoteBodyForEditor(String(selectedNote.content || ''));
+    const rawContent = String(selectedNote.content || '');
+    const html =
+      structuredNoteToHtml(rawContent, templateSchemaCache) ??
+      mergeNoteBodyForEditor(rawContent);
     const rawTitle = String(selectedNote.title || 'Nota');
     const meta =
       selectedNote.status === 'signed' && selectedNote.signedAt
@@ -271,7 +296,7 @@ const PatientDetail: React.FC = () => {
     requestAnimationFrame(() => {
       window.setTimeout(runPrint, 150);
     });
-  }, [selectedNote, toast]);
+  }, [selectedNote, toast, templateSchemaCache]);
 
   const { patients, loading: patientsLoading } = usePatients();
   const patientId = useMemo(() => {
@@ -291,7 +316,56 @@ const PatientDetail: React.FC = () => {
     error: patientError,
     refetch: refetchPatient,
   } = usePatient(patientId);
-  const { notes, loading: notesLoading, createNote, updateNoteDate } = useNotes(patientId);
+  const { notes, createNote, updateNoteDate, reloadNotes } =
+    useNotes(patientId);
+
+  // Populates templateSchemaCache (declared near the top of this component,
+  // see comment there) — needs `notes`, which isn't available until here.
+  useEffect(() => {
+    const missingIds = new Set<string>();
+    for (const n of notes) {
+      const parsed = parseStructuredContent(n.content || '');
+      if (
+        parsed?.templateId &&
+        !parsed.schema &&
+        !templateSchemaCache[parsed.templateId]
+      ) {
+        missingIds.add(parsed.templateId);
+      }
+    }
+    if (missingIds.size === 0) return;
+    let cancelled = false;
+    Promise.all(
+      Array.from(missingIds).map(async (id) => {
+        try {
+          const tpl = await apiService.getDoctorTemplate(id);
+          const content = parseTemplateContent(tpl.content);
+          if (!content) return null;
+          return [
+            id,
+            { noteTypeLabel: tpl.name, sections: content.sections },
+          ] as const;
+        } catch {
+          return null;
+        }
+      })
+    ).then((results) => {
+      if (cancelled) return;
+      const updates: Record<string, NoteSchema> = {};
+      for (const r of results) if (r) updates[r[0]] = r[1];
+      if (Object.keys(updates).length > 0) {
+        setTemplateSchemaCache((prev) => ({ ...prev, ...updates }));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [notes, templateSchemaCache]);
+  const {
+    interrogatoryNote,
+    loading: interrogatoryLoading,
+    refetch: refetchInterrogatory,
+  } = usePatientInterrogatory(patientId);
   const { appointments, createAppointment } = useAppointments();
   const {
     consents: patientConsents,
@@ -320,6 +394,21 @@ const PatientDetail: React.FC = () => {
 
   const { assets, loading: assetsLoading, refetch: refetchAssets } = usePatientAssets(patientId);
   const notesSummary = usePatientNotesSummary(patientId);
+
+  // Suscripción al stream de eventos (SSE) del paciente mientras se está en su
+  // detalle. Solo nos interesa `NOTE_ANALYSIS` (termina el análisis de IA en
+  // segundo plano): refrescamos notas y archivos. El resto de eventos (pings,
+  // keepalives nombrados, etc.) se ignoran para no recargar en cada frame.
+  const handlePatientEvent = useCallback(
+    (evt: ClientEvent) => {
+      if ((evt.event ?? '').trim().toUpperCase() !== 'NOTE_ANALYSIS') return;
+      void reloadNotes();
+      void refetchAssets();
+    },
+    [reloadNotes, refetchAssets]
+  );
+
+  useClientEvents(patientId, !!patientId, handlePatientEvent);
 
   const patientPathBase = useMemo(() => {
     const slug =
@@ -378,6 +467,20 @@ const PatientDetail: React.FC = () => {
     onOpen: onInterrogationDrawerOpen,
     onClose: onInterrogationDrawerClose,
   } = useDisclosure();
+  // El mismo drawer sirve para crear y para editar el interrogatorio existente.
+  const [isEditingInterrogation, setIsEditingInterrogation] = useState(false);
+  const openInterrogationCreate = useCallback(() => {
+    setIsEditingInterrogation(false);
+    onInterrogationDrawerOpen();
+  }, [onInterrogationDrawerOpen]);
+  const openInterrogationEdit = useCallback(() => {
+    setIsEditingInterrogation(true);
+    onInterrogationDrawerOpen();
+  }, [onInterrogationDrawerOpen]);
+  const closeInterrogationDrawer = useCallback(() => {
+    setIsEditingInterrogation(false);
+    onInterrogationDrawerClose();
+  }, [onInterrogationDrawerClose]);
 
   const {
     isOpen: isPatientEditOpen,
@@ -398,12 +501,10 @@ const PatientDetail: React.FC = () => {
     nationalNumber: '',
   });
 
-  const interrogatoryNote = useMemo(
-    () => notes.find((n) => n.type === 'interrogation'),
-    [notes]
-  );
   const hasInitialInterrogation = !!interrogatoryNote;
-  const hasAtLeastOneExtraNote = notes.length > (hasInitialInterrogation ? 1 : 0);
+  // `notes` (listNotes) ya excluye el interrogatorio (`note_type_not=interrogation`),
+  // así que cualquier nota ahí es, por definición, adicional al interrogatorio.
+  const hasAtLeastOneExtraNote = notes.length > 0;
   const canShowSummary = hasInitialInterrogation && hasAtLeastOneExtraNote;
 
   const stripHtml = (html: string): string => {
@@ -513,7 +614,10 @@ const PatientDetail: React.FC = () => {
         body:
           n.type === 'document'
             ? 'Formulario'
-            : stripHtml(n.content).slice(0, 180),
+            : stripHtml(
+                structuredNoteToHtml(n.content, templateSchemaCache) ??
+                  n.content
+              ).slice(0, 180),
         onClick: () => {
           if (n.status === 'draft') {
             navigate(`${patientPathBase}/notes/${n.id}/edit`);
@@ -577,7 +681,14 @@ const PatientDetail: React.FC = () => {
 
     return [...fromNotes, ...fromAppointments];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, notes, appointments, patientPathBase, chainInfoById]);
+  }, [
+    patientId,
+    notes,
+    appointments,
+    patientPathBase,
+    chainInfoById,
+    templateSchemaCache,
+  ]);
 
   if (patientLoading) {
     return (
@@ -1101,9 +1212,31 @@ const PatientDetail: React.FC = () => {
                     Interrogatorio inicial
                   </Text>
                 </HStack>
+                {interrogatoryNote && (
+                  <HStack spacing={1}>
+                    <Tooltip label="Expandir" hasArrow placement="top">
+                      <IconButton
+                        aria-label="Expandir interrogatorio"
+                        icon={<FiMaximize2 />}
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleViewNote(interrogatoryNote)}
+                      />
+                    </Tooltip>
+                    <Tooltip label="Editar" hasArrow placement="top">
+                      <IconButton
+                        aria-label="Editar interrogatorio"
+                        icon={<FiEdit />}
+                        size="sm"
+                        variant="ghost"
+                        onClick={openInterrogationEdit}
+                      />
+                    </Tooltip>
+                  </HStack>
+                )}
               </HStack>
               <Box p={4}>
-                {notesLoading ? (
+                {interrogatoryLoading ? (
                   <HStack py={4} justify="center">
                     <Spinner size="sm" />
                     <Text fontSize="sm">Cargando…</Text>
@@ -1118,7 +1251,7 @@ const PatientDetail: React.FC = () => {
                       leftIcon={<FiPlus />}
                       colorScheme="brand"
                       variant="outline"
-                      onClick={onInterrogationDrawerOpen}
+                      onClick={openInterrogationCreate}
                     >
                       Crear interrogatorio
                     </Button>
@@ -1138,9 +1271,21 @@ const PatientDetail: React.FC = () => {
                       </Text>
                     )}
                     <Box
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleViewNote(interrogatoryNote)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleViewNote(interrogatoryNote);
+                        }
+                      }}
+                      cursor="pointer"
+                      position="relative"
                       fontSize="12.5px"
                       maxH="260px"
-                      overflowY="auto"
+                      overflow="hidden"
+                      title="Expandir interrogatorio"
                       sx={{
                         '& h1': { fontSize: 'sm', fontWeight: 600, mb: 2 },
                         '& h2': {
@@ -1152,31 +1297,29 @@ const PatientDetail: React.FC = () => {
                         '& p': { mb: 2 },
                         '& ul, & ol': { ml: 4, mb: 2 },
                         '& li': { mb: 1 },
+                        // Difuminado inferior para insinuar que hay más contenido.
+                        _after: {
+                          content: '""',
+                          position: 'absolute',
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          height: '48px',
+                          bgGradient: `linear(to-b, transparent, ${cardBg})`,
+                          pointerEvents: 'none',
+                        },
                       }}
                       dangerouslySetInnerHTML={{
-                        __html: mergeNoteBodyForEditor(
-                          interrogatoryNote.content || ''
-                        ),
+                        __html:
+                          structuredNoteToHtml(
+                            interrogatoryNote.content || '',
+                            templateSchemaCache
+                          ) ??
+                          mergeNoteBodyForEditor(
+                            interrogatoryNote.content || ''
+                          ),
                       }}
                     />
-                    <NoteAttachmentsList
-                      attachments={interrogatoryNote.attachments}
-                      patientId={patient.id}
-                    />
-                    {!interrogatoryNote.isSigned && (
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        alignSelf="flex-start"
-                        onClick={() =>
-                          navigate(
-                            `${patientPathBase}/notes/${interrogatoryNote.id}`
-                          )
-                        }
-                      >
-                        Editar
-                      </Button>
-                    )}
                   </VStack>
                 )}
               </Box>
@@ -1220,6 +1363,28 @@ const PatientDetail: React.FC = () => {
               type="button"
               px={1}
               py={3}
+              mr={5}
+              fontSize="14px"
+              fontWeight={600}
+              letterSpacing="-0.01em"
+              lineHeight="1.25"
+              color={activeTab === 'signos' ? inkStrong : labelColor}
+              borderBottom="2px solid"
+              borderColor={activeTab === 'signos' ? 'brand.600' : 'transparent'}
+              mb="-1px"
+              cursor="pointer"
+              bg="transparent"
+              _hover={{ color: inkStrong }}
+              transition="color 0.15s, border-color 0.15s"
+              onClick={() => setActiveTab('signos')}
+            >
+              Signos vitales
+            </Box>
+            <Box
+              as="button"
+              type="button"
+              px={1}
+              py={3}
               fontSize="14px"
               fontWeight={600}
               letterSpacing="-0.01em"
@@ -1240,6 +1405,17 @@ const PatientDetail: React.FC = () => {
 
           {activeTab === 'expediente' ? (
             <Timeline items={timelineItems} />
+          ) : activeTab === 'signos' ? (
+            <PatientSignosVitales
+              patientId={patientId}
+              patientName={`${patient.firstName} ${patient.lastName}`.trim()}
+              takerName={
+                doctor
+                  ? `${doctor.firstName ?? ''} ${doctor.lastName ?? ''}`.trim() ||
+                    undefined
+                  : undefined
+              }
+            />
           ) : (
             <PatientDocuments
               assets={assets}
@@ -1429,18 +1605,12 @@ const PatientDetail: React.FC = () => {
                     const fields: FormFieldValue[] = parsed?.fields ?? [];
                     if (formId && Array.isArray(fields)) {
                       return (
-                        <>
-                          <FormNoteViewer
-                            ref={formNoteViewerRef}
-                            formId={formId}
-                            values={fields}
-                            title={selectedNote?.title}
-                          />
-                          <NoteAttachmentsList
-                            attachments={selectedNote?.attachments}
-                            patientId={patient.id}
-                          />
-                        </>
+                        <FormNoteViewer
+                          ref={formNoteViewerRef}
+                          formId={formId}
+                          values={fields}
+                          title={selectedNote?.title}
+                        />
                       );
                     }
                   } catch {
@@ -1451,10 +1621,6 @@ const PatientDetail: React.FC = () => {
                       <Text color={subColor} py={4} fontSize="sm">
                         Documento firmado. No se pudo cargar la vista previa.
                       </Text>
-                      <NoteAttachmentsList
-                        attachments={selectedNote?.attachments}
-                        patientId={patient.id}
-                      />
                     </Box>
                   );
                 })()}
@@ -1522,12 +1688,12 @@ const PatientDetail: React.FC = () => {
                     },
                   }}
                   dangerouslySetInnerHTML={{
-                    __html: mergeNoteBodyForEditor(selectedNote?.content || ''),
+                    __html:
+                      structuredNoteToHtml(
+                        selectedNote?.content || '',
+                        templateSchemaCache
+                      ) ?? mergeNoteBodyForEditor(selectedNote?.content || ''),
                   }}
-                />
-                <NoteAttachmentsList
-                  attachments={selectedNote?.attachments}
-                  patientId={patient.id}
                 />
               </Box>
             )}
@@ -2100,21 +2266,32 @@ const PatientDetail: React.FC = () => {
       {!isWellness && patient && (
         <InterrogationFormDrawer
           isOpen={isInterrogationDrawerOpen}
-          onClose={onInterrogationDrawerClose}
+          onClose={closeInterrogationDrawer}
           patient={patient}
           identity={identity}
           noteTitle={`Interrogatorio inicial – ${patient.firstName} ${patient.lastName}`}
+          initialContent={
+            isEditingInterrogation ? (interrogatoryNote?.content ?? null) : null
+          }
           onSave={async ({ content, title }) => {
             try {
+              // Crear y editar usan el mismo endpoint: POST /patients/{id}/notes/
+              // con note_type estrictamente `interrogation` (no hay endpoint
+              // dedicado de interrogatorio). listNotes lo excluye, así que se
+              // refresca desde la vista unificada del paciente (interrogatory).
               await createNote({
                 content,
                 type: 'interrogation',
                 title,
               });
+              await refetchInterrogatory();
               toast({
-                title: 'Borrador guardado',
-                description:
-                  'El interrogatorio se guardó como borrador. Puedes editarlo o firmarlo desde la nota.',
+                title: isEditingInterrogation
+                  ? 'Interrogatorio actualizado'
+                  : 'Borrador guardado',
+                description: isEditingInterrogation
+                  ? undefined
+                  : 'El interrogatorio se guardó como borrador. Puedes editarlo o firmarlo desde la nota.',
                 status: 'success',
                 duration: 4000,
                 isClosable: true,

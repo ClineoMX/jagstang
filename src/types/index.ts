@@ -108,7 +108,7 @@ export interface NoteTemplate {
 
 export type NoteStatus = 'draft' | 'signed';
 
-/** Parent note summary returned in list/detail `is_follow_up_of`. */
+/** Parent note summary returned in list/detail `parent`. */
 export interface NoteFollowUpRef {
   id: string;
   noteType: string;
@@ -133,7 +133,6 @@ export interface MedicalNote {
   signedBy?: string;
   signature?: string; // RSA signature
   hash?: string; // Hash for comparing versions
-  attachments?: Attachment[];
   /** Parent note this one follows up on (from API); send only `id` on create. */
   isFollowUpOf?: NoteFollowUpRef;
   createdAt: string;
@@ -305,4 +304,37 @@ export interface TemplateItem {
   name: string;
   pdfFileName: string | null;
   fields: TemplateField[];
+}
+
+// Equipo (staff / team) — roles, turnos y roster del consultorio.
+// Portado del prototipo de diseño "Clineo Equipo A".
+export type StaffRoleId = 'ENFERMERO' | 'ASISTENTE' | 'RECEPCION';
+
+export type ShiftId =
+  | 'matutino'
+  | 'vespertino'
+  | 'nocturno'
+  | 'completa'
+  | 'custom';
+
+export type StaffStatus = 'active' | 'pending';
+
+export interface StaffMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: StaffRoleId;
+  shift: ShiftId;
+  /** Índices de días laborales (0 = Lunes … 6 = Domingo). */
+  days: number[];
+  email: string;
+  phone: string;
+  /** Cédula profesional (solo roles que la requieren). */
+  license?: string;
+  /** Horas manuales cuando `shift === 'custom'`. */
+  shiftStart?: string;
+  shiftEnd?: string;
+  status: StaffStatus;
+  /** Etiqueta libre de antigüedad (p. ej. "Mar 2024" o "Invitado"). */
+  since: string;
 }

@@ -65,6 +65,8 @@ export function usePatientIdentity(patientId: string | undefined) {
   const [error, setError] = useState<string | null>(null);
   const [exists, setExists] = useState(false);
 
+  // v2.0: identity is read from the unified patient view (`identity_sheet`),
+  // not a dedicated GET endpoint.
   const fetchIdentity = useCallback(async () => {
     if (!patientId) {
       setIdentity(null);
@@ -74,16 +76,12 @@ export function usePatientIdentity(patientId: string | undefined) {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiService.getPatientIdentity(patientId);
+      const patient = await apiService.getPatient(patientId);
+      const data = patient.identity_sheet ?? null;
       setIdentity(data);
-      setExists(true);
+      setExists(!!data);
     } catch (err: any) {
-      if (err?.status === 404) {
-        setIdentity(null);
-        setExists(false);
-      } else {
-        setError(err instanceof Error ? err.message : 'Error al cargar ficha de identidad');
-      }
+      setError(err instanceof Error ? err.message : 'Error al cargar ficha de identidad');
     } finally {
       setLoading(false);
     }
@@ -93,13 +91,10 @@ export function usePatientIdentity(patientId: string | undefined) {
     fetchIdentity();
   }, [fetchIdentity]);
 
+  // v2.0: single PATCH upsert (the old create/update split is gone).
   const saveIdentity = async (data: Record<string, string>) => {
     if (!patientId) throw new Error('Patient ID is required');
-    if (exists) {
-      await apiService.updatePatientIdentity(patientId, data);
-    } else {
-      await apiService.createPatientIdentity(patientId, data);
-    }
+    await apiService.upsertPatientIdentity(patientId, data);
     await fetchIdentity();
   };
 

@@ -6,10 +6,147 @@
 import { API_BASE_URL, AUTH_API_BASE_URL, API_KEY } from '../config/api';
 import { fetchWithTimeout, ApiTimeoutError } from '../utils/apiStatus';
 
+/** Wider timeout for the enriched (and slower) v2.0 patients list. */
+const PATIENTS_LIST_TIMEOUT_MS = 60000;
+
 export interface ApiError {
   message: string;
   status: number;
   errors?: Record<string, string[]>;
+}
+
+/** `/doctor/templates/` — `content` is an opaque, server-unvalidated JSON string. */
+export interface DoctorTemplateDTO {
+  id: string;
+  name: string;
+  content: string;
+}
+
+/** Named clinical line in the clinical summary (allergy, medication, condition). */
+export interface ApiClinicalSummaryLine {
+  name: string;
+  suggested?: boolean;
+}
+
+/** Clinical summary (v2.0 `summary` / `PATCH clinical-summary/`). */
+export interface ApiClinicalSummary {
+  blood_type?: string | null;
+  allergies?: ApiClinicalSummaryLine[] | null;
+  medications?: ApiClinicalSummaryLine[] | null;
+  chronic_conditions?: ApiClinicalSummaryLine[] | null;
+}
+
+/**
+ * Signos vitales — toma actual (v2.0 `vital` / `PUT /patients/{id}/vitals/`).
+ *
+ * Shape confirmado contra el struct del backend. Ojo con los enteros: en Go
+ * `heart_rate_bpm`, `respiratory_rate_bpm` y las dos presiones son `*int16`
+ * (mandar decimales rompe la deserialización — ver `toApiVital`); el resto son
+ * `*float64`. `taken_at` es RFC3339 (ISO string). La lectura en
+ * `usePatientSignosVitales` es defensiva (acepta alias).
+ */
+/** Quién tomó los signos (objeto de usuario que embebe la vista unificada). */
+export interface ApiVitalTaker {
+  id?: string;
+  name?: string;
+  lastname?: string;
+  email?: string;
+}
+
+export interface ApiVital {
+  /** int16 */
+  blood_pressure_systolic_mm_hg?: number | null;
+  /** int16 */
+  blood_pressure_diastolic_mm_hg?: number | null;
+  /** int16 */
+  heart_rate_bpm?: number | null;
+  /** int16 */
+  respiratory_rate_bpm?: number | null;
+  temperature_celsius?: number | null;
+  oxygen_saturation?: number | null;
+  glucose_mg_dl?: number | null;
+  weight_kg?: number | null;
+  height_cm?: number | null;
+  abdominal_perimeter_cm?: number | null;
+  notes?: string | null;
+  taken_at?: string | null;
+  /** Objeto de usuario `{ id, name, lastname, email }`, o string en formas legacy. */
+  taken_by?: ApiVitalTaker | string | null;
+  [key: string]: unknown;
+}
+
+/** Identity sheet (v2.0 `identity_sheet` / `PATCH identity/`). */
+export interface ApiIdentity {
+  birthdate?: string;
+  gender?: string;
+  birthplace_state?: string;
+  birthplace_country?: string;
+  birthplace_city?: string;
+  residence_state?: string;
+  residence_country?: string;
+  residence_city?: string;
+  occupation?: string;
+  referred_by?: string;
+  education?: string;
+  marital_status?: string;
+  religion?: string;
+  nationality?: string;
+  education_level?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
+}
+
+/** Parent note reference (v2.0 `parent`, was v1.7 `is_follow_up_of`). */
+export interface ApiNoteParent {
+  id: string;
+  note_type: string;
+  title: string;
+  custom_date: string;
+}
+
+/** Completeness analysis embedded on the note (v2.0; may be null until computed). */
+export interface ApiNoteAnalysis {
+  completeness_score: number;
+  missing_fields?: string[];
+  uncertain_fields?: string[];
+  reasoning: Record<string, string>;
+}
+
+/** Medical note (v2.0). `attachments` is no longer returned. */
+export interface ApiNote {
+  id: string;
+  title?: string;
+  content?: string;
+  type?: string;
+  note_type?: string;
+  status?: string;
+  is_signed?: boolean;
+  signed_at?: string;
+  signed_by?: string;
+  created_at: string;
+  updated_at?: string;
+  custom_date?: string;
+  parent?: ApiNoteParent | null;
+  analysis?: ApiNoteAnalysis | null;
+}
+
+/**
+ * Unified patient view (v2.0 `GET /patients/{id}/`, also the row shape of
+ * `GET /patients/`). Embeds the latest related sub-resources.
+ */
+export interface ApiPatientUnified {
+  id: string;
+  slug?: string;
+  name: string;
+  lastname: string;
+  lastname_m: string | null;
+  is_recurrent: boolean;
+  phone?: string;
+  summary?: ApiClinicalSummary | null;
+  identity_sheet?: ApiIdentity | null;
+  interrogatory?: ApiNote | null;
+  vital?: ApiVital | null;
 }
 
 class ApiService {
@@ -216,7 +353,8 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    timeoutMs?: number
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     let headers: HeadersInit = {
@@ -232,10 +370,14 @@ class ApiService {
     }
 
     try {
-      const response = await fetchWithTimeout(url, {
-        ...options,
-        headers,
-      });
+      const response = await fetchWithTimeout(
+        url,
+        {
+          ...options,
+          headers,
+        },
+        timeoutMs
+      );
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -290,59 +432,24 @@ class ApiService {
       page: number;
       size: number;
       count: number;
-      results: Array<{
-        id: string;
-        name: string;
-        lastname: string;
-        lastname_m: string | null;
-        is_recurrent: boolean;
-        grant_type: string;
-      }>;
-    }>(`/patients/${query ? `?${query}` : ''}`);
+      results: ApiPatientUnified[];
+    }>(
+      `/patients/${query ? `?${query}` : ''}`,
+      {},
+      // v2.0 GET /patients/ returns enriched rows (summary/identity/vital
+      // embedded), so a large page is much slower to first byte than the old
+      // /patients/table/. Give it a wider budget than the default so a slow but
+      // valid response isn't aborted (which otherwise trips the timeout overlay).
+      PATIENTS_LIST_TIMEOUT_MS
+    );
   }
 
   /**
-   * Enriched patient rows for the patients table UI (see api.md GET /patients/table/).
-   */
-  async listPatientsTable(params?: { page?: number; size?: number }) {
-    const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
-    const query = queryParams.toString();
-    return this.request<{
-      count: number;
-      size: number;
-      results: Array<{
-        id: string;
-        slug: string;
-        name: string;
-        lastname: string;
-        lastname_m: string | null;
-        phone?: string;
-        birth_date?: string;
-        gender?: string;
-        blood_type?: string;
-        is_recurrent: boolean;
-        last_visit?: string;
-        email?: string;
-      }>;
-    }>(`/patients/table/${query ? `?${query}` : ''}`);
-  }
-
-  /**
-   * Get a specific patient by ID
+   * Get a specific patient by ID (unified view — embeds summary, identity_sheet,
+   * interrogatory and vital).
    */
   async getPatient(patientId: string) {
-    return this.request<{
-      id: string;
-      slug: string;
-      name: string;
-      lastname: string;
-      lastname_m: string | null;
-      is_recurrent: boolean;
-      grant_type: string;
-      phone?: string;
-    }>(`/patients/${patientId}/`);
+    return this.request<ApiPatientUnified>(`/patients/${patientId}/`);
   }
 
   /**
@@ -392,71 +499,52 @@ class ApiService {
 
   // ============ PATIENT IDENTITY ============
 
-  async getPatientIdentity(patientId: string) {
-    return this.request<{
-      birthdate?: string;
-      gender?: string;
-      birthplace_state?: string;
-      birthplace_country?: string;
-      birthplace_city?: string;
-      residence_state?: string;
-      residence_country?: string;
-      residence_city?: string;
-      occupation?: string;
-      referred_by?: string;
-      education?: string;
-      marital_status?: string;
-      religion?: string;
-      nationality?: string;
-      education_level?: string;
-      emergency_contact_name?: string;
-      emergency_contact_phone?: string;
-      emergency_contact_relationship?: string;
-    }>(`/patients/${patientId}/identity-sheet/`);
-  }
-
-  async createPatientIdentity(
-    patientId: string,
-    data: Record<string, string>
-  ) {
-    return this.request<void>(`/patients/${patientId}/identity-sheet/`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async updatePatientIdentity(
-    patientId: string,
-    data: Record<string, string>
-  ) {
-    return this.request<void>(`/patients/${patientId}/identity-sheet/`, {
+  /**
+   * Upsert the patient identity sheet (v2.0 `PATCH /patients/{id}/identity/`).
+   * The current values are read from the unified patient view (`identity_sheet`).
+   */
+  async upsertPatientIdentity(patientId: string, data: Record<string, string>) {
+    return this.request<ApiIdentity>(`/patients/${patientId}/identity/`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
   }
 
-  // ============ PATIENT VITALS (summary) ============
+  // ============ CLINICAL SUMMARY ============
 
-  /** GET/PUT /patients/<id>/vitals/ — see api.md */
-  async getPatientVitals(patientId: string) {
-    return this.request<{
-      blood_type?: string | null;
-      allergies?: Array<{ name: string; created_at: string }> | null;
-      medications?: Array<{ name: string; created_at: string }> | null;
-      chronic_conditions?: Array<{ name: string; created_at: string }> | null;
-    }>(`/patients/${patientId}/vitals/`);
-  }
-
-  async upsertPatientVitals(
+  /**
+   * Upsert the patient clinical summary (v2.0 `PATCH
+   * /patients/{id}/clinical-summary/`). Current values are read from the unified
+   * patient view (`summary`). Replaces the v1.7 `/vitals/` blood-type/allergies
+   * resource.
+   */
+  async upsertClinicalSummary(
     patientId: string,
     data: {
       blood_type: string | null;
-      allergies: Array<{ name: string; created_at: string }>;
-      medications: Array<{ name: string; created_at: string }>;
-      chronic_conditions: Array<{ name: string; created_at: string }>;
+      allergies: ApiClinicalSummaryLine[];
+      medications: ApiClinicalSummaryLine[];
+      chronic_conditions: ApiClinicalSummaryLine[];
     }
   ) {
-    return this.request<void>(`/patients/${patientId}/vitals/`, {
+    return this.request<ApiClinicalSummary>(
+      `/patients/${patientId}/clinical-summary/`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  // ============ VITAL SIGNS ============
+
+  /**
+   * Upsert the patient's current vital signs (`PUT /patients/{id}/vitals/`).
+   * Overwrites the current take ("solo el último valor"). The stored value is
+   * surfaced under `vital` in the unified patient view (there is no `GET`).
+   */
+  async upsertPatientVitals(patientId: string, data: ApiVital) {
+    return this.request<ApiVital>(`/patients/${patientId}/vitals/`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -831,6 +919,51 @@ class ApiService {
   }
 
   /**
+   * GET /doctor/assets/
+   * Lista de archivos subidos por el doctor autenticado.
+   */
+  async listDoctorAssets(params?: { page?: number; size?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null)
+      queryParams.append('page', params.page.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
+    const query = queryParams.toString();
+    return this.request<{
+      results: Array<{
+        id: string;
+        filename: string;
+        file_size: number;
+        mime_type: string;
+      }>;
+      count: number;
+      size: number;
+    }>(`/doctor/assets/${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * PUT /doctor/assets/
+   * Sube uno o varios archivos del doctor en una sola llamada (campo `files`).
+   */
+  async uploadDoctorAssets(files: File[]) {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    return this.request<{
+      results: Array<{
+        id: string;
+        filename: string;
+        file_size: number;
+        mime_type: string;
+      }>;
+      count: number;
+      size: number;
+    }>('/doctor/assets/', {
+      method: 'PUT',
+      body: formData,
+    });
+  }
+
+  /**
    * GET /doctor/templates/
    * Lista de templates (notas/plantillas) del doctor.
    */
@@ -840,11 +973,43 @@ class ApiService {
     if (params?.size != null) queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
-      results: Array<{ id: string; name: string; content: string }>;
+      results: DoctorTemplateDTO[];
       count: number;
       page: number;
       size: number;
     }>(`/doctor/templates/${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * POST /doctor/templates/
+   * `content` es un string opaco (el servidor no lo valida) — el llamador es
+   * responsable de serializar/parsear su propio modelo JSON.
+   */
+  async createDoctorTemplate(body: { name: string; content: string }) {
+    return this.request<DoctorTemplateDTO>('/doctor/templates/', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * GET /doctor/templates/<id>/
+   */
+  async getDoctorTemplate(templateId: string) {
+    return this.request<DoctorTemplateDTO>(`/doctor/templates/${templateId}/`);
+  }
+
+  /**
+   * PUT /doctor/templates/<id>/
+   */
+  async updateDoctorTemplate(
+    templateId: string,
+    body: { name: string; content: string }
+  ) {
+    return this.request<DoctorTemplateDTO>(`/doctor/templates/${templateId}/`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
   }
 
   /**
@@ -890,40 +1055,22 @@ class ApiService {
   }
 
   /**
-   * List all notes for a patient
+   * List all notes for a patient. The initial interrogatory is excluded: it
+   * has its own dedicated read path (`getPatient().interrogatory`, unified
+   * patient view) and its own UI, so it's never part of the general notes feed.
    */
   async listNotes(patientId: string, params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
     if (params?.size != null) queryParams.append('size', params.size.toString());
+    queryParams.append('note_type_not', 'interrogation');
 
     const query = queryParams.toString();
     return this.request<{
       page: number;
       size: number;
       count: number;
-      results: Array<{
-        id: string;
-        title?: string;
-        content?: string;
-        type?: string;
-        note_type?: string;
-        status?: string;
-        is_signed?: boolean;
-        signed_at?: string;
-        signed_by?: string;
-        created_at: string;
-        updated_at?: string;
-        attachments?: unknown[];
-        is_follow_up_of?:
-          | string
-          | {
-              id: string;
-              note_type: string;
-              title: string;
-              custom_date: string;
-            };
-      }>;
+      results: ApiNote[];
     }>(`/patients/${patientId}/notes/${query ? `?${query}` : ''}`);
   }
 
@@ -931,30 +1078,12 @@ class ApiService {
    * Get a specific note by ID
    */
   async getNote(patientId: string, noteId: string) {
-    return this.request<{
-      id: string;
-      title: string;
-      content: string;
-      type: string;
-      is_signed: boolean;
-      signed_at?: string;
-      signed_by?: string;
-      created_at: string;
-      updated_at: string;
-      attachments?: unknown[];
-      is_follow_up_of?:
-        | string
-        | {
-            id: string;
-            note_type: string;
-            title: string;
-            custom_date: string;
-          };
-    }>(`/patients/${patientId}/notes/${noteId}/`);
+    return this.request<ApiNote>(`/patients/${patientId}/notes/${noteId}/`);
   }
 
   /**
-   * Create a new medical note (draft)
+   * Create a new medical note (draft). v2.0: JSON body. Attachments are no
+   * longer part of the note payload (upload via the assets endpoint).
    */
   async createNote(
     patientId: string,
@@ -962,36 +1091,32 @@ class ApiService {
       content: string;
       note_type: string;
       title?: string;
-      files?: File[];
-      is_follow_up_of?: string;
+      parent_id?: string;
+      custom_date?: string;
     }
   ) {
-    const formData = new FormData();
-    formData.append('content', data.content);
-    formData.append('note_type', data.note_type);
-    if (data.title) {
-      formData.append('title', data.title);
-    }
-    if (data.is_follow_up_of) {
-      formData.append('is_follow_up_of', data.is_follow_up_of);
-    }
-    if (data.files?.length) {
-      data.files.forEach((file) => formData.append('files', file));
-    }
-    return this.request<{
-      id: string;
-      created_at: string;
-      note_type: string;
-      status: string;
-      title?: string;
-    }>(`/patients/${patientId}/notes/`, {
+    const body: Record<string, string> = {
+      content: data.content,
+      note_type: data.note_type,
+    };
+    if (data.title) body.title = data.title;
+    if (data.parent_id) body.parent_id = data.parent_id;
+    if (data.custom_date) body.custom_date = data.custom_date;
+    return this.request<ApiNote>(`/patients/${patientId}/notes/`, {
       method: 'POST',
-      body: formData,
+      body: JSON.stringify(body),
     });
   }
 
   /**
-   * Update a medical note (multipart/form-data)
+   * Update a medical note (draft only). v2.0: JSON body. `custom_date` is now
+   * folded into this request (the dedicated `/date/` endpoint is gone) — but
+   * the backend still parses `custom_date` off a multipart form field
+   * (`ParseMultipartForm` + strict `time.Parse(RFC3339, ...)`), not the JSON
+   * body. A JSON request leaves that field unreadable server-side and always
+   * fails with `NOTES:INVALID_PAYLOAD`, so whenever the date is being changed
+   * this goes out as `multipart/form-data` instead. `custom_date` must be a
+   * full RFC3339 timestamp (e.g. `date.toISOString()`), not a bare date.
    */
   async updateNote(
     patientId: string,
@@ -1000,41 +1125,29 @@ class ApiService {
       title?: string;
       content?: string;
       type?: string;
-      files?: File[];
+      custom_date?: string;
     }
   ) {
-    const formData = new FormData();
-    if (data.title !== undefined) formData.append('title', data.title);
-    if (data.content !== undefined) formData.append('content', data.content);
-    if (data.type !== undefined) formData.append('note_type', data.type);
-    if (data.files?.length) {
-      data.files.forEach((file) => formData.append('files', file));
-    }
-    return this.request<{
-      id: string;
-      title: string;
-      content: string;
-      type: string;
-      is_signed: boolean;
-      created_at: string;
-      updated_at: string;
-    }>(`/patients/${patientId}/notes/${noteId}/`, {
-      method: 'PATCH',
-      body: formData,
-    });
-  }
-
-  /**
-   * Update the date of a medical note (draft only)
-   */
-  async updateNoteDate(patientId: string, noteId: string, customDate: string) {
-    return this.request<{ custom_date: string }>(
-      `/patients/${patientId}/notes/${noteId}/date/`,
-      {
+    const endpoint = `/patients/${patientId}/notes/${noteId}/`;
+    if (data.custom_date !== undefined) {
+      const formData = new FormData();
+      if (data.title !== undefined) formData.append('title', data.title);
+      if (data.content !== undefined) formData.append('content', data.content);
+      if (data.type !== undefined) formData.append('note_type', data.type);
+      formData.append('custom_date', data.custom_date);
+      return this.request<ApiNote>(endpoint, {
         method: 'PATCH',
-        body: JSON.stringify({ custom_date: customDate }),
-      }
-    );
+        body: formData,
+      });
+    }
+    const body: Record<string, string> = {};
+    if (data.title !== undefined) body.title = data.title;
+    if (data.content !== undefined) body.content = data.content;
+    if (data.type !== undefined) body.note_type = data.type;
+    return this.request<ApiNote>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
   }
 
   /**
@@ -1046,17 +1159,6 @@ class ApiService {
     return this.request(url, {
       method: 'PATCH',
     });
-  }
-
-  /**
-   * Get note analysis
-   */
-  async getNoteAnalysis(patientId: string, noteId: string) {
-    return this.request<{
-      completeness_score: number;
-      missing_fields: string[];
-      reasoning: Record<string, string>;
-    }>(`/patients/${patientId}/notes/${noteId}/analysis/`);
   }
 
   /**
@@ -1093,8 +1195,13 @@ class ApiService {
       const errorData = await response.json().catch(() => ({
         message: response.statusText,
       }));
+      // v2.0: GET /notes/summary/ is rate-limited (5 req/IP/60h) → 429.
+      const message =
+        response.status === 429
+          ? 'Has alcanzado el límite de resúmenes. Intenta de nuevo más tarde.'
+          : errorData.message || errorData.detail || 'An error occurred';
       const apiErr = {
-        message: errorData.message || errorData.detail || 'An error occurred',
+        message,
         status: response.status,
         errors: errorData.errors,
       } as ApiError;
@@ -1229,22 +1336,72 @@ class ApiService {
   }
 
   /**
-   * Attach files to a note
+   * Subscribe to the v2.0 Server-Sent Events stream
+   * (`GET /patients/{client}/events/`, where `{client}` is the patient id).
+   *
+   * Long-lived connection for async notifications (e.g. when a background AI
+   * analysis finishes) — the documented replacement for polling the removed
+   * `GET /notes/{id}/analysis/` endpoint. Resolves when the stream ends or the
+   * `signal` aborts.
+   *
+   * EventSource can't attach auth headers, so we use fetch + the SSE reader.
+   * `data:` payloads are parsed as JSON when possible, otherwise passed through
+   * as the raw string.
    */
-  async attachFilesToNote(
-    patientId: string,
-    noteId: string,
-    files: File[]
-  ) {
-    const formData = new FormData();
-    files.forEach((file) => {
-      formData.append('files', file);
-    });
+  async subscribeEvents(args: {
+    client: string;
+    signal?: AbortSignal;
+    onEvent: (evt: { event?: string; data: unknown }) => void;
+    onError?: (err: ApiError) => void;
+  }) {
+    const { client, signal, onEvent, onError } = args;
+    const url = `${API_BASE_URL}/patients/${encodeURIComponent(client)}/events/`;
 
-    return this.request(`/patients/${patientId}/notes/${noteId}/attach/`, {
-      method: 'PATCH',
-      body: formData,
-    });
+    try {
+      const response = await fetchWithTimeout(url, {
+        method: 'GET',
+        headers: {
+          ...this.getAuthHeaders(),
+          Accept: 'text/event-stream',
+        },
+        signal,
+      });
+
+      if (!response.ok) {
+        const apiErr = {
+          message: `Events stream error (${response.status})`,
+          status: response.status,
+        } as ApiError;
+        onError?.(apiErr);
+        throw apiErr;
+      }
+
+      await this.consumeSseStream({
+        response,
+        signal,
+        onMessage: ({ event, data }) => {
+          if (!data && !event) return;
+          let parsed: unknown = data;
+          const trimmed = (data || '').trim();
+          if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            try {
+              parsed = JSON.parse(trimmed);
+            } catch {
+              // keep raw string
+            }
+          }
+          onEvent({ event, data: parsed });
+        },
+      });
+    } catch (err: any) {
+      if (signal?.aborted) return;
+      const apiErr: ApiError =
+        err && typeof err === 'object' && 'status' in err
+          ? (err as ApiError)
+          : ({ message: err?.message || 'Events stream error', status: 0 } as ApiError);
+      onError?.(apiErr);
+      throw apiErr;
+    }
   }
 
   // ============ ASSETS/FILES ============
@@ -1265,10 +1422,12 @@ class ApiService {
       results: Array<{
         id: string;
         mime_type: string;
-        key: string;
         file_size: number;
-        original_filename: string;
-        hash: string;
+        /** v2.0 filename; v1.7 returned `original_filename`. */
+        filename?: string;
+        original_filename?: string;
+        key?: string;
+        hash?: string;
       }>;
       count: number;
       page: number;
@@ -1290,48 +1449,24 @@ class ApiService {
   }
 
   /**
-   * Upload files/assets for a patient
-   * Max 30MB per file
+   * Upload files/assets for a patient (v2.0: `PUT`, was `POST`).
+   * Max 30MB per file. Response items: `{ id, filename, mime_type, file_size }`.
    */
   async uploadPatientAssets(patientId: string, files: File[]) {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
 
-    return this.request<unknown>(`/patients/${patientId}/assets/`, {
-      method: 'POST',
+    return this.request<{
+      results?: Array<{
+        id: string;
+        filename: string;
+        mime_type: string;
+        file_size: number;
+      }>;
+    }>(`/patients/${patientId}/assets/`, {
+      method: 'PUT',
       body: formData,
     });
-  }
-
-  // ============ PATIENT CONSENTS ============
-
-  /**
-   * List consents for a patient (GET /patients/<patient_id>/consents/)
-   */
-  async listPatientConsents(
-    patientId: string,
-    params?: { page?: number; size?: number }
-  ) {
-    const queryParams = new URLSearchParams();
-    if (params?.page != null) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
-    const query = queryParams.toString();
-    return this.request<{
-      results: Array<{
-        id: string;
-        patient_id: string;
-        user_id: string;
-        consent_type: string;
-        is_granted: boolean;
-        is_revoked: boolean;
-        expires_at: string | null;
-        granted_at: string | null;
-        revoked_at: string | null;
-      }>;
-      count: number;
-      page: number;
-      size: number;
-    }>(`/patients/${patientId}/consents/${query ? `?${query}` : ''}`);
   }
 
   // ============ AUTHENTICATION ============

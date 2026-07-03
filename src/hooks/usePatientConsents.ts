@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { apiService } from '../services/api';
+import { useCallback } from 'react';
 
 export interface PatientConsentItem {
   id: string;
@@ -13,50 +12,21 @@ export interface PatientConsentItem {
   revokedAt: string | null;
 }
 
-export function usePatientConsents(patientId: string | undefined) {
-  const [consents, setConsents] = useState<PatientConsentItem[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+/**
+ * v2.0: the dedicated `/patients/{id}/consents/` endpoint was removed. Consents
+ * are expected to arrive via the unified patient view in a future revision, so
+ * for now this hook always reports an empty (null) set.
+ */
+export function usePatientConsents(_patientId: string | undefined) {
+  const refetch = useCallback(async () => {}, []);
 
-  const fetchConsents = useCallback(async () => {
-    if (!patientId) {
-      setConsents([]);
-      setCount(0);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiService.listPatientConsents(patientId, { size: 100 });
-      setConsents(
-        res.results.map((r) => ({
-          id: r.id,
-          patientId: r.patient_id,
-          userId: r.user_id,
-          consentType: r.consent_type,
-          isGranted: r.is_granted,
-          isRevoked: r.is_revoked,
-          expiresAt: r.expires_at,
-          grantedAt: r.granted_at,
-          revokedAt: r.revoked_at,
-        }))
-      );
-      setCount(res.count);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cargar consentimientos');
-      setConsents([]);
-      setCount(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [patientId]);
-
-  useEffect(() => {
-    fetchConsents();
-  }, [fetchConsents]);
-
-  return { consents, count, loading, error, refetch: fetchConsents };
+  return {
+    consents: [] as PatientConsentItem[],
+    count: 0,
+    loading: false,
+    error: null as string | null,
+    refetch,
+  };
 }
 
 /** Labels in Spanish for API consent_type values */

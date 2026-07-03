@@ -1,14 +1,8 @@
 import React from 'react';
-import {
-  Box,
-  HStack,
-  Text,
-  Badge,
-  useColorModeValue,
-} from '@chakra-ui/react';
+import { Box, HStack, Text, Badge, useColorModeValue } from '@chakra-ui/react';
 import { FiCalendar, FiPhone } from 'react-icons/fi';
 import type { Patient } from '../../types';
-import { format, differenceInYears, parseISO } from 'date-fns';
+import { format, differenceInYears, parseISO, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 function normalize(s: string): string {
@@ -36,7 +30,9 @@ function highlight(text: string, q: string): React.ReactNode {
 }
 
 function patientFullName(p: Patient): string {
-  return [p.firstName, p.lastName, p.lastNameMaternal].filter(Boolean).join(' ');
+  return [p.firstName, p.lastName, p.lastNameMaternal]
+    .filter(Boolean)
+    .join(' ');
 }
 
 function patientInitials(p: Patient): string {
@@ -75,14 +71,12 @@ const PatientSearchRow: React.FC<PatientSearchRowProps> = ({
   const name = patientFullName(patient);
   const female = patient.gender === 'female';
 
-  const age = patient.dateOfBirth
-    ? differenceInYears(new Date(), parseISO(patient.dateOfBirth.slice(0, 10)))
+  const dob = patient.dateOfBirth
+    ? parseISO(patient.dateOfBirth.slice(0, 10))
     : null;
-  const dobFmt = patient.dateOfBirth
-    ? format(parseISO(patient.dateOfBirth.slice(0, 10)), "d MMM yyyy", {
-        locale: es,
-      })
-    : null;
+  const dobValid = dob != null && isValid(dob);
+  const age = dobValid ? differenceInYears(new Date(), dob) : null;
+  const dobFmt = dobValid ? format(dob, 'd MMM yyyy', { locale: es }) : null;
 
   return (
     <Box
@@ -118,10 +112,21 @@ const PatientSearchRow: React.FC<PatientSearchRowProps> = ({
         {patientInitials(patient)}
       </Box>
       <Box flex={1} minW={0}>
-        <Text fontSize="13px" fontWeight={600} color="text.strong" noOfLines={1}>
+        <Text
+          fontSize="13px"
+          fontWeight={600}
+          color="text.strong"
+          noOfLines={1}
+        >
           {highlight(name, query)}
         </Text>
-        <HStack spacing={2} mt={0.5} flexWrap="wrap" fontSize="11px" color={metaColor}>
+        <HStack
+          spacing={2}
+          mt={0.5}
+          flexWrap="wrap"
+          fontSize="11px"
+          color={metaColor}
+        >
           {age != null && dobFmt && (
             <HStack spacing={1}>
               <FiCalendar size={11} />

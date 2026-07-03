@@ -8,7 +8,6 @@ import {
   Button,
   Input,
   Select,
-  IconButton,
   useToast,
   Alert,
   AlertIcon,
@@ -51,7 +50,12 @@ import type { FormFieldValue } from '../components/FormNoteFiller';
 import type { NoteType, NoteCompletenessAnalysis } from '../types';
 import { usePatient, usePatients } from '../hooks/usePatients';
 import { usePatientVitals } from '../hooks/usePatientVitals';
+import {
+  usePatientSignosVitales,
+  isSignosEmpty,
+} from '../hooks/usePatientSignosVitales';
 import { useNotes } from '../hooks/useNotes';
+import { useClientEvents, type ClientEvent } from '../hooks/useClientEvents';
 import PatientClinicalSummary from '../components/PatientClinicalSummary';
 import CollapsibleSideCard from '../components/CollapsibleSideCard';
 import { apiService } from '../services/api';
@@ -67,9 +71,50 @@ import StructuredNoteEditor, { StructuredNomMeter } from '../components/Structur
 import {
   getSchema,
   parseStructuredContent,
+  type NoteSchema,
   type StructuredFormValues,
   type StructuredVitals,
 } from '../data/noteSchemas';
+import { parseTemplateContent } from '../data/customNoteSchemas';
+
+/** Best-effort extraction of a note id from an SSE event payload. */
+function extractNoteId(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const o = data as Record<string, unknown>;
+  const candidate = o.note_id ?? o.noteId ?? o.id ?? o.resource_id;
+  return typeof candidate === 'string' && candidate.trim() ? candidate : null;
+}
+
+/**
+ * v2.0 SSE messages arrive as `{ event, status, result }` (the backend `Message`
+ * struct). When a background completeness analysis finishes, the analysis JSON is
+ * delivered inline in `result` with `status: 200` — read it directly instead of
+ * re-fetching the note, whose embedded `analysis` may still be null at that point.
+ */
+function extractAnalysisFromEvent(
+  data: unknown
+): NoteCompletenessAnalysis | null {
+  if (!data || typeof data !== 'object') return null;
+  const msg = data as Record<string, unknown>;
+  // Only successful messages carry a ready analysis.
+  if (typeof msg.status === 'number' && msg.status !== 200) return null;
+  // The analysis lives in `result`; tolerate payloads that inline it at the top.
+  const candidate =
+    msg.result && typeof msg.result === 'object'
+      ? (msg.result as Record<string, unknown>)
+      : msg;
+  if (typeof candidate.completeness_score !== 'number') return null;
+  return {
+    completeness_score: candidate.completeness_score,
+    missing_fields: Array.isArray(candidate.missing_fields)
+      ? (candidate.missing_fields as string[])
+      : [],
+    reasoning:
+      candidate.reasoning && typeof candidate.reasoning === 'object'
+        ? (candidate.reasoning as Record<string, string>)
+        : {},
+  };
+}
 
 const NoteForm: React.FC = () => {
   const { patientSlug, noteId } = useParams<{
@@ -124,6 +169,9 @@ const NoteForm: React.FC = () => {
     }
   }, [location.pathname, location.state, navigate, patient?.slug, patientSlug]);
   const { vitals, loading: vitalsLoading } = usePatientVitals(patientId);
+  // Última toma de signos vitales de la vista unificada del paciente
+  // (`patient.vital`), fuente del botón «Copiar últimos» del editor estructurado.
+  const { signos: latestSignos } = usePatientSignosVitales(patientId);
   const {
     createNote,
     updateNote,
@@ -137,7 +185,6 @@ const NoteForm: React.FC = () => {
   const [title, setTitle] = useState('');
   const [noteType, setNoteType] = useState<NoteType>('evolution');
   const [content, setContent] = useState('');
-  const [attachments, setAttachments] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingNote, setIsLoadingNote] = useState(false);
   const [completenessAnalysis, setCompletenessAnalysis] =
@@ -154,8 +201,24 @@ const NoteForm: React.FC = () => {
   const [formsLoading, setFormsLoading] = useState(false);
   const [formFieldValues, setFormFieldValues] = useState<FormFieldValue[]>([]);
 
-  // Structured form (Proposal A) state
-  const [noteEditorMode, setNoteEditorMode] = useState<'structured' | 'text'>('text');
+  // Custom note-type templates (Constructor de formularios) — parallel to the
+  // useFormMode/selectedFormId pair above, but for schemas that plug into the
+  // structured editor instead of the PDF form filler.
+  const [customTemplates, setCustomTemplates] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null
+  );
+  const [customSchema, setCustomSchema] = useState<NoteSchema | null>(null);
+  const [customSchemaLoading, setCustomSchemaLoading] = useState(false);
+
+  // Structured form (Proposal A) state. New notes open in the structured form by
+  // default; loading an existing note overrides this based on its content, and note
+  // types without a schema fall back to the text editor automatically.
+  const [noteEditorMode, setNoteEditorMode] = useState<'structured' | 'text'>(
+    STRUCTURED_NOTE_EDITOR_ENABLED ? 'structured' : 'text'
+  );
   const [structuredValues, setStructuredValues] = useState<StructuredFormValues>({});
 
   const [savedTitle, setSavedTitle] = useState('');
@@ -295,6 +358,9 @@ const NoteForm: React.FC = () => {
         setNoteEditorMode('structured');
         setStructuredValues(structuredData.values ?? {});
         setContent('');
+        if (structuredData.templateId) {
+          setSelectedTemplateId(structuredData.templateId);
+        }
       } else {
         setNoteEditorMode('text');
         setContent(mergeNoteBodyForEditor(rawContent));
@@ -406,50 +472,78 @@ const NoteForm: React.FC = () => {
     };
   }, [patientId, noteId, location.state, navigate, toast]);
 
-  const loadCompletenessAnalysis = async (
-    id: string,
-    options?: { retryOn404?: boolean }
-  ): Promise<void> => {
+  // v2.0: the completeness analysis is pushed over the SSE events stream when the
+  // background job finishes (see handleClientEvent). So we only do a single read
+  // here — no polling loop. If the note already carries an embedded analysis
+  // (e.g. reopening an older draft) show it immediately; if it's not ready yet
+  // (404) leave the panel in its "Analizando…" state and let the SSE message
+  // deliver the result.
+  const loadCompletenessAnalysis = async (id: string): Promise<void> => {
     if (!id) return;
     setIsLoadingAnalysis(true);
     setCompletenessAnalysis(null);
-    const maxRetries = 15;
-    const retryDelayMs = 2000;
-    const tryFetch = async (): Promise<boolean> => {
-      try {
-        const analysis = await getNoteAnalysis(id);
-        setCompletenessAnalysis(analysis);
-        return true;
-      } catch (error: unknown) {
-        const status =
-          error && typeof error === 'object' && 'status' in error
-            ? (error as { status: number }).status
-            : 0;
-        if (status === 404 && options?.retryOn404) return false;
-        setCompletenessAnalysis(null);
-        return true;
+    try {
+      const analysis = await getNoteAnalysis(id);
+      setCompletenessAnalysis(analysis);
+      setIsLoadingAnalysis(false);
+    } catch (error: unknown) {
+      const status =
+        error && typeof error === 'object' && 'status' in error
+          ? (error as { status: number }).status
+          : 0;
+      // 404 = not computed yet; keep the loading state and wait for the SSE push.
+      // Any other error → give up quietly.
+      if (status !== 404) {
+        setIsLoadingAnalysis(false);
       }
-    };
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const done = await tryFetch();
-      if (done) break;
-      await new Promise((r) => setTimeout(r, retryDelayMs));
     }
-    setIsLoadingAnalysis(false);
   };
 
-  const loadCompletenessAnalysisWithContent = (
-    id: string,
-    retryOn404 = false
-  ) => loadCompletenessAnalysis(id, { retryOn404 });
+  // v2.0: the completeness analysis is delivered over the SSE events stream when
+  // the background job finishes — this is the primary mechanism (there is no
+  // polling). Apply the analysis from the SSE message as soon as it arrives.
+  const handleClientEvent = useCallback(
+    (evt: ClientEvent) => {
+      if (!currentNoteId || noteStatus !== 'draft' || useFormMode) return;
+
+      // Preferred path (v2.0): the finished analysis is delivered inline in the
+      // SSE message's `result` field — apply it directly, no re-fetch needed.
+      const analysisFromEvent = extractAnalysisFromEvent(evt.data);
+      if (analysisFromEvent) {
+        setCompletenessAnalysis(analysisFromEvent);
+        setIsLoadingAnalysis(false);
+        return;
+      }
+
+      // Fallback: an event without an inline analysis. Don't rely on matching its
+      // fields: if it names a different note, skip it; otherwise re-read the note
+      // in case its embedded `analysis` just became available.
+      const noteIdFromEvent = extractNoteId(evt.data);
+      if (noteIdFromEvent && noteIdFromEvent !== currentNoteId) return;
+      getNoteAnalysis(currentNoteId)
+        .then((analysis) => {
+          setCompletenessAnalysis(analysis);
+          setIsLoadingAnalysis(false);
+        })
+        .catch(() => {
+          // Not ready yet; a later SSE message will deliver the analysis.
+        });
+    },
+    [currentNoteId, noteStatus, useFormMode, getNoteAnalysis]
+  );
+
+  useClientEvents(
+    patientId,
+    noteStatus === 'draft' && !!currentNoteId && !useFormMode,
+    handleClientEvent
+  );
 
   useEffect(() => {
     if (noteStatus !== 'new' || followUpLoadedRef.current || useFormMode)
       return;
     const template = templatesForRole.find((t) => t.type === noteType);
     if (!template) return;
-    const today = format(new Date(), "d 'de' MMM yyyy", { locale: es });
-    setTitle(`${template.name} - ${today}`);
+    setTitle(template.name);
     setContent(template.content);
   }, [noteType, noteStatus, useFormMode, templatesForRole]);
 
@@ -457,13 +551,14 @@ const NoteForm: React.FC = () => {
     if (!isWellness) return;
     if (noteStatus !== 'new') return;
     if (useFormMode) return;
+    if (selectedTemplateId) return;
     if (
       noteType !== 'psychology-interrogation' &&
       noteType !== 'psychology-evolution'
     ) {
       setNoteType('psychology-evolution');
     }
-  }, [isWellness, noteStatus, useFormMode, noteType]);
+  }, [isWellness, noteStatus, useFormMode, noteType, selectedTemplateId]);
 
   useEffect(() => {
     if (location.state?.type && noteStatus === 'new') {
@@ -496,6 +591,78 @@ const NoteForm: React.FC = () => {
     };
   }, [useFormMode, toast]);
 
+  // Custom note-type templates for the "Tipo" selector — fetched unconditionally
+  // (unlike doctorForms above) so they're available as soon as the selector renders.
+  useEffect(() => {
+    let cancelled = false;
+    apiService
+      .listDoctorTemplates({ size: 100 })
+      .then((res) => {
+        if (!cancelled) {
+          setCustomTemplates(
+            res.results.map((t) => ({ id: t.id, name: t.name }))
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast({
+            title: 'No se pudieron cargar tus tipos de nota personalizados',
+            status: 'warning',
+            duration: 3000,
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
+
+  // Fetch+parse the selected custom template's schema whenever it changes.
+  useEffect(() => {
+    if (!selectedTemplateId) {
+      setCustomSchema(null);
+      return;
+    }
+    let cancelled = false;
+    setCustomSchemaLoading(true);
+    apiService
+      .getDoctorTemplate(selectedTemplateId)
+      .then((tpl) => {
+        if (cancelled) return;
+        const parsed = parseTemplateContent(tpl.content);
+        if (parsed) {
+          setCustomSchema({
+            noteTypeLabel: tpl.name,
+            sections: parsed.sections,
+          });
+        } else {
+          setCustomSchema(null);
+          toast({
+            title: 'No se pudo leer este tipo de nota personalizado',
+            status: 'warning',
+            duration: 4000,
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCustomSchema(null);
+          toast({
+            title: 'No se pudo cargar el tipo de nota',
+            status: 'error',
+            duration: 4000,
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCustomSchemaLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTemplateId, toast]);
+
   const handleNoteTypeSelectChange = (value: string) => {
     if (value === 'form') {
       setUseFormMode(true);
@@ -503,10 +670,24 @@ const NoteForm: React.FC = () => {
       setContent('');
       setSelectedFormId(null);
       setFormFieldValues([]);
+      setSelectedTemplateId(null);
+    } else if (value.startsWith('custom:')) {
+      const templateId = value.slice('custom:'.length);
+      setUseFormMode(false);
+      setSelectedFormId(null);
+      setFormFieldValues([]);
+      setNoteType('custom');
+      setSelectedTemplateId(templateId);
+      setNoteEditorMode('structured');
+      const tpl = customTemplates.find((t) => t.id === templateId);
+      if (tpl) {
+        setTitle(tpl.name);
+      }
     } else {
       setUseFormMode(false);
       setSelectedFormId(null);
       setFormFieldValues([]);
+      setSelectedTemplateId(null);
       setNoteType(value as NoteType);
     }
   };
@@ -526,24 +707,34 @@ const NoteForm: React.FC = () => {
     [selectedFormId]
   );
 
+  // Signos vitales para el botón «Copiar últimos» del editor estructurado. Toma
+  // la última medición registrada en la vista unificada del paciente
+  // (`patient.vital`) y la mapea al modelo del formulario (`StructuredVitals`).
   const lastVitals = useMemo(() => {
-    const sorted = [...notes]
-      .filter((n) => n.id !== currentNoteId && n.status === 'signed')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    for (const note of sorted) {
-      const parsed = parseStructuredContent(note.content ?? '');
-      const vit = parsed?.values?.vitals as StructuredVitals | undefined;
-      if (vit && (vit.bp_sys || vit.hr)) {
-        return {
-          vitals: vit,
-          recordedAt: format(new Date(note.createdAt), "d 'de' MMM, yyyy", { locale: es }),
-        };
-      }
-    }
-    return null;
-  }, [notes, currentNoteId]);
+    if (!latestSignos || isSignosEmpty(latestSignos)) return null;
+    const toStr = (v: number | null) => (v === null ? undefined : String(v));
+    const vit: StructuredVitals = {
+      bp_sys: toStr(latestSignos.systolic),
+      bp_dia: toStr(latestSignos.diastolic),
+      hr: toStr(latestSignos.heartRate),
+      rr: toStr(latestSignos.respRate),
+      temp: toStr(latestSignos.temperature),
+      spo2: toStr(latestSignos.spo2),
+      glucose: toStr(latestSignos.glucose),
+      weight: toStr(latestSignos.weight),
+      height: toStr(latestSignos.height),
+      abdominal_perimeter: toStr(latestSignos.abdominalPerimeter),
+    };
+    const recordedAt = latestSignos.takenAt
+      ? format(new Date(latestSignos.takenAt), "d 'de' MMM, yyyy", { locale: es })
+      : 'toma más reciente';
+    return { vitals: vit, recordedAt };
+  }, [latestSignos]);
 
-  const activeSchema = useMemo(() => getSchema(noteType), [noteType]);
+  const activeSchema = useMemo(
+    () => (selectedTemplateId ? customSchema : getSchema(noteType)),
+    [selectedTemplateId, customSchema, noteType]
+  );
 
   if (patientLoading || isLoadingNote || (noteId && notesLoading)) {
     return (
@@ -569,10 +760,6 @@ const NoteForm: React.FC = () => {
     );
   }
 
-  const handleRemoveFile = (index: number) => {
-    setAttachments(attachments.filter((_, i) => i !== index));
-  };
-
   const handleSaveDraft = async () => {
     if (!patientId) return;
 
@@ -597,7 +784,18 @@ const NoteForm: React.FC = () => {
         return;
       }
     } else if (noteEditorMode === 'structured') {
-      // structured mode — always valid (empty note is OK as draft)
+      // structured mode — always valid (empty note is OK as draft), except a
+      // custom template whose schema snapshot hasn't finished loading yet —
+      // saving now would persist the note without its field definitions.
+      if (selectedTemplateId && customSchemaLoading) {
+        toast({
+          title: 'Espera a que cargue el tipo de nota',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
     } else if (!content.trim()) {
       toast({
         title: 'Error',
@@ -621,6 +819,10 @@ const NoteForm: React.FC = () => {
       contentToSave = JSON.stringify({
         structured: true,
         schemaType: noteType,
+        templateId: selectedTemplateId ?? undefined,
+        // Snapshot the custom schema as-is at save time — see
+        // StructuredNoteContent.schema for why (template may change later).
+        schema: selectedTemplateId ? (customSchema ?? undefined) : undefined,
         values: structuredValues,
       });
     } else if (useFormMode) {
@@ -641,7 +843,7 @@ const NoteForm: React.FC = () => {
         setNoteStatus('draft');
         setLastSavedAt(new Date());
         if (currentNoteId && isAiAnalysisMode) {
-          await loadCompletenessAnalysisWithContent(currentNoteId, true);
+          await loadCompletenessAnalysis(currentNoteId);
         }
         toast({
           title: 'Borrador guardado',
@@ -655,7 +857,6 @@ const NoteForm: React.FC = () => {
           content: contentToSave,
           type: noteType,
           title: title || undefined,
-          files: attachments.length > 0 ? attachments : undefined,
           isFollowUpOf: followUpOfRef.current ?? undefined,
         });
         setCurrentNoteId(newNote.id);
@@ -666,7 +867,7 @@ const NoteForm: React.FC = () => {
         setNoteStatus('draft');
         setLastSavedAt(new Date());
         if (newNote.id && isAiAnalysisMode) {
-          await loadCompletenessAnalysisWithContent(newNote.id, true);
+          await loadCompletenessAnalysis(newNote.id);
         }
         toast({
           title: 'Borrador guardado',
@@ -850,7 +1051,13 @@ const NoteForm: React.FC = () => {
                 Tipo
               </Text>
               <Select
-                value={useFormMode ? 'form' : noteType}
+                value={
+                  useFormMode
+                    ? 'form'
+                    : selectedTemplateId
+                      ? `custom:${selectedTemplateId}`
+                      : noteType
+                }
                 onChange={(e) => handleNoteTypeSelectChange(e.target.value)}
                 size="xs"
                 w="auto"
@@ -874,6 +1081,15 @@ const NoteForm: React.FC = () => {
                     <option value="evolution">Nota de Evolución</option>
                     <option value="exploration">Exploración Física</option>
                   </>
+                )}
+                {customTemplates.length > 0 && (
+                  <optgroup label="Mis tipos de nota">
+                    {customTemplates.map((t) => (
+                      <option key={t.id} value={`custom:${t.id}`}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 )}
               </Select>
 
@@ -1043,9 +1259,15 @@ const NoteForm: React.FC = () => {
                   onValuesChange={handleFormValuesChange}
                 />
               </Box>
-            ) : !useFormMode && noteEditorMode === 'structured' && activeSchema ? (
+            ) : !useFormMode && selectedTemplateId && customSchemaLoading ? (
+              <VStack py={16} spacing={3}>
+                <Spinner size="lg" color="brand.500" />
+              </VStack>
+            ) : !useFormMode &&
+              noteEditorMode === 'structured' &&
+              activeSchema ? (
               <StructuredNoteEditor
-                noteType={noteType}
+                schema={activeSchema}
                 values={structuredValues}
                 onChange={setStructuredValues}
                 lastVitals={lastVitals}
@@ -1057,9 +1279,6 @@ const NoteForm: React.FC = () => {
                   onChange={setContent}
                   placeholder="Escribe el contenido de la nota médica..."
                   minHeight="440px"
-                  onAttachFiles={(files) =>
-                    setAttachments((prev) => [...prev, ...files])
-                  }
                 />
               </Box>
             ) : (
@@ -1070,62 +1289,6 @@ const NoteForm: React.FC = () => {
               </Box>
             )}
           </Box>
-
-          {!useFormMode && attachments.length > 0 && (
-            <Box
-              px="18px"
-              pt="10px"
-              pb="14px"
-              borderTop="1px solid"
-              borderColor={borderColor}
-              bg={paperBg}
-            >
-              <Text
-                fontSize="11px"
-                fontFamily="mono"
-                letterSpacing="0.08em"
-                textTransform="uppercase"
-                color={labelColor}
-                mb={2}
-              >
-                Pendientes de guardar
-              </Text>
-              <Text fontSize="11.5px" color={subColor} mb={2}>
-                Se subirán al guardar el borrador por primera vez. Añade más con
-                el clip del editor.
-              </Text>
-              <VStack spacing={1} align="stretch">
-                {attachments.map((file, index) => (
-                  <HStack
-                    key={`${file.name}-${index}`}
-                    p={2}
-                    borderWidth="1px"
-                    borderColor={borderColor}
-                    borderRadius="6px"
-                    bg={cardBg}
-                    justify="space-between"
-                  >
-                    <VStack align="start" spacing={0}>
-                      <Text fontSize="sm" fontWeight={500}>
-                        {file.name}
-                      </Text>
-                      <Text fontSize="xs" color={subColor}>
-                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                      </Text>
-                    </VStack>
-                    <IconButton
-                      aria-label="Eliminar archivo"
-                      icon={<FiX />}
-                      size="sm"
-                      variant="ghost"
-                      colorScheme="red"
-                      onClick={() => handleRemoveFile(index)}
-                    />
-                  </HStack>
-                ))}
-              </VStack>
-            </Box>
-          )}
 
           <HStack
             justify="space-between"

@@ -85,11 +85,9 @@ function mapApiToPatientVitals(data: {
 }
 
 function toUpsertPayload(v: PatientVitals) {
-  const now = new Date().toISOString();
+  // v2.0 clinical-summary list entries are `{ name, suggested }`.
   const line = (e: VitalsLine) => ({
     name: normalizeVitalsListText(e.name),
-    created_at: e.createdAt?.trim() ? e.createdAt : now,
-    // Always send `suggested` so the backend can preserve it on PUT.
     suggested: !!e.suggested,
   });
   return {
@@ -117,13 +115,14 @@ export function usePatientVitals(patientId: string | undefined) {
       }
       setError(null);
       try {
-        const data = await apiService.getPatientVitals(patientId);
-        setRemote(mapApiToPatientVitals(data));
+        // v2.0: the clinical summary is read from the unified patient view.
+        const patient = await apiService.getPatient(patientId);
+        setRemote(mapApiToPatientVitals(patient.summary ?? {}));
       } catch (err: any) {
         if (err?.status === 404) {
           setRemote({ ...EMPTY_VITALS });
         } else {
-          setError(err instanceof Error ? err.message : 'Error al cargar vitals');
+          setError(err instanceof Error ? err.message : 'Error al cargar resumen clínico');
         }
       } finally {
         if (!opts?.silent) {
@@ -149,7 +148,10 @@ export function usePatientVitals(patientId: string | undefined) {
       setSaving(true);
       setError(null);
       try {
-        await apiService.upsertPatientVitals(patientId, toUpsertPayload(next));
+        await apiService.upsertClinicalSummary(
+          patientId,
+          toUpsertPayload(next)
+        );
         await fetchVitals({ silent: true });
       } catch (err: any) {
         const message =

@@ -84,9 +84,27 @@ export async function loadPatients(force = false): Promise<void> {
 
   patientsInflight = (async () => {
     try {
-      const response = await apiService.listPatientsTable({ size: 500 });
+      // v2.0: GET /patients/ returns the enriched unified objects; flatten the
+      // nested identity_sheet/summary into the row shape the mapper expects.
+      const response = await apiService.listPatients({ size: 500 });
       const nowIso = new Date().toISOString();
-      patients = response.results.map((row) => mapTableRowToPatient(row, nowIso));
+      patients = response.results.map((p) =>
+        mapTableRowToPatient(
+          {
+            id: p.id,
+            slug: p.slug,
+            name: p.name,
+            lastname: p.lastname,
+            lastname_m: p.lastname_m,
+            phone: p.phone,
+            birth_date: p.identity_sheet?.birthdate,
+            gender: p.identity_sheet?.gender,
+            blood_type: p.summary?.blood_type ?? undefined,
+            is_recurrent: p.is_recurrent,
+          },
+          nowIso
+        )
+      );
       patientsCount = response.count;
       patientsFetchedAt = Date.now();
     } catch (err) {

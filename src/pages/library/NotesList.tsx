@@ -4,14 +4,10 @@ import {
   Button,
   HStack,
   Icon,
-  IconButton,
   Input,
   InputGroup,
   InputLeftElement,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
+  Spinner,
   Table,
   Tbody,
   Td,
@@ -23,23 +19,28 @@ import {
   useColorModeValue,
   useToast,
 } from '@chakra-ui/react';
-import { FiFileText, FiMoreVertical, FiPlus, FiSearch } from 'react-icons/fi';
+import { FiFileText, FiPlus, FiSearch } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import SurfaceCard from '../../components/SurfaceCard';
 import TablePagination from '../../components/TablePagination';
-import {
-  listCustomNoteSchemas,
-  deleteCustomNoteSchema,
-  type CustomNoteSchemaRecord,
-} from '../../data/customNoteSchemas';
+import { parseTemplateContent } from '../../data/customNoteSchemas';
+import { apiService } from '../../services/api';
+
+interface TemplateRow {
+  id: string;
+  name: string;
+  description?: string;
+  sectionsCount: number;
+  fieldsCount: number;
+  updatedAt: string | null;
+}
 
 const NotesList: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [searchQuery, setSearchQuery] = useState('');
-  const [schemas, setSchemas] = useState<CustomNoteSchemaRecord[]>(() =>
-    listCustomNoteSchemas()
-  );
+  const [templates, setTemplates] = useState<TemplateRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
@@ -53,17 +54,51 @@ const NotesList: React.FC = () => {
   const badgeBg = useColorModeValue('paper.100', 'whiteAlpha.100');
   const badgeColor = useColorModeValue('paper.700', 'paper.300');
 
-  const handleDelete = (id: string, name: string) => {
-    deleteCustomNoteSchema(id);
-    setSchemas(listCustomNoteSchemas());
-    toast({ title: `"${name}" eliminado`, status: 'info' });
-  };
+  // Fetched once with a large page (mirrors FormulariosList's pattern for
+  // /doctor/forms/) — search/pagination below are then done client-side.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    apiService
+      .listDoctorTemplates({ size: 100 })
+      .then((res) => {
+        if (cancelled) return;
+        setTemplates(
+          res.results.map((t) => {
+            const parsed = parseTemplateContent(t.content);
+            return {
+              id: t.id,
+              name: t.name,
+              description: parsed?.description,
+              sectionsCount: parsed?.sections.length ?? 0,
+              fieldsCount:
+                parsed?.sections.reduce(
+                  (acc, sec) => acc + sec.fields.length,
+                  0
+                ) ?? 0,
+              updatedAt: parsed?.updatedAt ?? null,
+            };
+          })
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast({ title: 'No se pudieron cargar las notas', status: 'error' });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
 
   const filtered = useMemo(() => {
-    if (searchQuery.trim() === '') return schemas;
+    if (searchQuery.trim() === '') return templates;
     const q = searchQuery.toLowerCase();
-    return schemas.filter((s) => s.name.toLowerCase().includes(q));
-  }, [schemas, searchQuery]);
+    return templates.filter((s) => s.name.toLowerCase().includes(q));
+  }, [templates, searchQuery]);
 
   useEffect(() => {
     setPage(1);
@@ -74,10 +109,8 @@ const NotesList: React.FC = () => {
     return filtered.slice(start, start + pageSize);
   }, [filtered, page, pageSize]);
 
-  const totalFields = (s: CustomNoteSchemaRecord) =>
-    s.sections.reduce((acc, sec) => acc + sec.fields.length, 0);
-
-  const formatDate = (iso: string) => {
+  const formatDate = (iso: string | null) => {
+    if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('es-MX', {
@@ -130,7 +163,11 @@ const NotesList: React.FC = () => {
       </InputGroup>
 
       <SurfaceCard flush>
-        {schemas.length === 0 ? (
+        {loading ? (
+          <VStack py={16} spacing={3}>
+            <Spinner size="lg" color="brand.500" />
+          </VStack>
+        ) : templates.length === 0 ? (
           <VStack py={12} spacing={4} px={4}>
             <Icon as={FiFileText} boxSize={10} color="paper.400" />
             <Text fontSize="15px" fontWeight={600} color={nameColor} textAlign="center">
@@ -164,6 +201,8 @@ const NotesList: React.FC = () => {
           </VStack>
         ) : (
           <>
+            {/* No actions column: /doctor/templates/ has no DELETE route mounted
+                yet, so rows only support editing (click-through) for now. */}
             <Table variant="simple" size="md">
               <Thead>
                 <Tr>
@@ -198,16 +237,10 @@ const NotesList: React.FC = () => {
                   >
                     Actualizado
                   </Th>
-                  <Th
-                    borderColor={rowBorder}
-                    w="56px"
-                    px={2}
-                  />
                 </Tr>
               </Thead>
               <Tbody>
                 {paged.map((s) => {
-                  const fields = totalFields(s);
                   return (
                     <Tr
                       key={s.id}
@@ -244,9 +277,9 @@ const NotesList: React.FC = () => {
                           fontWeight={500}
                           whiteSpace="nowrap"
                         >
-                          {s.sections.length} {s.sections.length === 1 ? 'sección' : 'secciones'}
+                          {s.sectionsCount} {s.sectionsCount === 1 ? 'sección' : 'secciones'}
                           {' · '}
-                          {fields} {fields === 1 ? 'campo' : 'campos'}
+                          {s.fieldsCount} {s.fieldsCount === 1 ? 'campo' : 'campos'}
                         </Box>
                       </Td>
                       <Td
@@ -256,30 +289,6 @@ const NotesList: React.FC = () => {
                         <Text fontSize="13px" color={metaColor} whiteSpace="nowrap">
                           {formatDate(s.updatedAt)}
                         </Text>
-                      </Td>
-                      <Td borderColor={rowBorder} px={2} onClick={(e) => e.stopPropagation()}>
-                        <Menu placement="bottom-end">
-                          <MenuButton
-                            as={IconButton}
-                            icon={<FiMoreVertical />}
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Opciones de ${s.name}`}
-                            color="text.muted"
-                            _hover={{ bg: 'surface.hover', color: 'text.strong' }}
-                          />
-                          <MenuList minW="160px">
-                            <MenuItem onClick={() => navigate(`/library/notes/${s.id}`)}>
-                              Editar
-                            </MenuItem>
-                            <MenuItem
-                              color="error.600"
-                              onClick={() => handleDelete(s.id, s.name)}
-                            >
-                              Eliminar
-                            </MenuItem>
-                          </MenuList>
-                        </Menu>
                       </Td>
                     </Tr>
                   );

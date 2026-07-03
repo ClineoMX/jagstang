@@ -27,6 +27,7 @@ import { usePatients } from '../hooks/usePatients';
 import { useAppointments } from '../hooks/useAppointments';
 import { apiService } from '../services/api';
 import { normalizePatientSlug } from '../utils/patientSlug';
+import { COMPLIANCE_NAV_ENABLED } from '../config/features';
 
 interface RecentNote {
   id: string;
@@ -95,7 +96,8 @@ const Dashboard: React.FC = () => {
   const [notesCount, setNotesCount] = useState<number | null>(null);
   const [notesDraft, setNotesDraft] = useState<number>(0);
   const [recentNotes, setRecentNotes] = useState<RecentNote[]>([]);
-  const [complianceOverall, setComplianceOverall] = useState<ComplianceOverallScore | null>(null);
+  const [complianceOverall, setComplianceOverall] =
+    useState<ComplianceOverallScore | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -139,6 +141,7 @@ const Dashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!COMPLIANCE_NAV_ENABLED) return;
     let cancelled = false;
     apiService
       .getDoctorComplianceOverallScore()
@@ -306,16 +309,20 @@ const Dashboard: React.FC = () => {
               ),
             tone: notesDraft > 0 ? 'warn' : 'default',
           },
-          {
-            label: 'Cumplimiento NOM',
-            value: compliancePct == null ? '—' : `${compliancePct}%`,
-            sub:
-              complianceOverall == null
-                ? '· sin datos'
-                : `· ${complianceOverall.patient_count} paciente${
-                    complianceOverall.patient_count === 1 ? '' : 's'
-                  }`,
-          },
+          ...(COMPLIANCE_NAV_ENABLED
+            ? [
+                {
+                  label: 'Cumplimiento NOM',
+                  value: compliancePct == null ? '—' : `${compliancePct}%`,
+                  sub:
+                    complianceOverall == null
+                      ? '· sin datos'
+                      : `· ${complianceOverall.patient_count} paciente${
+                          complianceOverall.patient_count === 1 ? '' : 's'
+                        }`,
+                },
+              ]
+            : []),
         ]}
       />
 
@@ -437,7 +444,11 @@ const Dashboard: React.FC = () => {
                       </Text>
                     </Box>
                     <Box minW={0}>
-                      <Text fontWeight={500} fontSize="14px" color="text.strong">
+                      <Text
+                        fontWeight={500}
+                        fontSize="14px"
+                        color="text.strong"
+                      >
                         {p ? `${p.firstName} ${p.lastName}` : 'Paciente'}
                         {isNow && (
                           <Text
@@ -537,7 +548,9 @@ const Dashboard: React.FC = () => {
                   normalizePatientSlug(patientById[note.patient_id]?.slug) ||
                   '';
                 const patientSlugForUrl =
-                  patientSlug || normalizePatientSlug(note.patient_id) || note.patient_id;
+                  patientSlug ||
+                  normalizePatientSlug(note.patient_id) ||
+                  note.patient_id;
 
                 return (
                   <HStack

@@ -1,78 +1,41 @@
 import type { FieldDef, SectionDef } from './noteSchemas';
 
-export interface CustomNoteSchemaRecord {
-  id: string;
-  name: string;
+/**
+ * Modelo JSON que se serializa dentro de `Template.content` (string opaco sin
+ * validación del servidor, ver /doctor/templates/). `updatedAt` es
+ * responsabilidad del cliente: el servidor no expone timestamps de template.
+ */
+export interface NoteTemplateContent {
   description?: string;
   sections: SectionDef[];
-  createdAt: string;
   updatedAt: string;
 }
 
-const STORAGE_KEY = 'clineo_custom_note_schemas';
-
-function load(): CustomNoteSchemaRecord[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as CustomNoteSchemaRecord[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function save(records: CustomNoteSchemaRecord[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-}
-
-export function listCustomNoteSchemas(): CustomNoteSchemaRecord[] {
-  return load().sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  );
-}
-
-export function getCustomNoteSchema(id: string): CustomNoteSchemaRecord | null {
-  return load().find((r) => r.id === id) ?? null;
-}
-
-export function saveCustomNoteSchema(
-  record: Omit<CustomNoteSchemaRecord, 'id' | 'createdAt' | 'updatedAt'> & {
-    id?: string;
-  }
-): CustomNoteSchemaRecord {
-  const all = load();
-  const now = new Date().toISOString();
-
-  if (record.id) {
-    const idx = all.findIndex((r) => r.id === record.id);
-    const updated: CustomNoteSchemaRecord = {
-      ...(all[idx] ?? {}),
-      ...record,
-      id: record.id,
-      createdAt: all[idx]?.createdAt ?? now,
-      updatedAt: now,
-    };
-    if (idx >= 0) {
-      all[idx] = updated;
-    } else {
-      all.push(updated);
-    }
-    save(all);
-    return updated;
-  }
-
-  const created: CustomNoteSchemaRecord = {
-    ...record,
-    id: crypto.randomUUID(),
-    createdAt: now,
-    updatedAt: now,
+export function serializeTemplateContent(content: {
+  description?: string;
+  sections: SectionDef[];
+}): string {
+  const payload: NoteTemplateContent = {
+    ...content,
+    updatedAt: new Date().toISOString(),
   };
-  all.push(created);
-  save(all);
-  return created;
+  return JSON.stringify(payload);
 }
 
-export function deleteCustomNoteSchema(id: string): void {
-  save(load().filter((r) => r.id !== id));
+export function parseTemplateContent(raw: string): NoteTemplateContent | null {
+  try {
+    const parsed = JSON.parse(raw);
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      !Array.isArray(parsed.sections)
+    ) {
+      return null;
+    }
+    return parsed as NoteTemplateContent;
+  } catch {
+    return null;
+  }
 }
 
 export function newField(kind: FieldDef['kind']): FieldDef {

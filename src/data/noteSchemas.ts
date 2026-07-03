@@ -65,8 +65,10 @@ export const VITAL_FIELDS: Array<{
   { key: 'rr', label: 'Frecuencia Respiratoria', unit: 'rpm' },
   { key: 'temp', label: 'Temperatura', unit: '°C' },
   { key: 'spo2', label: 'Saturación O₂', unit: '%' },
+  { key: 'glucose', label: 'Glucosa', unit: 'mg/dL' },
   { key: 'weight', label: 'Peso', unit: 'kg' },
   { key: 'height', label: 'Talla', unit: 'cm' },
+  { key: 'abdominal_perimeter', label: 'Perímetro Abdominal', unit: 'cm' },
   { key: 'bmi', label: 'IMC', unit: 'kg/m²', calc: true },
 ];
 
@@ -131,21 +133,22 @@ const EVOLUTION_SCHEMA: NoteSchema = {
     {
       id: 'diagnostico',
       title: 'Impresión Diagnóstica',
-      hint: 'Selecciona diagnósticos y su severidad.',
+      hint: 'Registra tu impresión diagnóstica con tus propias palabras.',
       fields: [
-        { id: 'dx_chips', kind: 'diagnoses', label: 'Diagnósticos', required: true },
+        {
+          id: 'dx_impresion',
+          kind: 'richlite',
+          label: 'Impresión diagnóstica',
+          required: true,
+          placeholder:
+            'Diagnóstico(s), justificación clínica, diagnósticos diferenciales…',
+        },
         {
           id: 'dx_severity',
           kind: 'select',
           label: 'Severidad',
           options: ['Leve', 'Moderada', 'Severa'],
           placeholder: 'Seleccionar…',
-        },
-        {
-          id: 'dx_notas',
-          kind: 'richlite',
-          label: 'Notas diagnósticas',
-          placeholder: 'Justificación clínica, diferenciales…',
         },
       ],
     },
@@ -271,12 +274,13 @@ const INTERROGATION_SCHEMA: NoteSchema = {
       id: 'diagnostico',
       title: 'Impresión Diagnóstica',
       fields: [
-        { id: 'dx_chips', kind: 'diagnoses', label: 'Diagnósticos', required: true },
         {
-          id: 'dx_notas',
+          id: 'dx_impresion',
           kind: 'richlite',
-          label: 'Notas',
-          placeholder: 'Diagnósticos diferenciales, razonamiento clínico…',
+          label: 'Impresión diagnóstica',
+          required: true,
+          placeholder:
+            'Diagnósticos, diagnósticos diferenciales, razonamiento clínico…',
         },
       ],
     },
@@ -377,12 +381,13 @@ const EXPLORATION_SCHEMA: NoteSchema = {
       id: 'diagnostico',
       title: 'Impresión Diagnóstica',
       fields: [
-        { id: 'dx_chips', kind: 'diagnoses', label: 'Diagnósticos', required: true },
         {
-          id: 'dx_notas',
+          id: 'dx_impresion',
           kind: 'richlite',
-          label: 'Notas diagnósticas',
-          placeholder: 'Diagnósticos diferenciales…',
+          label: 'Impresión diagnóstica',
+          required: true,
+          placeholder:
+            'Diagnóstico(s), justificación clínica, diagnósticos diferenciales…',
         },
       ],
     },
@@ -564,8 +569,10 @@ export interface StructuredVitals {
   rr?: string;
   temp?: string;
   spo2?: string;
+  glucose?: string;
   weight?: string;
   height?: string;
+  abdominal_perimeter?: string;
 }
 
 export interface StructuredFormValues {
@@ -578,6 +585,18 @@ export interface StructuredFormValues {
 export interface StructuredNoteContent {
   structured: true;
   schemaType: NoteType;
+  /** Set when `schemaType === 'custom'` — id of the doctor's saved template. */
+  templateId?: string;
+  /**
+   * Snapshot of the custom template's schema at save time (set alongside
+   * `templateId`). Built-in schema types don't need this — `getSchema()`
+   * already resolves them from static, versioned definitions in this file.
+   * A custom template's fields live on the backend and can change or be
+   * deleted after a note is signed, so previews/PDFs must render the schema
+   * as it was when the note was written, not whatever the template is now —
+   * hence embedding it here instead of re-fetching by `templateId`.
+   */
+  schema?: NoteSchema;
   values: StructuredFormValues;
 }
 
@@ -664,4 +683,139 @@ export function computeBMI(vitals: StructuredVitals): string {
   if (!w || !hcm) return '';
   const m = hcm / 100;
   return (w / (m * m)).toFixed(1);
+}
+
+// ── Compose: structured values → readable HTML ────────────────────────────────
+//
+// Las notas estructuradas se guardan como JSON (`{ structured, schemaType,
+// values }`) para poder reabrirlas en el editor de formulario. Para mostrarlas
+// (preview, PDF, timeline) las «componemos» en un solo documento HTML con un
+// heading por sección y el contenido de cada campo lleno, en el orden del schema.
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function composeVitals(vitals: StructuredVitals): string {
+  const parts: string[] = [];
+  for (const vf of VITAL_FIELDS) {
+    if (vf.kind === 'bp') {
+      const sys = (vitals.bp_sys ?? '').trim();
+      const dia = (vitals.bp_dia ?? '').trim();
+      if (sys || dia) {
+        parts.push(
+          `<li><strong>${escapeHtml(vf.label)}:</strong> ${escapeHtml(
+            sys || '—'
+          )}/${escapeHtml(dia || '—')} ${escapeHtml(vf.unit)}</li>`
+        );
+      }
+      continue;
+    }
+    if (vf.calc) {
+      const bmi = computeBMI(vitals);
+      if (bmi) {
+        parts.push(
+          `<li><strong>${escapeHtml(vf.label)}:</strong> ${escapeHtml(
+            bmi
+          )} ${escapeHtml(vf.unit)}</li>`
+        );
+      }
+      continue;
+    }
+    const val = (vitals[vf.key as keyof StructuredVitals] ?? '').trim();
+    if (val) {
+      parts.push(
+        `<li><strong>${escapeHtml(vf.label)}:</strong> ${escapeHtml(
+          val
+        )} ${escapeHtml(vf.unit)}</li>`
+      );
+    }
+  }
+  return parts.length ? `<ul>${parts.join('')}</ul>` : '';
+}
+
+function composeField(
+  field: FieldDef,
+  values: StructuredFormValues,
+  showLabel: boolean
+): string {
+  const v = values[field.id];
+  const label = escapeHtml(field.label);
+  switch (field.kind) {
+    case 'vitals':
+      return composeVitals(values.vitals ?? {});
+    case 'richlite':
+      // El contenido ya es HTML (TipTap); lo insertamos tal cual.
+      return `${showLabel ? `<h3>${label}</h3>` : ''}${String(v ?? '')}`;
+    case 'symptoms':
+    case 'diagnoses':
+    case 'multi': {
+      const arr = Array.isArray(v) ? (v as string[]) : [];
+      return `<p><strong>${label}:</strong> ${arr
+        .map((x) => escapeHtml(x))
+        .join(', ')}</p>`;
+    }
+    case 'yesno':
+      return `<p><strong>${label}:</strong> ${v === 'yes' ? 'Sí' : 'No'}</p>`;
+    case 'signature':
+      return `${
+        showLabel ? `<h3>${label}</h3>` : ''
+      }<p><img src="${String(v)}" alt="${label}" /></p>`;
+    case 'number': {
+      const unit = field.unit ? ` ${escapeHtml(field.unit)}` : '';
+      return `<p><strong>${label}:</strong> ${escapeHtml(String(v ?? ''))}${unit}</p>`;
+    }
+    case 'date':
+    case 'select':
+    case 'text':
+    default:
+      return `<p><strong>${label}:</strong> ${escapeHtml(String(v ?? ''))}</p>`;
+  }
+}
+
+/** Compone un schema + valores en un documento HTML con headings por sección. */
+export function composeStructuredNote(
+  schema: NoteSchema,
+  values: StructuredFormValues
+): string {
+  const out: string[] = [];
+  for (const section of schema.sections) {
+    const filled = section.fields.filter((f) => isFieldFilled(f, values));
+    if (filled.length === 0) continue;
+    out.push(`<h2>${escapeHtml(section.title)}</h2>`);
+    // Si la sección tiene un solo campo, el título de sección ya da contexto:
+    // omitimos el label del campo para evitar encabezados redundantes.
+    const showLabel = filled.length > 1;
+    for (const f of filled) {
+      const html = composeField(f, values, showLabel).trim();
+      if (html) out.push(html);
+    }
+  }
+  return out.join('\n');
+}
+
+/**
+ * Si `raw` es una nota estructurada (JSON), devuelve su HTML compuesto; en caso
+ * contrario devuelve `null` para que el llamador use el contenido tal cual.
+ *
+ * `templateSchemaCache` es un fallback opcional para notas de plantillas
+ * personalizadas guardadas antes de que existiera el snapshot embebido
+ * (`StructuredNoteContent.schema`) — el llamador lo llena resolviendo
+ * `templateId` contra el backend y lo pasa aquí; sin él, esas notas antiguas
+ * no tienen forma síncrona de resolver su schema.
+ */
+export function structuredNoteToHtml(
+  raw: string,
+  templateSchemaCache?: Record<string, NoteSchema>
+): string | null {
+  const parsed = parseStructuredContent(raw);
+  if (!parsed) return null;
+  const schema =
+    parsed.schema ??
+    (parsed.templateId
+      ? templateSchemaCache?.[parsed.templateId]
+      : undefined) ??
+    getSchema(parsed.schemaType);
+  if (!schema || !Array.isArray(schema.sections)) return null;
+  return composeStructuredNote(schema, parsed.values ?? {});
 }

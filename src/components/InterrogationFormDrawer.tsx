@@ -10,6 +10,7 @@ import FormDrawer from './FormDrawer';
 import {
   INTERROGATION_FORM_SECTIONS,
   buildInterrogationNoteHtml,
+  parseInterrogationNoteHtml,
   interrogationPlaceholder,
 } from '../data/interrogationFormSections';
 import type { Patient } from '../types';
@@ -24,6 +25,11 @@ export interface InterrogationFormDrawerProps {
   onSave: (payload: { content: string; title: string }) => Promise<void>;
   patient: Patient | null;
   identity: PatientIdentity | null;
+  /**
+   * HTML del interrogatorio existente. Si se provee, el drawer abre en modo
+   * edición precargando cada sección; si es nulo, abre en modo creación.
+   */
+  initialContent?: string | null;
 }
 
 const emptyValues = (): Record<string, string> =>
@@ -36,7 +42,9 @@ const InterrogationFormDrawer: React.FC<InterrogationFormDrawerProps> = ({
   onSave,
   patient,
   identity,
+  initialContent,
 }) => {
+  const isEditing = !!(initialContent && initialContent.trim());
   const [values, setValues] = useState<Record<string, string>>(emptyValues());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,9 +55,15 @@ const InterrogationFormDrawer: React.FC<InterrogationFormDrawerProps> = ({
 
   const labelColor = useColorModeValue('paper.600', 'paper.500');
 
-  // Solo al abrir: rellenar "Datos generales" con lo disponible (mismo formato de viñetas).
+  // Solo al abrir: en modo edición precargamos cada sección desde el HTML
+  // existente; en creación rellenamos "Datos generales" con lo disponible.
   useEffect(() => {
     if (!isOpen) return;
+    if (initialContent && initialContent.trim()) {
+      const parsed = parseInterrogationNoteHtml(initialContent);
+      setValues(() => ({ ...emptyValues(), ...parsed }));
+      return;
+    }
     const datosPrefill = buildDatosGeneralesPrefill(
       patientRef.current,
       identityRef.current
@@ -59,7 +73,7 @@ const InterrogationFormDrawer: React.FC<InterrogationFormDrawerProps> = ({
       base.datos_generales = datosPrefill;
       return base;
     });
-  }, [isOpen]);
+  }, [isOpen, initialContent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,10 +103,14 @@ const InterrogationFormDrawer: React.FC<InterrogationFormDrawerProps> = ({
       onClose={onClose}
       crumb="Paciente"
       title="Interrogatorio inicial"
-      sub="Completa las secciones; se guardará como borrador (nota tipo interrogatorio)."
+      sub={
+        isEditing
+          ? 'Actualiza las secciones del interrogatorio inicial.'
+          : 'Completa las secciones; se guardará como borrador (nota tipo interrogatorio).'
+      }
       size="lg"
       onSubmit={handleSubmit}
-      submitLabel="Guardar borrador"
+      submitLabel={isEditing ? 'Guardar cambios' : 'Guardar borrador'}
       submitLoadingText="Guardando…"
       isSubmitting={isSubmitting}
       isSubmitDisabled={allEmpty}
