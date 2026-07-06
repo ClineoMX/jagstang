@@ -25,3 +25,8 @@ export const LIBRARY_NAV_ENABLED = true;
 
 /** Entrada «NOM» (compliance) en el rail / bottom nav del layout. */
 export const COMPLIANCE_NAV_ENABLED = false;
+
+// ── Panel admin (rol ADMIN) ─────────────────────────────────────────────────
+
+/** Entrada «Facturas» en el rail del panel admin, y la ruta /admin/facturas. */
+export const ADMIN_INVOICES_NAV_ENABLED = false;

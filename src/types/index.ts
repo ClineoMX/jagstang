@@ -338,3 +338,30 @@ export interface StaffMember {
   /** Etiqueta libre de antigüedad (p. ej. "Mar 2024" o "Invitado"). */
   since: string;
 }
+
+// Admin panel — vista interna Clineo (solo rol ADMIN).
+// Portado del prototipo de diseño "Clineo Admin Engine".
+export type AdminInvoiceStatus = 'paid' | 'pending' | 'overdue';
+export type AdminClinicPlan = 'Pro' | 'Starter';
+
+export interface AdminKpi {
+  label: string;
+  value: string;
+  delta: string;
+}
+
+export interface AdminClinicSummary {
+  name: string;
+  doctors: number;
+  notes: number;
+  plan: AdminClinicPlan;
+}
+
+export interface AdminInvoiceRow {
+  id: string;
+  clinic: string;
+  plan: string;
+  amount: number;
+  status: AdminInvoiceStatus;
+  date: string;
+}

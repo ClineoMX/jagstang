@@ -31,6 +31,13 @@ import ContactForm from './pages/ContactForm';
 import Team from './pages/Team';
 import TemplateFillForm from './pages/TemplateFillForm';
 
+// Admin panel (ADMIN role only)
+import AdminLayout from './components/AdminLayout';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminInvoices from './pages/admin/AdminInvoices';
+import AdminAuditLog from './pages/admin/AdminAuditLog';
+
 // Components
 import Layout from './components/Layout';
 import BetaPausedOverlay from './components/BetaPausedOverlay';
@@ -42,6 +49,7 @@ import {
   CONTACTS_NAV_ENABLED,
   LIBRARY_NAV_ENABLED,
   COMPLIANCE_NAV_ENABLED,
+  ADMIN_INVOICES_NAV_ENABLED,
 } from './config/features';
 
 /**
@@ -70,7 +78,7 @@ const DEFAULT_ROUTE = HOME_NAV_ENABLED
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
 
   if (isLoading) {
     return null; // Or a loading spinner
@@ -80,19 +88,43 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
     return <Navigate to="/login" replace />;
   }
 
+  // ADMIN-role users only see the admin panel, never the regular doctor frontend.
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Admin Route Component — only users whose token carries "cognito:groups": ["ADMIN"].
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to={DEFAULT_ROUTE} replace />;
+  }
+
   return <>{children}</>;
 };
 
 // Public Route Component
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin } = useAuth();
 
   if (isLoading) {
     return null; // Or a loading spinner
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={isAdmin ? '/admin' : '/'} replace />;
   }
 
   return <>{children}</>;
@@ -103,14 +135,9 @@ const AppRoutes: React.FC = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/landing" element={<LandingPage />} />
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
+      {/* Login must always be reachable — even with a stale/invalid cached
+          session — so it's the one auth page not gated by PublicRoute. */}
+      <Route path="/login" element={<Login />} />
       <Route
         path="/forgot-password"
         element={
@@ -458,6 +485,32 @@ const AppRoutes: React.FC = () => {
           )
         }
       />
+
+      {/* Admin panel — only reachable with an ADMIN cognito group claim */}
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }
+      >
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="usuarios" element={<AdminUsers />} />
+        <Route
+          path="facturas"
+          element={
+            ADMIN_INVOICES_NAV_ENABLED ? (
+              <AdminInvoices />
+            ) : (
+              <Navigate to="/admin/dashboard" replace />
+            )
+          }
+        />
+        <Route path="audit-log" element={<AdminAuditLog />} />
+        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+      </Route>
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to={DEFAULT_ROUTE} replace />} />

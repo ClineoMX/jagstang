@@ -68,6 +68,8 @@ function decodeIdentityToken(
 interface AuthContextType {
   doctor: Doctor | null;
   isAuthenticated: boolean;
+  /** True when the identity token's `cognito:groups` (or `role`) is "ADMIN". */
+  isAdmin: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   loginWithMagicLink: (token: string) => Promise<void>;
   logout: () => void;
@@ -96,10 +98,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const storedDoctor = localStorage.getItem('doctor');
     const storedToken = localStorage.getItem('token');
     const idToken = localStorage.getItem('id_token');
+    const identity = decodeIdentityToken(idToken);
 
     if (storedDoctor && storedToken) {
       const doctorData = JSON.parse(storedDoctor) as Doctor;
-      const identity = decodeIdentityToken(idToken);
       if (
         identity?.name !== undefined ||
         identity?.family_name !== undefined ||
@@ -120,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     }
     setIsLoading(false);
-    if (storedToken) {
+    if (storedToken && (identity?.role ?? '').toUpperCase() !== 'ADMIN') {
       warmClinicData();
     }
   }, []);
@@ -151,7 +153,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
     setDoctor(doctorData);
     localStorage.setItem('doctor', JSON.stringify(doctorData));
-    warmClinicData();
+    if ((identity?.role ?? '').toUpperCase() !== 'ADMIN') {
+      warmClinicData();
+    }
   };
 
   const login = async (credentials: LoginCredentials) => {
@@ -197,11 +201,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('id_token');
   };
 
+  const isAdmin = !!doctor && (doctor.role ?? '').toUpperCase() === 'ADMIN';
+
   return (
     <AuthContext.Provider
       value={{
         doctor,
         isAuthenticated: !!doctor,
+        isAdmin,
         login,
         loginWithMagicLink,
         logout,

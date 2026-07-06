@@ -3,7 +3,12 @@
  * Handles all HTTP requests to the backend API
  */
 
-import { API_BASE_URL, AUTH_API_BASE_URL, API_KEY } from '../config/api';
+import {
+  API_BASE_URL,
+  AUTH_API_BASE_URL,
+  API_KEY,
+  API_ENDPOINTS,
+} from '../config/api';
 import { fetchWithTimeout, ApiTimeoutError } from '../utils/apiStatus';
 
 /** Wider timeout for the enriched (and slower) v2.0 patients list. */
@@ -147,6 +152,105 @@ export interface ApiPatientUnified {
   identity_sheet?: ApiIdentity | null;
   interrogatory?: ApiNote | null;
   vital?: ApiVital | null;
+}
+
+/**
+ * `GET /admin/audit-log?page=&size=` (ADMIN role only) — now has `json:"..."`
+ * tags throughout, so every key is lowercase snake_case (no more PascalCase).
+ * `timestamp` is RFC3339 with offset + microseconds. `metadata` is a real JSON
+ * object (not a serialized string), with `action` (descripción legible) y
+ * campos extra variables (ej. `count`) según el evento — no hay lista cerrada
+ * de llaves.
+ */
+export interface ApiAdminAuditActor {
+  id: string;
+  name: string;
+  lastname: string;
+  role: string;
+  session: string;
+}
+
+export interface ApiAdminAuditRequest {
+  id: string;
+  user_agent: string;
+  ip_address: string;
+  path: string;
+}
+
+export interface ApiAdminAuditEvent {
+  id: string;
+  timestamp: string;
+  event_type: string;
+  /** Go `LogLevel` enum: `"success" | "info" | "warning" | "error"`. */
+  level: string;
+  actor: ApiAdminAuditActor;
+  request: ApiAdminAuditRequest;
+  metadata: Record<string, unknown>;
+}
+
+/**
+ * `GET /admin/users?q=...` (ADMIN role only) — Go struct, sin tags `json:"..."`.
+ *
+ * `RoleLabel` ya viene traducido/formateado (ej. "Doctor", "Administrador") —
+ * mostrar tal cual en el badge de rol; `Role` es el valor crudo del enum, útil
+ * solo para lógica condicional (ej. elegir color de badge). `AvatarURL` puede
+ * venir `""` — cae al fallback de iniciales en cliente (`initialsOf`).
+ * `UpdatedFmt` ya viene formateado en español, no reformatear.
+ */
+export interface ApiAdminUserRow {
+  ID: string;
+  Name: string;
+  Email: string;
+  Role: string;
+  RoleLabel: string;
+  AvatarURL: string;
+  UpdatedFmt: string;
+}
+
+/**
+ * `GET /admin/dashboard/` (ADMIN role only) — snapshot de métricas operativas.
+ * Ventanas half-open en días calendario locales de la clínica
+ * (America/Mexico_City): `today` = hoy vs ayer, `week` = últimos 7 días vs
+ * los 7 anteriores, `month` = últimos 30 vs los 30 anteriores.
+ */
+export interface ApiAdminWindowMetric {
+  current: number;
+  previous: number;
+}
+
+export interface ApiAdminResourceMetrics {
+  total: number;
+  today: ApiAdminWindowMetric;
+  week: ApiAdminWindowMetric;
+  month: ApiAdminWindowMetric;
+}
+
+/** Un día calendario (local) de la serie de actividad de 30 días; sin huecos. */
+export interface ApiAdminSeriesPoint {
+  date: string; // YYYY-MM-DD
+  new_patients: number;
+  notes_created: number;
+  notes_signed: number;
+  appointments: number;
+}
+
+export interface ApiAdminDashboard {
+  generated_at: string;
+  patients: ApiAdminResourceMetrics;
+  notes: {
+    created: ApiAdminResourceMetrics;
+    /** Ventanas sobre `signed_at`; `total` = notas firmadas. */
+    signed: ApiAdminResourceMetrics;
+    drafts: number;
+  };
+  appointments: {
+    /** Ventanas sobre `starts_at` (cuándo ocurre la cita). */
+    scheduled: ApiAdminResourceMetrics;
+    /** Últimos 30 días. `status`: PENDING | CONFIRMED | COMPLETED | CANCELLED. */
+    by_status: Array<{ status: string; count: number }>;
+  };
+  users: Array<{ role: string; count: number }>;
+  series: ApiAdminSeriesPoint[];
 }
 
 class ApiService {
@@ -661,6 +765,121 @@ class ApiService {
       organization: string | null;
       role: string | null;
     }>(`/doctor/contacts/${contactId}/`);
+  }
+
+  // ============ ADMIN PANEL ============
+
+  /** Server-side filters supported by `/admin/audit-log` and its `/export/` sibling. */
+  private buildAuditLogQuery(params?: {
+    page?: number;
+    size?: number;
+    date?: string;
+    event_type?: string;
+    actor_id?: string;
+    session_id?: string;
+    ip_address?: string;
+    request_id?: string;
+  }): string {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.date) queryParams.append('date', params.date);
+    if (params?.event_type) queryParams.append('event_type', params.event_type);
+    if (params?.actor_id) queryParams.append('actor_id', params.actor_id);
+    if (params?.session_id) queryParams.append('session_id', params.session_id);
+    if (params?.ip_address) queryParams.append('ip_address', params.ip_address);
+    if (params?.request_id) queryParams.append('request_id', params.request_id);
+    return queryParams.toString();
+  }
+
+  /**
+   * Admin audit log (ADMIN role only).
+   * GET /admin/audit-log?page=&size=&date=&event_type=&actor_id=&session_id=&ip_address=&request_id=
+   */
+  async getAdminAuditLog(params?: {
+    page?: number;
+    size?: number;
+    date?: string;
+    event_type?: string;
+    actor_id?: string;
+    session_id?: string;
+    ip_address?: string;
+    request_id?: string;
+  }) {
+    const query = this.buildAuditLogQuery(params);
+    return this.request<ApiAdminAuditEvent[]>(
+      `${API_ENDPOINTS.ADMIN_AUDIT_LOG}${query ? `?${query}` : ''}`
+    );
+  }
+
+  /**
+   * Exporta la vista actual del audit log como CSV (ADMIN role only) — mismos
+   * filtros que `getAdminAuditLog`.
+   * GET /admin/audit-log/export/?page=&size=&date=&event_type=&actor_id=&session_id=&ip_address=&request_id=
+   */
+  async exportAdminAuditLog(params?: {
+    page?: number;
+    size?: number;
+    date?: string;
+    event_type?: string;
+    actor_id?: string;
+    session_id?: string;
+    ip_address?: string;
+    request_id?: string;
+  }): Promise<Blob> {
+    const query = this.buildAuditLogQuery(params);
+    const url = `${API_BASE_URL}${API_ENDPOINTS.ADMIN_AUDIT_LOG_EXPORT}${query ? `?${query}` : ''}`;
+    const response = await fetchWithTimeout(url, {
+      headers: this.getAuthHeaders(),
+    });
+    if (!response.ok) {
+      throw {
+        message: 'Error al exportar el audit log',
+        status: response.status,
+      } as ApiError;
+    }
+    return response.blob();
+  }
+
+  /**
+   * Admin users list (ADMIN role only).
+   * GET /admin/users?q=... — `q` filtra por nombre/apellido/email (no por rol todavía).
+   */
+  async getAdminUsers(params?: { q?: string }) {
+    const queryParams = new URLSearchParams();
+    if (params?.q) queryParams.append('q', params.q);
+    const query = queryParams.toString();
+    return this.request<ApiAdminUserRow[]>(
+      `${API_ENDPOINTS.ADMIN_USERS}${query ? `?${query}` : ''}`
+    );
+  }
+
+  /**
+   * Create user (ADMIN role only).
+   * POST /admin/users/ — crea la cuenta en Cognito y el registro en la tabla
+   * `users` (id = sub de Cognito). Devuelve el row con el mismo shape del
+   * listado. 409 = email ya registrado; 400 = payload/contraseña inválida
+   * (política del user pool).
+   */
+  async createAdminUser(data: {
+    email: string;
+    name: string;
+    family_name: string;
+    role: string;
+    password: string;
+  }) {
+    return this.request<ApiAdminUserRow>(API_ENDPOINTS.ADMIN_USERS, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Admin dashboard metrics (ADMIN role only).
+   * GET /admin/dashboard/
+   */
+  async getAdminDashboard() {
+    return this.request<ApiAdminDashboard>(API_ENDPOINTS.ADMIN_DASHBOARD);
   }
 
   // ============ APPOINTMENTS ============

@@ -3,10 +3,11 @@
  */
 
 // URL base de la API
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost';
+export const API_BASE_URL = 'http://localhost';
 
 // URL base de la API de autenticación (puede ser diferente)
-export const AUTH_API_BASE_URL = import.meta.env.VITE_AUTH_API_URL || 'http://localhost';
+export const AUTH_API_BASE_URL =
+  import.meta.env.VITE_AUTH_API_URL || 'http://localhost';
 
 // API Key (si es requerida) - trim para evitar espacios/nuevas líneas del .env
 export const API_KEY = (import.meta.env.VITE_API_KEY || '').trim();
@@ -17,7 +18,7 @@ export const API_ENDPOINTS = {
   AUTH_LOGIN: '/auth/login/',
   AUTH_OTP: '/auth/otp/',
   AUTH_PASSWORD: '/auth/password/',
-  
+
   // Pacientes (disponibles) — vista unificada en v2.0
   PATIENTS_LIST: '/patients/',
   PATIENTS_CREATE: '/patients/',
@@ -53,12 +54,17 @@ export const API_ENDPOINTS = {
   APPOINTMENTS_UPDATE: (id: string) => `/appointments/${id}/`,
   APPOINTMENTS_CONFIRM: (id: string) => `/appointments/${id}/confirm/`,
   APPOINTMENTS_CANCEL: (id: string) => `/appointments/${id}/cancel/`,
-  
+
   // Contactos (no disponibles aún - ver api.md)
   CONTACTS_LIST: '/contacts/',
   CONTACTS_CREATE: '/contacts/',
   CONTACTS_GET: (id: string) => `/contacts/${id}/`,
   CONTACTS_UPDATE: (id: string) => `/contacts/${id}/`,
   CONTACTS_DELETE: (id: string) => `/contacts/${id}/`,
-};
 
+  // Panel admin (rol ADMIN únicamente)
+  ADMIN_DASHBOARD: '/admin/dashboard/',
+  ADMIN_AUDIT_LOG: '/admin/audit-log',
+  ADMIN_AUDIT_LOG_EXPORT: '/admin/audit-log/export/',
+  ADMIN_USERS: '/admin/users/',
+};

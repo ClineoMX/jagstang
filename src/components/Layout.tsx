@@ -11,9 +11,11 @@ import {
   MenuList,
   MenuItem,
   MenuDivider,
+  useColorMode,
   useColorModeValue,
   useBreakpointValue,
   Icon,
+  IconButton,
 } from '@chakra-ui/react';
 import {
   FiHome,
@@ -25,6 +27,8 @@ import {
   FiBook,
   FiBookOpen,
   FiBriefcase,
+  FiSun,
+  FiMoon,
 } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -191,6 +195,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { doctor, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { colorMode, toggleColorMode } = useColorMode();
 
   const bgColor = useColorModeValue('surface.page', 'background.dark');
 
@@ -251,6 +256,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const railLogoPx = useBreakpointValue({ md: 10, lg: 12 }) ?? 12;
   /** Header móvil: barra 56px; 24px se ve pesado en teléfonos estrechos. */
   const mobileHeaderLogoPx = useBreakpointValue({ base: 8 }) ?? 8;
+
+  const themeToggle = (
+    <Tooltip
+      label={colorMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+      placement="bottom"
+    >
+      <IconButton
+        aria-label="Cambiar tema"
+        icon={
+          <Icon as={colorMode === 'dark' ? FiSun : FiMoon} boxSize="16px" />
+        }
+        onClick={toggleColorMode}
+        size="sm"
+        variant="ghost"
+        color="sidebar.muted"
+        _hover={{ color: 'sidebar.fg', bg: 'rgba(255,255,255,0.06)' }}
+        _active={{ bg: 'rgba(255,255,255,0.1)' }}
+      />
+    </Tooltip>
+  );
 
   const userMenu = doctor && (
     <Menu
@@ -385,6 +410,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <ClineoLogo variant="icon" color="white" size={mobileHeaderLogoPx} />
         </Flex>
         <Flex alignItems="center" gap={1}>
+          {themeToggle}
           {userMenu}
         </Flex>
       </Flex>
@@ -440,6 +466,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           borderColor="whiteAlpha.100"
           align="center"
         >
+          {themeToggle}
           {userMenu}
         </VStack>
       </Box>
