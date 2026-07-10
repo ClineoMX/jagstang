@@ -306,36 +306,18 @@ export interface TemplateItem {
   fields: TemplateField[];
 }
 
-// Equipo (staff / team) — roles, turnos y roster del consultorio.
-// Portado del prototipo de diseño "Clineo Equipo A".
-export type StaffRoleId = 'ENFERMERO' | 'ASISTENTE' | 'RECEPCION';
-
-export type ShiftId =
-  | 'matutino'
-  | 'vespertino'
-  | 'nocturno'
-  | 'completa'
-  | 'custom';
-
-export type StaffStatus = 'active' | 'pending';
+// Equipo (staff / team) — roles asignables por un doctor a su equipo.
+// Los ids coinciden con el enum `user_role` del backend (marauder).
+export type StaffRoleId = 'nurse' | 'assistant';
 
 export interface StaffMember {
+  /** User id (Cognito sub) del miembro. */
   id: string;
   firstName: string;
   lastName: string;
   role: StaffRoleId;
-  shift: ShiftId;
-  /** Índices de días laborales (0 = Lunes … 6 = Domingo). */
-  days: number[];
   email: string;
-  phone: string;
-  /** Cédula profesional (solo roles que la requieren). */
-  license?: string;
-  /** Horas manuales cuando `shift === 'custom'`. */
-  shiftStart?: string;
-  shiftEnd?: string;
-  status: StaffStatus;
-  /** Etiqueta libre de antigüedad (p. ej. "Mar 2024" o "Invitado"). */
+  /** Fecha de alta en el equipo (ISO). */
   since: string;
 }
 

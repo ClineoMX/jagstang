@@ -21,6 +21,9 @@ import {
 } from '@chakra-ui/react';
 import { FiSearch } from 'react-icons/fi';
 import { usePatients } from '../hooks/usePatients';
+import { useAuth } from '../contexts/AuthContext';
+import { apiService } from '../services/api';
+import type { ApiTeamMembership } from '../services/api';
 import FormDrawer from './FormDrawer';
 
 const DURATION_OPTIONS = [
@@ -41,7 +44,8 @@ interface AppointmentFormModalProps {
     patient: string,
     starts_at: string,
     duration: string,
-    additional_notes?: string
+    additional_notes?: string,
+    doctor?: string
   ) => Promise<void>;
 }
 
@@ -80,6 +84,7 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
 }) => {
   const toast = useToast();
   const { patients, loading: loadingPatients } = usePatients();
+  const { doctor: authUser } = useAuth();
   const patientSelectorRef = useRef<HTMLDivElement>(null);
 
   const [date, setDate] = useState('');
@@ -90,6 +95,23 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
   const [patientSearch, setPatientSearch] = useState('');
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Asistentes de equipo: la cita se agenda en nombre de un doctor de sus
+  // equipos, elegido aquí (auto-seleccionado cuando solo pertenece a uno).
+  const isAssistant = (authUser?.role ?? '').toUpperCase() === 'ASSISTANT';
+  const [memberships, setMemberships] = useState<ApiTeamMembership[]>([]);
+  const [doctorId, setDoctorId] = useState('');
+
+  useEffect(() => {
+    if (!isOpen || !isAssistant) return;
+    apiService
+      .listTeamMemberships()
+      .then((teams) => {
+        setMemberships(teams);
+        if (teams.length === 1) setDoctorId(teams[0].doctor_id);
+      })
+      .catch(() => setMemberships([]));
+  }, [isOpen, isAssistant]);
 
   const labelColor = useColorModeValue('paper.600', 'paper.500');
   const dropdownBg = useColorModeValue('white', 'paper.800');
@@ -154,12 +176,29 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
       return;
     }
 
+    if (isAssistant && !doctorId) {
+      toast({
+        title: 'Error',
+        description: 'Selecciona el doctor para quien agendas',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const localDate = new Date(`${date}T${time}:00`);
       const starts_at = localDate.toISOString();
-      await createAppointment(patientId, starts_at, duration, additionalNotes);
+      await createAppointment(
+        patientId,
+        starts_at,
+        duration,
+        additionalNotes,
+        isAssistant ? doctorId : undefined
+      );
 
       toast({
         title: 'Cita creada',
@@ -199,6 +238,32 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
       isSubmitting={isSubmitting}
     >
       <VStack spacing={5} align="stretch">
+        {isAssistant && (
+          <FormControl isRequired>
+            <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+              Doctor
+            </FormLabel>
+            <Select
+              {...INPUT_STYLES}
+              value={doctorId}
+              onChange={(e) => setDoctorId(e.target.value)}
+              placeholder={
+                memberships.length === 0
+                  ? 'No perteneces a ningún equipo'
+                  : 'Selecciona un doctor…'
+              }
+              isDisabled={memberships.length === 0}
+            >
+              {memberships.map((m) => (
+                <option key={m.doctor_id} value={m.doctor_id}>
+                  {`${m.doctor_name} ${m.doctor_family_name}`.trim() ||
+                    m.doctor_id}
+                </option>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
         <SimpleGrid columns={2} spacing={3}>
           <FormControl isRequired>
             <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
@@ -310,7 +375,12 @@ const AppointmentFormModal: React.FC<AppointmentFormModalProps> = ({
               >
                 <List spacing={0}>
                   {filteredPatients.length === 0 ? (
-                    <ListItem px={3} py={2.5} fontSize="13px" color={labelColor}>
+                    <ListItem
+                      px={3}
+                      py={2.5}
+                      fontSize="13px"
+                      color={labelColor}
+                    >
                       No se encontraron pacientes
                     </ListItem>
                   ) : (

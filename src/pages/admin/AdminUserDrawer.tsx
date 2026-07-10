@@ -26,6 +26,7 @@ const ROLE_OPTIONS = [
   { value: 'doctor', label: 'Doctor' },
   { value: 'admin', label: 'Administrador' },
   { value: 'assistant', label: 'Asistente' },
+  { value: 'nurse', label: 'Enfermero / a' },
 ];
 
 const PASSWORD_MIN_LENGTH = 8;

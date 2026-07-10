@@ -62,9 +62,20 @@ export const API_ENDPOINTS = {
   CONTACTS_UPDATE: (id: string) => `/contacts/${id}/`,
   CONTACTS_DELETE: (id: string) => `/contacts/${id}/`,
 
+  // Equipo del doctor (nurses / assistants, servido por marauder)
+  TEAM_LIST: '/doctor/team/',
+  TEAM_CREATE: '/doctor/team/',
+  TEAM_DELETE: (id: string) => `/doctor/team/${id}/`,
+  // Lado del miembro: equipos a los que pertenece el usuario autenticado
+  TEAM_MEMBERSHIPS: '/doctor/team/memberships/',
+
   // Panel admin (rol ADMIN únicamente)
   ADMIN_DASHBOARD: '/admin/dashboard/',
   ADMIN_AUDIT_LOG: '/admin/audit-log',
   ADMIN_AUDIT_LOG_EXPORT: '/admin/audit-log/export/',
   ADMIN_USERS: '/admin/users/',
+  // Asignación de enfermeras a equipos de doctores (servido por duosonic)
+  ADMIN_TEAM_ASSIGN: '/admin/team/',
+  ADMIN_TEAM_UNASSIGN: (nurseId: string, doctorId: string) =>
+    `/admin/team/${nurseId}/?doctor=${encodeURIComponent(doctorId)}`,
 };

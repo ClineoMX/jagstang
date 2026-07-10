@@ -18,7 +18,9 @@ import {
 import AdminPageHeader from './AdminPageHeader';
 import AdminStatusPill from './AdminStatusPill';
 import AdminUserDrawer from './AdminUserDrawer';
+import AdminAssignNurseModal from './AdminAssignNurseModal';
 import { useAdminUsers } from '../../hooks/useAdminUsers';
+import type { ApiAdminUserRow } from '../../services/api';
 
 const ROLE_VARIANT_MAP: Record<
   'doctor' | 'admin' | 'wellness' | 'support' | 'default',
@@ -56,7 +58,8 @@ const roleVariantOf = (role: string) => {
   const r = role.toLowerCase();
   if (r.includes('doctor')) return ROLE_VARIANT_MAP.doctor;
   if (r.includes('admin')) return ROLE_VARIANT_MAP.admin;
-  if (r.includes('wellness')) return ROLE_VARIANT_MAP.wellness;
+  if (r.includes('wellness') || r.includes('nurse'))
+    return ROLE_VARIANT_MAP.wellness;
   if (r.includes('support') || r.includes('soporte'))
     return ROLE_VARIANT_MAP.support;
   return ROLE_VARIANT_MAP.default;
@@ -74,6 +77,9 @@ const initialsOf = (name: string) =>
 const AdminUsers: React.FC = () => {
   const [query, setQuery] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [assigningNurse, setAssigningNurse] = useState<ApiAdminUserRow | null>(
+    null
+  );
   const { users, loading, error, refetch } = useAdminUsers(query);
   const cardBg = useColorModeValue('surface.card', 'surface.card');
   const cardBorder = useColorModeValue('border.subtle', 'border.subtle');
@@ -108,6 +114,11 @@ const AdminUsers: React.FC = () => {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         onCreated={refetch}
+      />
+
+      <AdminAssignNurseModal
+        nurse={assigningNurse}
+        onClose={() => setAssigningNurse(null)}
       />
 
       <Box px={{ base: 4, md: 10 }} py={{ base: 5, md: 7 }}>
@@ -185,6 +196,7 @@ const AdminUsers: React.FC = () => {
                   <Th borderBottom="1px solid" borderColor={rowBorder}>
                     Última actualización
                   </Th>
+                  <Th borderBottom="1px solid" borderColor={rowBorder} w="1%" />
                 </Tr>
               </Thead>
               <Tbody>
@@ -240,6 +252,21 @@ const AdminUsers: React.FC = () => {
                         color="text.muted"
                       >
                         {u.UpdatedFmt}
+                      </Td>
+                      <Td
+                        borderBottom="1px solid"
+                        borderColor={rowBorder}
+                        whiteSpace="nowrap"
+                      >
+                        {u.Role === 'nurse' && (
+                          <Button
+                            size="xs"
+                            variant="outline"
+                            onClick={() => setAssigningNurse(u)}
+                          >
+                            Asignar a doctor
+                          </Button>
+                        )}
                       </Td>
                     </Tr>
                   );

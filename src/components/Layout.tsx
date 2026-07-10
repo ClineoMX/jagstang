@@ -210,30 +210,53 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const menuIconColor = useColorModeValue('paper.600', 'paper.400');
 
   const hideNom = (doctor?.role ?? '').toUpperCase() === 'WELLNESS';
-  const navItems = [
-    ...(HOME_NAV_ENABLED ? [{ icon: FiHome, label: 'Home', path: '/' }] : []),
-    ...(PATIENTS_NAV_ENABLED
-      ? [{ icon: FiUsers, label: 'Pacientes', path: '/patients' }]
-      : []),
-    ...(CALENDAR_NAV_ENABLED
-      ? [{ icon: FiCalendar, label: 'Calendario', path: '/calendar' }]
-      : []),
-    {
-      icon: FiBriefcase,
-      label: 'Equipo',
-      path: '/team',
-      disabled: !TEAM_NAV_ENABLED,
-    },
-    ...(CONTACTS_NAV_ENABLED
-      ? [{ icon: FiBook, label: 'Contactos', path: '/contacts' }]
-      : []),
-    ...(LIBRARY_NAV_ENABLED
-      ? [{ icon: FiBookOpen, label: 'Biblioteca', path: '/library' }]
-      : []),
-    ...(COMPLIANCE_NAV_ENABLED && !hideNom
-      ? [{ icon: FiActivity, label: 'NOM', path: '/compliance' }]
-      : []),
-  ];
+  // Miembros de equipo (nurse/assistant): navegación reducida a lo que sus
+  // grants permiten — enfermería ve pacientes, asistentes ven la agenda.
+  const userRole = (doctor?.role ?? '').toUpperCase();
+  const isNurse = userRole === 'NURSE';
+  const isAssistant = userRole === 'ASSISTANT';
+  const isTeamMember = isNurse || isAssistant;
+  const navItems = isTeamMember
+    ? [
+        ...(PATIENTS_NAV_ENABLED && isNurse
+          ? [{ icon: FiUsers, label: 'Pacientes', path: '/patients' }]
+          : []),
+        ...(CALENDAR_NAV_ENABLED && isAssistant
+          ? [{ icon: FiCalendar, label: 'Calendario', path: '/calendar' }]
+          : []),
+        {
+          icon: FiBriefcase,
+          label: 'Equipo',
+          path: '/team',
+          disabled: !TEAM_NAV_ENABLED,
+        },
+      ]
+    : [
+        ...(HOME_NAV_ENABLED
+          ? [{ icon: FiHome, label: 'Home', path: '/' }]
+          : []),
+        ...(PATIENTS_NAV_ENABLED
+          ? [{ icon: FiUsers, label: 'Pacientes', path: '/patients' }]
+          : []),
+        ...(CALENDAR_NAV_ENABLED
+          ? [{ icon: FiCalendar, label: 'Calendario', path: '/calendar' }]
+          : []),
+        {
+          icon: FiBriefcase,
+          label: 'Equipo',
+          path: '/team',
+          disabled: !TEAM_NAV_ENABLED,
+        },
+        ...(CONTACTS_NAV_ENABLED
+          ? [{ icon: FiBook, label: 'Contactos', path: '/contacts' }]
+          : []),
+        ...(LIBRARY_NAV_ENABLED
+          ? [{ icon: FiBookOpen, label: 'Biblioteca', path: '/library' }]
+          : []),
+        ...(COMPLIANCE_NAV_ENABLED && !hideNom
+          ? [{ icon: FiActivity, label: 'NOM', path: '/compliance' }]
+          : []),
+      ];
 
   const handleLogout = () => {
     logout();

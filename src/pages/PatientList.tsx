@@ -58,6 +58,7 @@ import StatusBadge from '../components/StatusBadge';
 import TablePagination from '../components/TablePagination';
 import { usePatients } from '../hooks/usePatients';
 import { useAppointments } from '../hooks/useAppointments';
+import { useAuth } from '../contexts/AuthContext';
 import type { Patient } from '../types';
 
 const calcAge = (dob?: string): number | null => {
@@ -161,6 +162,10 @@ const PatientList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const navigate = useNavigate();
+  const { doctor } = useAuth();
+  // El equipo (nurse) puede ver/actualizar pacientes pero no crearlos:
+  // el backend rechaza el alta y solo el doctor "dueño" puede darla de alta.
+  const canCreatePatient = (doctor?.role ?? '').toUpperCase() !== 'NURSE';
 
   const cardBg = useColorModeValue('white', 'paper.800');
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
@@ -445,21 +450,23 @@ const PatientList: React.FC = () => {
                 </PopoverBody>
               </PopoverContent>
             </Popover>
-            <Button
-              leftIcon={<FiPlus />}
-              size="sm"
-              h="36px"
-              colorScheme="brand"
-              bg="brand.600"
-              color="white"
-              _hover={{ bg: 'brand.700' }}
-              onClick={() => {
-                setEditingPatientId(undefined);
-                onCreateOpen();
-              }}
-            >
-              Nuevo paciente
-            </Button>
+            {canCreatePatient && (
+              <Button
+                leftIcon={<FiPlus />}
+                size="sm"
+                h="36px"
+                colorScheme="brand"
+                bg="brand.600"
+                color="white"
+                _hover={{ bg: 'brand.700' }}
+                onClick={() => {
+                  setEditingPatientId(undefined);
+                  onCreateOpen();
+                }}
+              >
+                Nuevo paciente
+              </Button>
+            )}
           </>
         }
       />
@@ -503,9 +510,11 @@ const PatientList: React.FC = () => {
             <Text fontSize="sm" color={subColor} textAlign="center">
               {searchQuery
                 ? 'Intenta con otro término de búsqueda.'
-                : 'Agrega tu primer paciente para comenzar.'}
+                : canCreatePatient
+                  ? 'Agrega tu primer paciente para comenzar.'
+                  : 'Aún no hay pacientes asignados a tu equipo.'}
             </Text>
-            {!searchQuery && (
+            {!searchQuery && canCreatePatient && (
               <Button
                 leftIcon={<FiPlus />}
                 size="sm"

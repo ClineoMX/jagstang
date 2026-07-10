@@ -15,7 +15,7 @@ export const PATIENTS_NAV_ENABLED = true;
 export const CALENDAR_NAV_ENABLED = true;
 
 /** Entrada «Equipo» en el rail / bottom nav del layout. */
-export const TEAM_NAV_ENABLED = false;
+export const TEAM_NAV_ENABLED = true;
 
 /** Entrada «Contactos» en el rail / bottom nav del layout. */
 export const CONTACTS_NAV_ENABLED = true;

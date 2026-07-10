@@ -26,7 +26,8 @@ export const useAppointments = () => {
       patient: string,
       starts_at: string,
       duration: string,
-      additional_notes?: string
+      additional_notes?: string,
+      doctor?: string
     ) => {
       const trimmed = additional_notes?.trim();
       await apiService.createAppointment({
@@ -34,6 +35,8 @@ export const useAppointments = () => {
         starts_at,
         duration,
         ...(trimmed ? { additional_notes: trimmed } : {}),
+        // Asistentes de equipo: la cita va en la agenda del doctor indicado.
+        ...(doctor ? { doctor } : {}),
       });
       await refreshAppointments();
     },

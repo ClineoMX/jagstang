@@ -253,6 +253,25 @@ export interface ApiAdminDashboard {
   series: ApiAdminSeriesPoint[];
 }
 
+/** `/doctor/team/` — miembro del equipo del doctor (id = user id / Cognito sub). */
+export interface ApiTeamMember {
+  id: string;
+  name: string;
+  family_name: string;
+  email: string;
+  role: 'nurse' | 'assistant';
+  /** Fecha de alta en el equipo (ISO). */
+  since: string;
+}
+
+/** `/doctor/team/memberships/` — un equipo al que pertenece el usuario actual. */
+export interface ApiTeamMembership {
+  doctor_id: string;
+  doctor_name: string;
+  doctor_family_name: string;
+  role: 'nurse' | 'assistant';
+}
+
 class ApiService {
   private getAuthHeaders(): HeadersInit {
     const headers: HeadersInit = {
@@ -875,6 +894,33 @@ class ApiService {
   }
 
   /**
+   * Asigna una enfermera existente al equipo de un doctor (ADMIN role only,
+   * servido por duosonic). Ambos ids son de la tabla `users`.
+   * POST /admin/team/ — 409 = ya está en ese equipo; 400 = doctor/nurse
+   * inválido.
+   */
+  async adminAssignNurse(data: { doctor: string; nurse: string }) {
+    return this.request<{ doctor_id: string; nurse_id: string; role: string }>(
+      API_ENDPOINTS.ADMIN_TEAM_ASSIGN,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Quita a una enfermera del equipo de un doctor (ADMIN role only).
+   * DELETE /admin/team/<nurse_id>/?doctor=<doctor_id>
+   */
+  async adminUnassignNurse(nurseId: string, doctorId: string) {
+    return this.request<void>(
+      API_ENDPOINTS.ADMIN_TEAM_UNASSIGN(nurseId, doctorId),
+      { method: 'DELETE' }
+    );
+  }
+
+  /**
    * Admin dashboard metrics (ADMIN role only).
    * GET /admin/dashboard/
    */
@@ -897,6 +943,8 @@ class ApiService {
     return this.request<{
       results: Array<{
         id: string;
+        /** Dueño de la agenda; difiere del usuario cuando la cita es de un equipo. */
+        doctor_id: string;
         patient_id: string;
         starts_at: string;
         ends_at: string;
@@ -912,9 +960,12 @@ class ApiService {
   /**
    * Create a new appointment
    * POST /doctor/appointments/
+   * `doctor` es opcional: un asistente lo manda para agendar en nombre del
+   * doctor de su equipo (autorizado con un grant de citas a nivel doctor).
    */
   async createAppointment(data: {
     patient: string;
+    doctor?: string;
     starts_at: string;
     duration: string;
     additional_notes?: string;
@@ -932,6 +983,7 @@ class ApiService {
   async getAppointment(id: string) {
     return this.request<{
       id: string;
+      doctor_id: string;
       patient_id: string;
       starts_at: string;
       ends_at: string;
@@ -962,6 +1014,62 @@ class ApiService {
     return this.request<void>(`/doctor/appointments/${id}/`, {
       method: 'DELETE',
     });
+  }
+
+  // ============ TEAM (equipo del doctor) ============
+
+  /**
+   * List the acting doctor's team members
+   * GET /doctor/team/
+   */
+  async listTeamMembers(params?: { page?: number; size?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.size != null) queryParams.append('size', params.size.toString());
+    const query = queryParams.toString();
+    return this.request<{
+      results: ApiTeamMember[];
+      count: number;
+      size: number;
+    }>(`${API_ENDPOINTS.TEAM_LIST}${query ? `?${query}` : ''}`);
+  }
+
+  /**
+   * Add a member to the acting doctor's team. Si el correo no tiene cuenta,
+   * el backend la crea en Cognito (password obligatorio); si ya existe como
+   * nurse/assistant solo se asigna al equipo (password ignorado). Solo
+   * doctores — la asignación por admins va por duosonic (adminAssignNurse).
+   * POST /doctor/team/
+   */
+  async addTeamMember(data: {
+    email: string;
+    name: string;
+    family_name: string;
+    role: 'nurse' | 'assistant';
+    password?: string;
+  }) {
+    return this.request<ApiTeamMember>(API_ENDPOINTS.TEAM_CREATE, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
+   * Remove a member from the team (revoca también sus grants de equipo)
+   * DELETE /doctor/team/<user_id>/
+   */
+  async removeTeamMember(id: string) {
+    return this.request<void>(API_ENDPOINTS.TEAM_DELETE(id), {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Teams the authenticated user belongs to (lado nurse/assistant)
+   * GET /doctor/team/memberships/
+   */
+  async listTeamMemberships() {
+    return this.request<ApiTeamMembership[]>(API_ENDPOINTS.TEAM_MEMBERSHIPS);
   }
 
   // ============ MEDICAL NOTES ============

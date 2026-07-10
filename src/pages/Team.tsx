@@ -1,5 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
   Box,
   Button,
   Container,
@@ -16,6 +28,7 @@ import {
   MenuItem,
   MenuList,
   SimpleGrid,
+  Spinner,
   Text,
   Tooltip,
   VStack,
@@ -32,24 +45,34 @@ import {
   FiSearch,
   FiShield,
   FiUserPlus,
+  FiUserX,
 } from 'react-icons/fi';
 import PageHead from '../components/PageHead';
-import {
-  DAYS,
-  PERMISSION_GROUPS,
-  ROLES,
-  SHIFTS,
-  STAFF,
-  initials,
-  resolveShift,
-  roleById,
-} from '../data/teamData';
-import type { ShiftId, StaffMember, StaffRoleId, StaffStatus } from '../types';
+import { PERMISSION_GROUPS, ROLES, initials, roleById } from '../data/teamData';
+import { apiService } from '../services/api';
+import type { ApiTeamMember, ApiTeamMembership } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+import type { StaffMember, StaffRoleId } from '../types';
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 `;
+
+const toStaffMember = (m: ApiTeamMember): StaffMember => ({
+  id: m.id,
+  firstName: m.name,
+  lastName: m.family_name,
+  email: m.email,
+  role: m.role,
+  since: m.since,
+});
+
+const sinceLabel = (iso: string) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' });
+};
 
 /* ── Avatar con iniciales ─────────────────────────────────────── */
 const StaffAvatar: React.FC<{
@@ -111,39 +134,7 @@ const RoleBadge: React.FC<{ roleId: StaffRoleId }> = ({ roleId }) => {
   );
 };
 
-/* ── Pill de estado ───────────────────────────────────────────── */
-const StatusPill: React.FC<{ status: StaffStatus }> = ({ status }) => (
-  <HStack spacing="6px" color="text.muted" fontSize="11.5px" fontWeight={600}>
-    <Box
-      as="span"
-      w="7px"
-      h="7px"
-      borderRadius="full"
-      bg={status === 'active' ? 'statusSoft.okFg' : 'statusSoft.warnFg'}
-    />
-    {status === 'active' ? 'Activo' : 'Invitación pendiente'}
-  </HStack>
-);
-
-/* ── Texto de turno + rango horario ───────────────────────────── */
-const ShiftText: React.FC<{ staff: StaffMember }> = ({ staff }) => {
-  const s = resolveShift(staff);
-  return (
-    <Text as="span">
-      {s.label}
-      {s.range && (
-        <>
-          {' · '}
-          <Text as="span" fontFamily="mono" fontSize="11.5px">
-            {s.range}
-          </Text>
-        </>
-      )}
-    </Text>
-  );
-};
-
-/* ── Lista de permisos del rol (solo lectura, "provista por la API") ── */
+/* ── Lista de permisos del rol (solo lectura, definida por la API) ── */
 const PermissionList: React.FC<{ roleId: StaffRoleId }> = ({ roleId }) => {
   const r = roleById(roleId);
   const grants = useMemo(() => new Set(r.grants), [r.grants]);
@@ -268,32 +259,25 @@ interface Draft {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
-  license: string;
+  password: string;
   role: StaffRoleId | '';
-  shift: ShiftId;
-  days: number[];
-  shiftStart?: string;
-  shiftEnd?: string;
 }
 
 const emptyDraft: Draft = {
   firstName: '',
   lastName: '',
   email: '',
-  phone: '',
-  license: '',
+  password: '',
   role: '',
-  shift: 'matutino',
-  days: [0, 1, 2, 3, 4],
 };
 
 /* ── Roster (tabla) ───────────────────────────────────────────── */
 const RosterView: React.FC<{
   staff: StaffMember[];
+  loading: boolean;
   onNew: () => void;
-  onEdit: (s: StaffMember) => void;
-}> = ({ staff, onNew, onEdit }) => {
+  onRemove: (s: StaffMember) => void;
+}> = ({ staff, loading, onNew, onRemove }) => {
   const [q, setQ] = useState('');
   const cardBg = useColorModeValue('white', 'paper.800');
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
@@ -328,7 +312,7 @@ const RosterView: React.FC<{
       <PageHead
         crumbs={<>Equipo</>}
         title="Mi equipo"
-        sub={`${staff.length} personas · enfermería, asistentes y recepción`}
+        sub={`${staff.length} ${staff.length === 1 ? 'persona' : 'personas'} · enfermería y asistentes`}
         actions={
           <>
             <InputGroup size="sm" w={{ base: 'full', md: '260px' }}>
@@ -389,16 +373,9 @@ const RosterView: React.FC<{
                 <Box
                   as="th"
                   {...headerCellProps}
-                  display={{ base: 'none', md: 'table-cell' }}
-                >
-                  Turno
-                </Box>
-                <Box
-                  as="th"
-                  {...headerCellProps}
                   display={{ base: 'none', sm: 'table-cell' }}
                 >
-                  Estado
+                  Miembro desde
                 </Box>
                 <Box as="th" {...headerCellProps} w="48px" />
               </Box>
@@ -410,8 +387,6 @@ const RosterView: React.FC<{
                   <Box
                     as="tr"
                     key={s.id}
-                    cursor="pointer"
-                    onClick={() => onEdit(s)}
                     transition="background .1s"
                     _hover={{ bg: rowHoverBg }}
                     borderBottom="1px solid"
@@ -455,24 +430,11 @@ const RosterView: React.FC<{
                       px={4}
                       fontSize="13.5px"
                       color="text.muted"
-                      display={{ base: 'none', md: 'table-cell' }}
-                    >
-                      <ShiftText staff={s} />
-                    </Box>
-                    <Box
-                      as="td"
-                      py="13px"
-                      px={4}
                       display={{ base: 'none', sm: 'table-cell' }}
                     >
-                      <StatusPill status={s.status} />
+                      {sinceLabel(s.since)}
                     </Box>
-                    <Box
-                      as="td"
-                      py="8px"
-                      px={2}
-                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    >
+                    <Box as="td" py="8px" px={2}>
                       <Menu isLazy placement="bottom-end">
                         <Tooltip label="Opciones" placement="left" hasArrow>
                           <MenuButton
@@ -486,8 +448,12 @@ const RosterView: React.FC<{
                           />
                         </Tooltip>
                         <MenuList>
-                          <MenuItem onClick={() => onEdit(s)}>
-                            Editar miembro
+                          <MenuItem
+                            icon={<FiUserX />}
+                            color="statusSoft.critFg"
+                            onClick={() => onRemove(s)}
+                          >
+                            Quitar del equipo
                           </MenuItem>
                         </MenuList>
                       </Menu>
@@ -495,17 +461,26 @@ const RosterView: React.FC<{
                   </Box>
                 );
               })}
-              {list.length === 0 && (
+              {!loading && list.length === 0 && (
                 <Box as="tr">
                   <Box
                     as="td"
-                    colSpan={5}
+                    colSpan={4}
                     textAlign="center"
                     py="48px"
                     color="text.faint"
                     fontSize="13.5px"
                   >
-                    Sin resultados para “{q}”.
+                    {staff.length === 0
+                      ? 'Aún no tienes miembros en tu equipo.'
+                      : `Sin resultados para “${q}”.`}
+                  </Box>
+                </Box>
+              )}
+              {loading && (
+                <Box as="tr">
+                  <Box as="td" colSpan={4} textAlign="center" py="48px">
+                    <Spinner size="sm" color="brand.600" />
                   </Box>
                 </Box>
               )}
@@ -517,83 +492,19 @@ const RosterView: React.FC<{
   );
 };
 
-/* ── Chip de turno ────────────────────────────────────────────── */
-const ShiftChip: React.FC<{
-  active: boolean;
-  icon: React.ElementType;
-  label: string;
-  range: string | null;
-  onClick: () => void;
-}> = ({ active, icon, label, range, onClick }) => (
-  <HStack
-    as="button"
-    type="button"
-    onClick={onClick}
-    spacing={2}
-    px="14px"
-    py="8px"
-    borderRadius="8px"
-    border="1px solid"
-    fontSize="13px"
-    fontWeight={600}
-    transition="all .12s"
-    borderColor={active ? 'brand.400' : 'line.strong'}
-    bg={active ? 'brand.50' : 'surface.card'}
-    color={active ? 'brand.700' : 'text.muted'}
-    boxShadow={active ? '0 0 0 2px rgba(76,183,215,.14)' : undefined}
-    _hover={{ borderColor: active ? 'brand.400' : 'brand.300' }}
-  >
-    <Icon as={icon} boxSize="15px" />
-    <Text as="span">{label}</Text>
-    {range && (
-      <Text as="span" fontSize="11px" fontWeight={500} opacity={0.8}>
-        {range}
-      </Text>
-    )}
-  </HStack>
-);
-
-/* ── Formulario de creación / edición ─────────────────────────── */
+/* ── Formulario de alta ───────────────────────────────────────── */
 const MemberForm: React.FC<{
-  editing: StaffMember | null;
+  saving: boolean;
   onCancel: () => void;
   onSave: (draft: Draft) => void;
-}> = ({ editing, onCancel, onSave }) => {
-  const [f, setF] = useState<Draft>(
-    editing
-      ? {
-          firstName: editing.firstName,
-          lastName: editing.lastName,
-          email: editing.email,
-          phone: editing.phone,
-          license: editing.license ?? '',
-          role: editing.role,
-          shift: editing.shift,
-          days: editing.days,
-          shiftStart: editing.shiftStart,
-          shiftEnd: editing.shiftEnd,
-        }
-      : emptyDraft
-  );
+}> = ({ saving, onCancel, onSave }) => {
+  const [f, setF] = useState<Draft>(emptyDraft);
 
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) =>
     setF((s) => ({ ...s, [k]: v }));
-  const toggleDay = (i: number) =>
-    setF((s) => ({
-      ...s,
-      days: s.days.includes(i)
-        ? s.days.filter((d) => d !== i)
-        : [...s.days, i].sort((a, b) => a - b),
-    }));
 
   const role = f.role ? roleById(f.role) : null;
-  const canSave = Boolean(
-    f.firstName &&
-      f.lastName &&
-      f.email &&
-      f.role &&
-      (f.shift !== 'custom' || (f.shiftStart && f.shiftEnd))
-  );
+  const canSave = Boolean(f.firstName && f.lastName && f.email && f.role);
 
   const cardBg = useColorModeValue('white', 'paper.800');
   const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
@@ -620,13 +531,9 @@ const MemberForm: React.FC<{
       </Button>
 
       <PageHead
-        crumbs={<>Equipo · {editing ? 'Editar' : 'Nuevo miembro'}</>}
-        title={
-          editing
-            ? `${editing.firstName} ${editing.lastName}`
-            : 'Agregar a mi equipo'
-        }
-        sub="Registra a un enfermero, asistente o recepcionista y asígnale un rol."
+        crumbs={<>Equipo · Nuevo miembro</>}
+        title="Agregar a mi equipo"
+        sub="Registra a un enfermero o asistente y asígnale un rol."
       />
 
       <Grid
@@ -662,7 +569,7 @@ const MemberForm: React.FC<{
               <Field
                 label="Correo electrónico"
                 required
-                hint="Recibirá una invitación para activar su cuenta."
+                hint="Si ya tiene cuenta en Clineo, solo se unirá a tu equipo."
               >
                 <Input
                   sx={inputSx}
@@ -672,109 +579,20 @@ const MemberForm: React.FC<{
                   placeholder="nombre@clineo.mx"
                 />
               </Field>
-              <Field label="Teléfono">
+              <Field
+                label="Contraseña inicial"
+                hint="Solo para cuentas nuevas (mínimo 8 caracteres). Compártela con la persona; podrá cambiarla después."
+              >
                 <Input
                   sx={inputSx}
-                  value={f.phone}
-                  onChange={(e) => set('phone', e.target.value)}
-                  placeholder="55 0000 0000"
+                  type="password"
+                  value={f.password}
+                  onChange={(e) => set('password', e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
                 />
               </Field>
             </SimpleGrid>
-            {role?.requiresLicense && (
-              <Box mt={4} animation={`${fadeIn} .22s ease`}>
-                <Field label={role.licenseLabel} required>
-                  <Input
-                    sx={inputSx}
-                    value={f.license}
-                    onChange={(e) => set('license', e.target.value)}
-                    placeholder="Número de cédula"
-                  />
-                </Field>
-              </Box>
-            )}
-          </Box>
-
-          <Box {...cardProps}>
-            <SecLabel>Turno y jornada</SecLabel>
-            <Flex wrap="wrap" gap={2}>
-              {SHIFTS.map((s) => (
-                <ShiftChip
-                  key={s.id}
-                  active={f.shift === s.id}
-                  icon={s.icon}
-                  label={s.label}
-                  range={s.range}
-                  onClick={() => set('shift', s.id)}
-                />
-              ))}
-            </Flex>
-            {f.shift === 'custom' && (
-              <Flex
-                align="flex-end"
-                gap={3}
-                mt="14px"
-                animation={`${fadeIn} .22s ease`}
-              >
-                <Box flex="0 0 auto">
-                  <Field label="Hora de inicio" required>
-                    <Input
-                      sx={inputSx}
-                      w="140px"
-                      type="time"
-                      value={f.shiftStart ?? ''}
-                      onChange={(e) => set('shiftStart', e.target.value)}
-                    />
-                  </Field>
-                </Box>
-                <Text color="text.faint" fontSize="13px" pb="12px">
-                  a
-                </Text>
-                <Box flex="0 0 auto">
-                  <Field label="Hora de fin" required>
-                    <Input
-                      sx={inputSx}
-                      w="140px"
-                      type="time"
-                      value={f.shiftEnd ?? ''}
-                      onChange={(e) => set('shiftEnd', e.target.value)}
-                    />
-                  </Field>
-                </Box>
-              </Flex>
-            )}
-            <Box mt="18px">
-              <Field label="Días laborales">
-                <HStack spacing="6px">
-                  {DAYS.map((d, i) => {
-                    const on = f.days.includes(i);
-                    return (
-                      <Flex
-                        as="button"
-                        type="button"
-                        key={i}
-                        onClick={() => toggleDay(i)}
-                        align="center"
-                        justify="center"
-                        w="38px"
-                        h="38px"
-                        borderRadius="8px"
-                        fontSize="13px"
-                        fontWeight={600}
-                        border="1px solid"
-                        transition="all .12s"
-                        borderColor={on ? 'brand.400' : 'line.strong'}
-                        bg={on ? 'brand.600' : 'surface.card'}
-                        color={on ? 'white' : 'text.muted'}
-                        _hover={{ borderColor: on ? 'brand.400' : 'brand.300' }}
-                      >
-                        {d}
-                      </Flex>
-                    );
-                  })}
-                </HStack>
-              </Field>
-            </Box>
           </Box>
 
           <Box {...cardProps}>
@@ -894,8 +712,8 @@ const MemberForm: React.FC<{
             >
               {role ? (
                 <>
-                  Acceso que tendrá <b>{role.label}</b>, definido por tu
-                  organización.
+                  Acceso que tendrá <b>{role.label}</b> sobre tus pacientes y tu
+                  agenda.
                 </>
               ) : (
                 'Selecciona un rol para ver qué podrá hacer esta persona.'
@@ -926,7 +744,8 @@ const MemberForm: React.FC<{
                   <Icon as={FiShield} boxSize="15px" flexShrink={0} mt="1px" />
                   <Text as="span">
                     Estos permisos vienen del rol y no pueden editarse por
-                    miembro. Para cambiarlos, ajusta el rol.
+                    miembro. Para cambiarlos, quita a la persona y vuélvela a
+                    agregar con otro rol.
                   </Text>
                 </HStack>
               </>
@@ -947,7 +766,7 @@ const MemberForm: React.FC<{
         mt={6}
         maxW={{ lg: 'calc(100% - 404px)' }}
       >
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="outline" onClick={onCancel} isDisabled={saving}>
           Cancelar
         </Button>
         <Button
@@ -956,74 +775,272 @@ const MemberForm: React.FC<{
           color="white"
           _hover={{ bg: 'brand.700' }}
           isDisabled={!canSave}
+          isLoading={saving}
           onClick={() => onSave(f)}
         >
-          {editing ? 'Guardar cambios' : 'Enviar invitación'}
+          Agregar al equipo
         </Button>
       </Flex>
     </Container>
   );
 };
 
-/* ── Página de Equipo (roster + creación/edición) ─────────────── */
+/* ── Página de Equipo (roster + alta) ─────────────────────────── */
+/* ── Vista de solo lectura para nurse/assistant: a qué doctor(es)
+   pertenecen y qué permite su rol. Sin alta/baja — eso es del doctor. ── */
+const MyTeamsView: React.FC = () => {
+  const [memberships, setMemberships] = useState<ApiTeamMembership[]>([]);
+  const [loading, setLoading] = useState(true);
+  const toast = useToast();
+  const cardBg = useColorModeValue('white', 'paper.800');
+  const borderColor = useColorModeValue('line.light', 'whiteAlpha.200');
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    apiService
+      .listTeamMemberships()
+      .then((res) => {
+        if (!cancelled) setMemberships(res);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          toast({ title: 'No se pudo cargar tu equipo.', status: 'error' });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [toast]);
+
+  return (
+    <Container maxW="1180px" px={{ base: 5, md: 10 }} pt={7} pb={18}>
+      <PageHead
+        crumbs={<>Equipo</>}
+        title="Mi equipo"
+        sub="Doctores a los que apoyas y lo que tu rol te permite hacer."
+      />
+
+      {loading ? (
+        <Flex justify="center" py={16}>
+          <Spinner size="lg" color="brand.600" />
+        </Flex>
+      ) : memberships.length === 0 ? (
+        <Box
+          bg={cardBg}
+          border="1px solid"
+          borderColor={borderColor}
+          borderRadius="12px"
+          py={16}
+          px={6}
+          textAlign="center"
+        >
+          <Text fontSize="14px" color="text.faint">
+            Aún no perteneces al equipo de ningún doctor.
+          </Text>
+        </Box>
+      ) : (
+        <VStack align="stretch" spacing={4}>
+          {memberships.map((m) => {
+            const r = roleById(m.role);
+            return (
+              <Box
+                key={m.doctor_id}
+                bg={cardBg}
+                border="1px solid"
+                borderColor={borderColor}
+                borderRadius="12px"
+                p="20px 22px"
+              >
+                <HStack spacing={3} mb={2}>
+                  <StaffAvatar
+                    first={m.doctor_name}
+                    last={m.doctor_family_name}
+                    size={40}
+                    accent={r.accent}
+                  />
+                  <Box>
+                    <Text fontSize="15px" fontWeight={700} color="text.strong">
+                      {m.doctor_name} {m.doctor_family_name}
+                    </Text>
+                    <RoleBadge roleId={m.role} />
+                  </Box>
+                </HStack>
+                <PermissionList roleId={m.role} />
+              </Box>
+            );
+          })}
+        </VStack>
+      )}
+    </Container>
+  );
+};
+
 const Team: React.FC = () => {
+  const { doctor } = useAuth();
+  const isTeamMember = ['NURSE', 'ASSISTANT'].includes(
+    (doctor?.role ?? '').toUpperCase()
+  );
   const [view, setView] = useState<'list' | 'form'>('list');
-  const [staff, setStaff] = useState<StaffMember[]>(STAFF);
-  const [editing, setEditing] = useState<StaffMember | null>(null);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState<StaffMember | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
+  const cancelRemoveRef = useRef<HTMLButtonElement>(null);
   const toast = useToast();
 
-  const save = (draft: Draft) => {
-    const role = draft.role as StaffRoleId;
-    if (editing) {
-      setStaff((s) =>
-        s.map((x) => (x.id === editing.id ? { ...x, ...draft, role } : x))
-      );
-      toast({ title: 'Cambios guardados.', status: 'success' });
-    } else {
-      setStaff((s) => [
-        ...s,
-        {
-          ...draft,
-          role,
-          id: 'n' + Date.now(),
-          status: 'pending',
-          since: 'Invitado',
-        },
-      ]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiService.listTeamMembers({ size: 100 });
+      setStaff(res.results.map(toStaffMember));
+    } catch {
       toast({
-        title: `Invitación enviada a ${draft.email}`,
+        title: 'No se pudo cargar tu equipo.',
+        status: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    // Gestión de equipo es exclusiva del doctor; nurse/assistant ven
+    // MyTeamsView (memberships), que no pasa por este roster.
+    if (isTeamMember) return;
+    void load();
+  }, [isTeamMember, load]);
+
+  const save = async (draft: Draft) => {
+    if (!draft.role) return;
+    setSaving(true);
+    try {
+      const created = await apiService.addTeamMember({
+        email: draft.email.trim(),
+        name: draft.firstName.trim(),
+        family_name: draft.lastName.trim(),
+        role: draft.role,
+        ...(draft.password ? { password: draft.password } : {}),
+      });
+      setStaff((s) => [...s, toStaffMember(created)]);
+      toast({
+        title: `${created.name} ${created.family_name} ahora es parte de tu equipo.`,
         status: 'success',
       });
+      setView('list');
+    } catch (err) {
+      const message = (err as { message?: string })?.message ?? '';
+      const known: Record<string, string> = {
+        'TEAM:ALREADY_MEMBER': 'Esa persona ya está en tu equipo.',
+        'TEAM:USER_NOT_ASSIGNABLE':
+          'Ese correo pertenece a una cuenta que no puede unirse a un equipo.',
+        'TEAM:PASSWORD_REQUIRED':
+          'Ese correo no tiene cuenta: define una contraseña inicial.',
+        'TEAM:INVALID_PASSWORD':
+          'La contraseña no cumple la política (mínimo 8 caracteres, mayúsculas, números y símbolo).',
+      };
+      const friendly = Object.entries(known).find(([code]) =>
+        message.includes(code)
+      )?.[1];
+      toast({
+        title: friendly ?? 'No se pudo agregar al miembro.',
+        status: 'error',
+      });
+    } finally {
+      setSaving(false);
     }
-    setEditing(null);
-    setView('list');
   };
 
-  if (view === 'list') {
-    return (
-      <RosterView
-        staff={staff}
-        onNew={() => {
-          setEditing(null);
-          setView('form');
-        }}
-        onEdit={(s) => {
-          setEditing(s);
-          setView('form');
-        }}
-      />
-    );
+  const confirmRemove = async () => {
+    if (!removing) return;
+    setRemoveBusy(true);
+    try {
+      await apiService.removeTeamMember(removing.id);
+      setStaff((s) => s.filter((x) => x.id !== removing.id));
+      toast({
+        title: `${removing.firstName} ${removing.lastName} ya no forma parte de tu equipo.`,
+        status: 'success',
+      });
+      setRemoving(null);
+    } catch {
+      toast({
+        title: 'No se pudo quitar al miembro.',
+        status: 'error',
+      });
+    } finally {
+      setRemoveBusy(false);
+    }
+  };
+
+  if (isTeamMember) {
+    return <MyTeamsView />;
   }
 
   return (
-    <MemberForm
-      editing={editing}
-      onCancel={() => {
-        setEditing(null);
-        setView('list');
-      }}
-      onSave={save}
-    />
+    <>
+      {view === 'list' ? (
+        <RosterView
+          staff={staff}
+          loading={loading}
+          onNew={() => setView('form')}
+          onRemove={(s) => setRemoving(s)}
+        />
+      ) : (
+        <MemberForm
+          saving={saving}
+          onCancel={() => setView('list')}
+          onSave={save}
+        />
+      )}
+
+      <AlertDialog
+        isOpen={removing !== null}
+        leastDestructiveRef={cancelRemoveRef}
+        onClose={() => !removeBusy && setRemoving(null)}
+        isCentered
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="16px">
+              Quitar del equipo
+            </AlertDialogHeader>
+            <AlertDialogBody fontSize="14px">
+              {removing && (
+                <>
+                  <b>
+                    {removing.firstName} {removing.lastName}
+                  </b>{' '}
+                  perderá el acceso a tus pacientes y a tu agenda. Su cuenta no
+                  se elimina; puedes volver a agregarla cuando quieras.
+                </>
+              )}
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button
+                ref={cancelRemoveRef}
+                variant="outline"
+                onClick={() => setRemoving(null)}
+                isDisabled={removeBusy}
+              >
+                Cancelar
+              </Button>
+              <Button
+                colorScheme="red"
+                ml={3}
+                onClick={confirmRemove}
+                isLoading={removeBusy}
+              >
+                Quitar
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+    </>
   );
 };
 

@@ -74,11 +74,22 @@ const DEFAULT_ROUTE = HOME_NAV_ENABLED
               ? '/compliance'
               : '/profile';
 
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const { isAuthenticated, isLoading, isAdmin } = useAuth();
+/** Rol de miembro de equipo (token `cognito:groups`): acceso reducido. */
+type TeamMemberRole = 'NURSE' | 'ASSISTANT';
+
+/** Landing por rol de miembro: lo único que sus grants permiten operar. */
+const MEMBER_HOME: Record<TeamMemberRole, string> = {
+  NURSE: '/patients',
+  ASSISTANT: '/calendar',
+};
+
+// Protected Route Component. `members` lista los roles de equipo que pueden
+// entrar a la ruta; nurses/assistants fuera de esa lista van a su landing.
+const ProtectedRoute: React.FC<{
+  children: React.ReactNode;
+  members?: TeamMemberRole[];
+}> = ({ children, members = [] }) => {
+  const { isAuthenticated, isLoading, isAdmin, doctor } = useAuth();
 
   if (isLoading) {
     return null; // Or a loading spinner
@@ -91,6 +102,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   // ADMIN-role users only see the admin panel, never the regular doctor frontend.
   if (isAdmin) {
     return <Navigate to="/admin" replace />;
+  }
+
+  const role = (doctor?.role ?? '').toUpperCase();
+  if (
+    (role === 'NURSE' || role === 'ASSISTANT') &&
+    !members.includes(role as TeamMemberRole)
+  ) {
+    return <Navigate to={MEMBER_HOME[role as TeamMemberRole]} replace />;
   }
 
   return <>{children}</>;
@@ -182,7 +201,7 @@ const AppRoutes: React.FC = () => {
         path="/patients"
         element={
           PATIENTS_NAV_ENABLED ? (
-            <ProtectedRoute>
+            <ProtectedRoute members={['NURSE']}>
               <Layout>
                 <PatientList />
               </Layout>
@@ -210,7 +229,7 @@ const AppRoutes: React.FC = () => {
         path="/patients/:patientSlug"
         element={
           PATIENTS_NAV_ENABLED ? (
-            <ProtectedRoute>
+            <ProtectedRoute members={['NURSE']}>
               <Layout>
                 <PatientDetail />
               </Layout>
@@ -280,7 +299,7 @@ const AppRoutes: React.FC = () => {
         path="/calendar"
         element={
           CALENDAR_NAV_ENABLED ? (
-            <ProtectedRoute>
+            <ProtectedRoute members={['ASSISTANT']}>
               <Layout>
                 <CalendarPage />
               </Layout>
@@ -307,7 +326,7 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/profile"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute members={['NURSE', 'ASSISTANT']}>
             <Layout>
               <DoctorProfile />
             </Layout>
@@ -436,7 +455,7 @@ const AppRoutes: React.FC = () => {
       <Route
         path="/team"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute members={['NURSE', 'ASSISTANT']}>
             <Layout>
               <Team />
             </Layout>
