@@ -3,7 +3,7 @@
  */
 
 // URL base de la API
-export const API_BASE_URL = 'http://localhost';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost';
 
 // URL base de la API de autenticación (puede ser diferente)
 export const AUTH_API_BASE_URL =
