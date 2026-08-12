@@ -18,7 +18,7 @@ This is a medical records management web app ("Clineo") for clinics/doctors: pat
 - **date-fns** — date handling
 - **pdf-lib** / **react-pdf** — PDF generation/preview
 - **ESLint 9 (flat config)** + **Prettier 3** — linting/formatting, enforced via `prettier/prettier` ESLint rule
-- Package manager: project has both `bun.lock` and `package-lock.json` present — use always bun.
+- Package manager: **bun** (`bun.lock`). A stray `package-lock.json` also exists — ignore it; always use bun (`bun install`, `bun run …`, `bunx …`).
 
 ## Project Structure
 
@@ -41,12 +41,12 @@ src/
 
 ## Commands
 
-- `npm run dev` — start dev server
-- `npm run build` — typecheck (`tsc -b`) + production build
-- `npm run lint` — run ESLint
-- `npm run preview` — preview production build
+- `bun run dev` — start dev server
+- `bun run build` — typecheck (`tsc -b`) + production build
+- `bun run lint` — run ESLint
+- `bun run preview` — preview production build
 
-Always run `npm run lint` (and `tsc -b` via `npm run build` when relevant) after making changes, before considering a task done.
+Always run `bun run lint` (and `tsc -b` via `bun run build` when relevant) after making changes, before considering a task done.
 
 ## Conventions
 

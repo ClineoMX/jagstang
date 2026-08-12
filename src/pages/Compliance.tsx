@@ -42,8 +42,10 @@ const METRIC_LABELS: Record<string, string> = {
   profile_completeness: 'Completitud del perfil',
   initial_interrogation: 'Interrogatorio inicial',
   signed_notes_ratio: 'Notas firmadas',
-  note_quality_average: 'Calidad de notas',
+  note_quality_average: 'Completitud de plantillas',
   consent_coverage: 'Cobertura de consentimientos',
+  consent_freshness: 'Vigencia de consentimientos',
+  timely_signing: 'Firma oportuna',
 };
 
 type ComplianceReport = {

@@ -24,7 +24,7 @@ export const CONTACTS_NAV_ENABLED = true;
 export const LIBRARY_NAV_ENABLED = true;
 
 /** Entrada «NOM» (compliance) en el rail / bottom nav del layout. */
-export const COMPLIANCE_NAV_ENABLED = false;
+export const COMPLIANCE_NAV_ENABLED = true;
 
 // ── Panel admin (rol ADMIN) ─────────────────────────────────────────────────
 

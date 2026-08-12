@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
 import {
   Box,
   Container,
@@ -67,9 +73,12 @@ import {
   mergeNoteBodyForEditor,
   serializeNoteBodyForApi,
 } from '../utils/noteReceta';
-import StructuredNoteEditor, { StructuredNomMeter } from '../components/StructuredNoteEditor';
+import StructuredNoteEditor, {
+  StructuredNomMeter,
+} from '../components/StructuredNoteEditor';
 import {
   getSchema,
+  getRequiredProgress,
   parseStructuredContent,
   type NoteSchema,
   type StructuredFormValues,
@@ -141,9 +150,10 @@ const NoteForm: React.FC = () => {
     if (!raw) return undefined;
     const match = patients.find((p) => p.slug === raw || p.id === raw);
     if (match?.id) return match.id;
-    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      raw
-    );
+    const looksLikeUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        raw
+      );
     return looksLikeUuid ? raw : undefined;
   }, [patients, patientSlug]);
 
@@ -162,10 +172,13 @@ const NoteForm: React.FC = () => {
     const raw = (patientSlug ?? '').trim().replace(/^#/, '');
     if (!slug || !raw || raw === slug) return;
     if (location.pathname.startsWith(`/patients/${raw}`)) {
-      navigate(location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`), {
-        replace: true,
-        state: location.state,
-      });
+      navigate(
+        location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`),
+        {
+          replace: true,
+          state: location.state,
+        }
+      );
     }
   }, [location.pathname, location.state, navigate, patient?.slug, patientSlug]);
   const { vitals, loading: vitalsLoading } = usePatientVitals(patientId);
@@ -219,7 +232,8 @@ const NoteForm: React.FC = () => {
   const [noteEditorMode, setNoteEditorMode] = useState<'structured' | 'text'>(
     STRUCTURED_NOTE_EDITOR_ENABLED ? 'structured' : 'text'
   );
-  const [structuredValues, setStructuredValues] = useState<StructuredFormValues>({});
+  const [structuredValues, setStructuredValues] =
+    useState<StructuredFormValues>({});
 
   const [savedTitle, setSavedTitle] = useState('');
   const [savedContent, setSavedContent] = useState('');
@@ -301,7 +315,8 @@ const NoteForm: React.FC = () => {
 
   const hasChanges = () => {
     if (useFormMode) return title !== savedTitle || content !== savedContent;
-    if (noteEditorMode === 'structured') return title !== savedTitle || noteType !== savedType;
+    if (noteEditorMode === 'structured')
+      return title !== savedTitle || noteType !== savedType;
     return (
       title !== savedTitle || content !== savedContent || noteType !== savedType
     );
@@ -726,7 +741,9 @@ const NoteForm: React.FC = () => {
       abdominal_perimeter: toStr(latestSignos.abdominalPerimeter),
     };
     const recordedAt = latestSignos.takenAt
-      ? format(new Date(latestSignos.takenAt), "d 'de' MMM, yyyy", { locale: es })
+      ? format(new Date(latestSignos.takenAt), "d 'de' MMM, yyyy", {
+          locale: es,
+        })
       : 'toma más reciente';
     return { vitals: vit, recordedAt };
   }, [latestSignos]);
@@ -830,12 +847,20 @@ const NoteForm: React.FC = () => {
     } else {
       contentToSave = serializeNoteBodyForApi(content);
     }
+    // Template-completeness for compliance: pct of required structured fields
+    // filled (same value shown in the "Integridad NOM-004" meter). Only sent
+    // for structured notes; other modes send no signal (NULL server-side).
+    const completenessPct =
+      noteEditorMode === 'structured' && activeSchema
+        ? getRequiredProgress(activeSchema, structuredValues).pct
+        : undefined;
     try {
       if (currentNoteId) {
         await updateNote(currentNoteId, {
           title,
           content: contentToSave,
           type: noteType,
+          completenessPct,
         });
         setSavedTitle(title);
         setSavedContent(content);
@@ -858,6 +883,7 @@ const NoteForm: React.FC = () => {
           type: noteType,
           title: title || undefined,
           isFollowUpOf: followUpOfRef.current ?? undefined,
+          completenessPct,
         });
         setCurrentNoteId(newNote.id);
         setSavedTitle(newNote.title ?? title);
@@ -1094,58 +1120,78 @@ const NoteForm: React.FC = () => {
               </Select>
 
               {/* Form / Texto mode toggle (solo edición de borradores ya estructurados) */}
-              {STRUCTURED_NOTE_EDITOR_ENABLED && !useFormMode && activeSchema && (
-                <>
-                  <Box w="1px" h="14px" bg={softBorder} flexShrink={0} />
-                  <HStack
-                    spacing={0}
-                    bg={cardBg}
-                    border="1px solid"
-                    borderColor={softBorder}
-                    borderRadius="8px"
-                    p="2px"
-                  >
-                    <Button
-                      size="xs"
-                      variant="unstyled"
-                      display="inline-flex"
-                      alignItems="center"
-                      gap={1}
-                      px={3}
-                      h="26px"
-                      fontSize="12px"
-                      fontWeight={600}
-                      borderRadius="6px"
-                      bg={noteEditorMode === 'structured' ? 'brand.600' : 'transparent'}
-                      color={noteEditorMode === 'structured' ? 'white' : labelColor}
-                      _hover={noteEditorMode !== 'structured' ? { bg: 'surface.hover' } : {}}
-                      onClick={() => setNoteEditorMode('structured')}
+              {STRUCTURED_NOTE_EDITOR_ENABLED &&
+                !useFormMode &&
+                activeSchema && (
+                  <>
+                    <Box w="1px" h="14px" bg={softBorder} flexShrink={0} />
+                    <HStack
+                      spacing={0}
+                      bg={cardBg}
+                      border="1px solid"
+                      borderColor={softBorder}
+                      borderRadius="8px"
+                      p="2px"
                     >
-                      <Icon as={FiList} boxSize="12px" mr={1} />
-                      Formulario
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="unstyled"
-                      display="inline-flex"
-                      alignItems="center"
-                      gap={1}
-                      px={3}
-                      h="26px"
-                      fontSize="12px"
-                      fontWeight={600}
-                      borderRadius="6px"
-                      bg={noteEditorMode === 'text' ? 'brand.600' : 'transparent'}
-                      color={noteEditorMode === 'text' ? 'white' : labelColor}
-                      _hover={noteEditorMode !== 'text' ? { bg: 'surface.hover' } : {}}
-                      onClick={() => setNoteEditorMode('text')}
-                    >
-                      <Icon as={FiType} boxSize="12px" mr={1} />
-                      Texto
-                    </Button>
-                  </HStack>
-                </>
-              )}
+                      <Button
+                        size="xs"
+                        variant="unstyled"
+                        display="inline-flex"
+                        alignItems="center"
+                        gap={1}
+                        px={3}
+                        h="26px"
+                        fontSize="12px"
+                        fontWeight={600}
+                        borderRadius="6px"
+                        bg={
+                          noteEditorMode === 'structured'
+                            ? 'brand.600'
+                            : 'transparent'
+                        }
+                        color={
+                          noteEditorMode === 'structured' ? 'white' : labelColor
+                        }
+                        _hover={
+                          noteEditorMode !== 'structured'
+                            ? { bg: 'surface.hover' }
+                            : {}
+                        }
+                        onClick={() => setNoteEditorMode('structured')}
+                      >
+                        <Icon as={FiList} boxSize="12px" mr={1} />
+                        Formulario
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="unstyled"
+                        display="inline-flex"
+                        alignItems="center"
+                        gap={1}
+                        px={3}
+                        h="26px"
+                        fontSize="12px"
+                        fontWeight={600}
+                        borderRadius="6px"
+                        bg={
+                          noteEditorMode === 'text'
+                            ? 'brand.600'
+                            : 'transparent'
+                        }
+                        color={noteEditorMode === 'text' ? 'white' : labelColor}
+                        _hover={
+                          noteEditorMode !== 'text'
+                            ? { bg: 'surface.hover' }
+                            : {}
+                        }
+                        onClick={() => setNoteEditorMode('text')}
+                      >
+                        <Icon as={FiType} boxSize="12px" mr={1} />
+                        Texto
+                      </Button>
+                    </HStack>
+                  </>
+                )}
 
               {useFormMode && (
                 <>
@@ -1233,7 +1279,11 @@ const NoteForm: React.FC = () => {
                         color={subColor}
                         _groupHover={{ color: 'brand.600' }}
                       >
-                        {format(new Date(noteCreatedAt), "d 'de' MMM, yyyy · HH:mm", { locale: es })}
+                        {format(
+                          new Date(noteCreatedAt),
+                          "d 'de' MMM, yyyy · HH:mm",
+                          { locale: es }
+                        )}
                       </Text>
                       <Icon
                         as={FiEdit3}
@@ -1388,7 +1438,12 @@ const NoteForm: React.FC = () => {
                   }
                   const meta = parts.filter(Boolean).join(' · ');
                   return meta ? (
-                    <Text fontSize="12px" color={subColor} lineHeight="1.25" mt={0.5}>
+                    <Text
+                      fontSize="12px"
+                      color={subColor}
+                      lineHeight="1.25"
+                      mt={0.5}
+                    >
                       {meta}
                     </Text>
                   ) : null;
@@ -1396,7 +1451,6 @@ const NoteForm: React.FC = () => {
               </VStack>
             </HStack>
           </SideCard>
-
           <CollapsibleSideCard heading="Resumen clínico" defaultOpen={false}>
             <PatientClinicalSummary
               vitals={vitals}
@@ -1404,7 +1458,6 @@ const NoteForm: React.FC = () => {
               loading={vitalsLoading}
             />
           </CollapsibleSideCard>
-
           {/* NOM-004 panel: client-side for structured mode, AI for text */}
           {!useFormMode && noteEditorMode === 'structured' && activeSchema ? (
             <Box
@@ -1415,139 +1468,150 @@ const NoteForm: React.FC = () => {
               px={4}
               py={3.5}
             >
-              <StructuredNomMeter schema={activeSchema} values={structuredValues} />
+              <StructuredNomMeter
+                schema={activeSchema}
+                values={structuredValues}
+              />
             </Box>
           ) : (
-          <Box
-            bg={cardBg}
-            border="1px solid"
-            borderColor={borderColor}
-            borderRadius="8px"
-            overflow="hidden"
-          >
             <Box
-              as="button"
-              type="button"
-              onClick={() => setIsNomOpen((v) => !v)}
-              display="block"
-              w="full"
-              textAlign="left"
-              borderRadius="0"
-              px={4}
-              py={3.5}
-              aria-expanded={isNomOpen}
+              bg={cardBg}
+              border="1px solid"
+              borderColor={borderColor}
+              borderRadius="8px"
+              overflow="hidden"
             >
-              <HStack justify="space-between" align="center">
-                <Text
-                  fontSize="11px"
-                  fontFamily="mono"
-                  letterSpacing="0.1em"
-                  textTransform="uppercase"
-                  color={labelColor}
-                  fontWeight={600}
-                  userSelect="none"
-                >
-                  Integridad NOM‑004
-                </Text>
-                <Icon
-                  as={isNomOpen ? FiChevronUp : FiChevronDown}
-                  boxSize={4}
-                  color={labelColor}
-                  flexShrink={0}
-                />
-              </HStack>
-            </Box>
+              <Box
+                as="button"
+                type="button"
+                onClick={() => setIsNomOpen((v) => !v)}
+                display="block"
+                w="full"
+                textAlign="left"
+                borderRadius="0"
+                px={4}
+                py={3.5}
+                aria-expanded={isNomOpen}
+              >
+                <HStack justify="space-between" align="center">
+                  <Text
+                    fontSize="11px"
+                    fontFamily="mono"
+                    letterSpacing="0.1em"
+                    textTransform="uppercase"
+                    color={labelColor}
+                    fontWeight={600}
+                    userSelect="none"
+                  >
+                    Integridad NOM‑004
+                  </Text>
+                  <Icon
+                    as={isNomOpen ? FiChevronUp : FiChevronDown}
+                    boxSize={4}
+                    color={labelColor}
+                    flexShrink={0}
+                  />
+                </HStack>
+              </Box>
 
-            {/* Progress siempre visible */}
-            <Box px={4} pb={isNomOpen ? 0 : 3.5}>
-              {showAnalysisPanel ? (
-                isLoadingAnalysis ? (
-                  <HStack spacing={2} fontSize="12.5px" color={subColor} py={1}>
-                    <Spinner size="xs" />
-                    <Text>Analizando…</Text>
-                  </HStack>
-                ) : completenessAnalysis ? (
-                  <VStack align="stretch" spacing={2} fontSize="12.5px">
-                    <HStack justify="space-between">
-                      <Text color={subColor}>Completitud</Text>
-                      <Text fontWeight={600} color="brand.600">
-                        {completenessAnalysis.completeness_score}%
-                      </Text>
-                    </HStack>
-                    <Box
-                      h="4px"
-                      bg="paper.200"
-                      borderRadius="full"
-                      overflow="hidden"
+              {/* Progress siempre visible */}
+              <Box px={4} pb={isNomOpen ? 0 : 3.5}>
+                {showAnalysisPanel ? (
+                  isLoadingAnalysis ? (
+                    <HStack
+                      spacing={2}
+                      fontSize="12.5px"
+                      color={subColor}
+                      py={1}
                     >
+                      <Spinner size="xs" />
+                      <Text>Analizando…</Text>
+                    </HStack>
+                  ) : completenessAnalysis ? (
+                    <VStack align="stretch" spacing={2} fontSize="12.5px">
+                      <HStack justify="space-between">
+                        <Text color={subColor}>Completitud</Text>
+                        <Text fontWeight={600} color="brand.600">
+                          {completenessAnalysis.completeness_score}%
+                        </Text>
+                      </HStack>
                       <Box
-                        h="100%"
-                        w={`${completenessAnalysis.completeness_score}%`}
-                        bg={
-                          completenessAnalysis.completeness_score >= 90
-                            ? 'statusSoft.okFg'
-                            : completenessAnalysis.completeness_score >= 70
-                              ? 'statusSoft.warnFg'
-                              : 'statusSoft.critFg'
-                        }
-                      />
-                    </Box>
-                  </VStack>
+                        h="4px"
+                        bg="paper.200"
+                        borderRadius="full"
+                        overflow="hidden"
+                      >
+                        <Box
+                          h="100%"
+                          w={`${completenessAnalysis.completeness_score}%`}
+                          bg={
+                            completenessAnalysis.completeness_score >= 90
+                              ? 'statusSoft.okFg'
+                              : completenessAnalysis.completeness_score >= 70
+                                ? 'statusSoft.warnFg'
+                                : 'statusSoft.critFg'
+                          }
+                        />
+                      </Box>
+                    </VStack>
+                  ) : (
+                    <Text fontSize="12.5px" color={subColor}>
+                      Guarda el borrador para obtener el análisis.
+                    </Text>
+                  )
                 ) : (
                   <Text fontSize="12.5px" color={subColor}>
-                    Guarda el borrador para obtener el análisis.
+                    El análisis se genera una vez guardada la nota como
+                    borrador.
                   </Text>
-                )
-              ) : (
-                <Text fontSize="12.5px" color={subColor}>
-                  El análisis se genera una vez guardada la nota como borrador.
-                </Text>
-              )}
+                )}
+              </Box>
+
+              {/* Detalle colapsable */}
+              <Collapse in={isNomOpen} animateOpacity>
+                {showAnalysisPanel && completenessAnalysis && (
+                  <Box
+                    px={4}
+                    pt={3}
+                    pb={3.5}
+                    maxH="260px"
+                    overflowY="auto"
+                    pr={3}
+                  >
+                    <VStack align="stretch" spacing={2}>
+                      {Object.entries(completenessAnalysis.reasoning ?? {}).map(
+                        ([key, value]) => {
+                          const missing = (
+                            completenessAnalysis.missing_fields ?? []
+                          ).includes(key);
+                          return (
+                            <HStack key={key} align="start" spacing={2}>
+                              <Icon
+                                as={missing ? FiX : FiCheck}
+                                color={
+                                  missing
+                                    ? 'statusSoft.critFg'
+                                    : 'statusSoft.okFg'
+                                }
+                                boxSize="14px"
+                                mt="2px"
+                                flexShrink={0}
+                                aria-label={missing ? 'Ausente' : 'Presente'}
+                              />
+                              <Text fontSize="12px" color={subColor}>
+                                {value}
+                              </Text>
+                            </HStack>
+                          );
+                        }
+                      )}
+                    </VStack>
+                  </Box>
+                )}
+              </Collapse>
             </Box>
-
-            {/* Detalle colapsable */}
-            <Collapse in={isNomOpen} animateOpacity>
-              {showAnalysisPanel && completenessAnalysis && (
-                <Box
-                  px={4}
-                  pt={3}
-                  pb={3.5}
-                  maxH="260px"
-                  overflowY="auto"
-                  pr={3}
-                >
-                  <VStack align="stretch" spacing={2}>
-                    {Object.entries(completenessAnalysis.reasoning ?? {}).map(
-                      ([key, value]) => {
-                        const missing = (
-                          completenessAnalysis.missing_fields ?? []
-                        ).includes(key);
-                        return (
-                          <HStack key={key} align="start" spacing={2}>
-                            <Icon
-                              as={missing ? FiX : FiCheck}
-                              color={
-                                missing ? 'statusSoft.critFg' : 'statusSoft.okFg'
-                              }
-                              boxSize="14px"
-                              mt="2px"
-                              flexShrink={0}
-                              aria-label={missing ? 'Ausente' : 'Presente'}
-                            />
-                            <Text fontSize="12px" color={subColor}>
-                              {value}
-                            </Text>
-                          </HStack>
-                        );
-                      }
-                    )}
-                  </VStack>
-                </Box>
-              )}
-            </Collapse>
-          </Box>
-          )} {/* end NOM-004 text mode panel */}
-
+          )}{' '}
+          {/* end NOM-004 text mode panel */}
           {previousNotes.length > 0 && (
             <SideCard heading="Notas anteriores">
               <VStack align="stretch" spacing={2}>
@@ -1596,7 +1660,13 @@ const NoteForm: React.FC = () => {
             color="text.muted"
             _hover={{ color: 'text.strong', bg: 'surface.hover' }}
           />
-          <ModalHeader px={7} pt={6} pb={4} borderBottom="1px solid" borderColor={borderColor}>
+          <ModalHeader
+            px={7}
+            pt={6}
+            pb={4}
+            borderBottom="1px solid"
+            borderColor={borderColor}
+          >
             <Box pr={8}>
               <HStack spacing={3} align="center" mb={1.5}>
                 <Box
@@ -1624,7 +1694,12 @@ const NoteForm: React.FC = () => {
                   Firma
                 </Text>
               </HStack>
-              <Text fontSize="18px" fontWeight={600} letterSpacing="-0.012em" color={inkStrong}>
+              <Text
+                fontSize="18px"
+                fontWeight={600}
+                letterSpacing="-0.012em"
+                color={inkStrong}
+              >
                 Confirmar firma
               </Text>
             </Box>
@@ -1632,8 +1707,8 @@ const NoteForm: React.FC = () => {
           <ModalBody px={7} py={5}>
             <VStack spacing={3} align="stretch">
               <Text fontSize="13.5px" color={bodyColor} lineHeight="1.55">
-                Una vez firmada, la nota no podrá ser modificada. Esta acción es permanente e
-                irreversible.
+                Una vez firmada, la nota no podrá ser modificada. Esta acción es
+                permanente e irreversible.
               </Text>
               <Box
                 bg={paperBg}

@@ -312,7 +312,10 @@ class ApiService {
   }) {
     const { response, onMessage, signal } = args;
     if (!response.body) {
-      throw { message: 'Respuesta sin body (stream no disponible)', status: 0 } as ApiError;
+      throw {
+        message: 'Respuesta sin body (stream no disponible)',
+        status: 0,
+      } as ApiError;
     }
 
     const reader = response.body.getReader();
@@ -384,7 +387,10 @@ class ApiService {
   }) {
     const { response, onObject, signal } = args;
     if (!response.body) {
-      throw { message: 'Respuesta sin body (stream no disponible)', status: 0 } as ApiError;
+      throw {
+        message: 'Respuesta sin body (stream no disponible)',
+        status: 0,
+      } as ApiError;
     }
 
     const reader = response.body.getReader();
@@ -393,7 +399,7 @@ class ApiService {
 
     const tryExtract = () => {
       // Avanza hasta el primer "{"
-      let start = buffer.indexOf('{');
+      const start = buffer.indexOf('{');
       if (start === -1) {
         buffer = buffer.trimStart();
         return;
@@ -548,7 +554,8 @@ class ApiService {
   async listPatients(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -682,7 +689,8 @@ class ApiService {
   async listContacts(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -801,7 +809,8 @@ class ApiService {
   }): string {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
     if (params?.date) queryParams.append('date', params.date);
     if (params?.event_type) queryParams.append('event_type', params.event_type);
     if (params?.actor_id) queryParams.append('actor_id', params.actor_id);
@@ -937,7 +946,8 @@ class ApiService {
   async listAppointments(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
 
     const query = queryParams.toString();
     return this.request<{
@@ -1025,7 +1035,8 @@ class ApiService {
   async listTeamMembers(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       results: ApiTeamMember[];
@@ -1089,7 +1100,8 @@ class ApiService {
   async getDoctorNotesRecent(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       results: Array<{
@@ -1115,8 +1127,10 @@ class ApiService {
    */
   async getDoctorFields(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
-    if (params?.page != null) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.page != null)
+      queryParams.append('page', params.page.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       results: Array<{
@@ -1135,7 +1149,11 @@ class ApiService {
    * POST /doctor/fields/
    * Crear campo del doctor. Payload: { name, type, required }.
    */
-  async createDoctorField(body: { name: string; type: string; required: boolean }) {
+  async createDoctorField(body: {
+    name: string;
+    type: string;
+    required: boolean;
+  }) {
     return this.request<{
       id: string;
       name: string;
@@ -1205,8 +1223,10 @@ class ApiService {
    */
   async listDoctorForms(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
-    if (params?.page != null) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.page != null)
+      queryParams.append('page', params.page.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       results: Array<{ id: string; name: string }>;
@@ -1227,7 +1247,13 @@ class ApiService {
       key: string;
       fields: Array<{
         id: string;
-        position?: { x: number; y: number; page: number; width: number; height: number };
+        position?: {
+          x: number;
+          y: number;
+          page: number;
+          width: number;
+          height: number;
+        };
       }>;
     }>(`/doctor/forms/${formId}/`);
   }
@@ -1238,9 +1264,14 @@ class ApiService {
    */
   async getDoctorAsset(assetId: string): Promise<Blob> {
     const url = `${API_BASE_URL}/doctor/assets/${assetId}/`;
-    const response = await fetchWithTimeout(url, { headers: this.getAuthHeaders() });
+    const response = await fetchWithTimeout(url, {
+      headers: this.getAuthHeaders(),
+    });
     if (!response.ok) {
-      throw { message: 'Error al descargar el asset', status: response.status } as ApiError;
+      throw {
+        message: 'Error al descargar el asset',
+        status: response.status,
+      } as ApiError;
     }
     return response.blob();
   }
@@ -1296,8 +1327,10 @@ class ApiService {
    */
   async listDoctorTemplates(params?: { page?: number; size?: number }) {
     const queryParams = new URLSearchParams();
-    if (params?.page != null) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.page != null)
+      queryParams.append('page', params.page.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
     return this.request<{
       results: DoctorTemplateDTO[];
@@ -1386,10 +1419,14 @@ class ApiService {
    * has its own dedicated read path (`getPatient().interrogatory`, unified
    * patient view) and its own UI, so it's never part of the general notes feed.
    */
-  async listNotes(patientId: string, params?: { page?: number; size?: number }) {
+  async listNotes(
+    patientId: string,
+    params?: { page?: number; size?: number }
+  ) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
     queryParams.append('note_type_not', 'interrogation');
 
     const query = queryParams.toString();
@@ -1420,15 +1457,18 @@ class ApiService {
       title?: string;
       parent_id?: string;
       custom_date?: string;
+      completeness_pct?: number;
     }
   ) {
-    const body: Record<string, string> = {
+    const body: Record<string, string | number> = {
       content: data.content,
       note_type: data.note_type,
     };
     if (data.title) body.title = data.title;
     if (data.parent_id) body.parent_id = data.parent_id;
     if (data.custom_date) body.custom_date = data.custom_date;
+    if (data.completeness_pct !== undefined)
+      body.completeness_pct = data.completeness_pct;
     return this.request<ApiNote>(`/patients/${patientId}/notes/`, {
       method: 'POST',
       body: JSON.stringify(body),
@@ -1453,6 +1493,7 @@ class ApiService {
       content?: string;
       type?: string;
       custom_date?: string;
+      completeness_pct?: number;
     }
   ) {
     const endpoint = `/patients/${patientId}/notes/${noteId}/`;
@@ -1461,16 +1502,20 @@ class ApiService {
       if (data.title !== undefined) formData.append('title', data.title);
       if (data.content !== undefined) formData.append('content', data.content);
       if (data.type !== undefined) formData.append('note_type', data.type);
+      if (data.completeness_pct !== undefined)
+        formData.append('completeness_pct', String(data.completeness_pct));
       formData.append('custom_date', data.custom_date);
       return this.request<ApiNote>(endpoint, {
         method: 'PATCH',
         body: formData,
       });
     }
-    const body: Record<string, string> = {};
+    const body: Record<string, string | number> = {};
     if (data.title !== undefined) body.title = data.title;
     if (data.content !== undefined) body.content = data.content;
     if (data.type !== undefined) body.note_type = data.type;
+    if (data.completeness_pct !== undefined)
+      body.completeness_pct = data.completeness_pct;
     return this.request<ApiNote>(endpoint, {
       method: 'PATCH',
       body: JSON.stringify(body),
@@ -1545,7 +1590,9 @@ class ApiService {
     };
 
     try {
-      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+      const contentType = (
+        response.headers.get('content-type') || ''
+      ).toLowerCase();
 
       if (contentType.includes('text/event-stream')) {
         await this.consumeSseStream({
@@ -1558,7 +1605,10 @@ class ApiService {
               return;
             }
             if (event === 'error') {
-              const apiErr = { message: data || 'Error en SSE', status: 0 } as ApiError;
+              const apiErr = {
+                message: data || 'Error en SSE',
+                status: 0,
+              } as ApiError;
               onError?.(apiErr);
               return;
             }
@@ -1637,7 +1687,10 @@ class ApiService {
               return;
             }
             if (t === 'error') {
-              const apiErr = { message: d || 'Error en stream', status: 0 } as ApiError;
+              const apiErr = {
+                message: d || 'Error en stream',
+                status: 0,
+              } as ApiError;
               onError?.(apiErr);
               return;
             }
@@ -1656,7 +1709,10 @@ class ApiService {
       const apiErr: ApiError =
         err && typeof err === 'object' && 'status' in err
           ? (err as ApiError)
-          : ({ message: err?.message || 'Error de streaming', status: 0 } as ApiError);
+          : ({
+              message: err?.message || 'Error de streaming',
+              status: 0,
+            } as ApiError);
       onError?.(apiErr);
       throw apiErr;
     }
@@ -1725,7 +1781,10 @@ class ApiService {
       const apiErr: ApiError =
         err && typeof err === 'object' && 'status' in err
           ? (err as ApiError)
-          : ({ message: err?.message || 'Events stream error', status: 0 } as ApiError);
+          : ({
+              message: err?.message || 'Events stream error',
+              status: 0,
+            } as ApiError);
       onError?.(apiErr);
       throw apiErr;
     }
@@ -1742,7 +1801,8 @@ class ApiService {
   ) {
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.size != null) queryParams.append('size', params.size.toString());
+    if (params?.size != null)
+      queryParams.append('size', params.size.toString());
     const query = queryParams.toString();
 
     return this.request<{
@@ -1768,9 +1828,14 @@ class ApiService {
    */
   async getPatientAsset(patientId: string, assetId: string): Promise<Blob> {
     const url = `${API_BASE_URL}/patients/${patientId}/assets/${assetId}/`;
-    const response = await fetchWithTimeout(url, { headers: this.getAuthHeaders() });
+    const response = await fetchWithTimeout(url, {
+      headers: this.getAuthHeaders(),
+    });
     if (!response.ok) {
-      throw { message: 'Error al descargar el asset', status: response.status } as ApiError;
+      throw {
+        message: 'Error al descargar el asset',
+        status: response.status,
+      } as ApiError;
     }
     return response.blob();
   }
@@ -1842,7 +1907,11 @@ class ApiService {
     }
   }
 
-  async login(credentials: { username: string; password: string; method: string }) {
+  async login(credentials: {
+    username: string;
+    password: string;
+    method: string;
+  }) {
     return this.authRequest<{ access: string; refresh: string; id: string }>(
       '/auth/login/',
       {
@@ -1859,7 +1928,11 @@ class ApiService {
     });
   }
 
-  async changePassword(data: { code: string; username: string; password: string }) {
+  async changePassword(data: {
+    code: string;
+    username: string;
+    password: string;
+  }) {
     return this.authRequest<void>('/auth/password/', {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -1879,4 +1952,3 @@ class ApiService {
 
 export const apiService = new ApiService();
 export default apiService;
-

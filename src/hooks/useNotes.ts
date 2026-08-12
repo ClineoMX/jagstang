@@ -87,6 +87,7 @@ export const useNotes = (patientId: string | undefined) => {
     title?: string;
     isFollowUpOf?: string;
     customDate?: string;
+    completenessPct?: number;
   }) => {
     if (!patientId) throw new Error('Patient ID is required');
 
@@ -96,6 +97,7 @@ export const useNotes = (patientId: string | undefined) => {
       title: data.title,
       parent_id: data.isFollowUpOf,
       custom_date: data.customDate,
+      completeness_pct: data.completenessPct,
     });
     await reloadNotes();
     return {
@@ -121,6 +123,7 @@ export const useNotes = (patientId: string | undefined) => {
       content?: string;
       type?: string;
       customDate?: string;
+      completenessPct?: number;
     }
   ) => {
     if (!patientId) throw new Error('Patient ID is required');
@@ -129,6 +132,7 @@ export const useNotes = (patientId: string | undefined) => {
       content: data.content,
       type: data.type,
       custom_date: data.customDate,
+      completeness_pct: data.completenessPct,
     });
     await reloadNotes();
   };
