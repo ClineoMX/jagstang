@@ -268,6 +268,7 @@ export interface ApiAdminComplianceMetric {
 
 export interface ApiAdminCompliancePatient {
   patient_id: string;
+  patient_slug?: string;
   overall_score: number;
   alert_level: 'ok' | 'warning' | 'critical';
   metrics: Record<string, ApiAdminComplianceMetric>;

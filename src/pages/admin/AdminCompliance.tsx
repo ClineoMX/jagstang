@@ -22,6 +22,7 @@ import {
 import { FiSearch } from 'react-icons/fi';
 import AdminPageHeader from './AdminPageHeader';
 import AdminStatusPill from './AdminStatusPill';
+import { normalizePatientSlug } from '../../utils/patientSlug';
 import {
   useAdminCompliance,
   DEFAULT_COMPLIANCE_PAGE_SIZE,
@@ -515,13 +516,17 @@ const DoctorDetail: React.FC<{ report: ApiAdminDoctorCompliance }> = ({
                   gap={3}
                 >
                   <Box minW={0}>
+                    {/* Privacidad (compliance): el admin NO debe ver nombres ni
+                        datos del paciente — solo se identifica por slug. */}
                     <Text
                       fontSize="13px"
                       fontWeight={600}
                       color="text.strong"
                       fontFamily="mono"
                     >
-                      {shortId(p.patient_id)}
+                      {p.patient_slug
+                        ? normalizePatientSlug(p.patient_slug)
+                        : shortId(p.patient_id)}
                     </Text>
                     <Text fontSize="11px" color={metaColor}>
                       {metrics.length} métricas evaluadas
