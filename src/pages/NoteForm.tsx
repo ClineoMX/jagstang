@@ -86,6 +86,53 @@ import {
 } from '../data/noteSchemas';
 import { parseTemplateContent } from '../data/customNoteSchemas';
 
+/**
+ * Deep-equality for StructuredFormValues. Values are plain strings, string
+ * arrays, or a `vitals` object of strings — a recursive compare over the keys
+ * of the `vitals` sub-object is enough; other entries are scalars or arrays.
+ */
+function structuredValuesEqual(
+  a: StructuredFormValues,
+  b: StructuredFormValues
+): boolean {
+  const keysA = Object.keys(a).filter((k) => k !== 'vitals');
+  const keysB = Object.keys(b).filter((k) => k !== 'vitals');
+  if (keysA.length !== keysB.length) return false;
+  if (keysA.some((k) => !keysB.includes(k))) return false;
+  for (const k of keysA) {
+    const av = a[k];
+    const bv = b[k];
+    if (Array.isArray(av) || Array.isArray(bv)) {
+      const arrA = Array.isArray(av) ? av : [];
+      const arrB = Array.isArray(bv) ? bv : [];
+      if (arrA.length !== arrB.length || arrA.some((v, i) => v !== arrB[i]))
+        return false;
+    } else if (av !== bv) {
+      return false;
+    }
+  }
+  const vitalsA = a.vitals ?? {};
+  const vitalsB = b.vitals ?? {};
+  const vKeys = [
+    'bp_sys',
+    'bp_dia',
+    'hr',
+    'rr',
+    'temp',
+    'spo2',
+    'glucose',
+    'weight',
+    'height',
+    'abdominal_perimeter',
+  ];
+  for (const k of vKeys) {
+    const va = (vitalsA[k as keyof typeof vitalsA] ?? '').trim();
+    const vb = (vitalsB[k as keyof typeof vitalsB] ?? '').trim();
+    if (va !== vb) return false;
+  }
+  return true;
+}
+
 /** Best-effort extraction of a note id from an SSE event payload. */
 function extractNoteId(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null;
@@ -234,6 +281,8 @@ const NoteForm: React.FC = () => {
   );
   const [structuredValues, setStructuredValues] =
     useState<StructuredFormValues>({});
+  const [savedStructuredValues, setSavedStructuredValues] =
+    useState<StructuredFormValues>({});
 
   const [savedTitle, setSavedTitle] = useState('');
   const [savedContent, setSavedContent] = useState('');
@@ -316,7 +365,11 @@ const NoteForm: React.FC = () => {
   const hasChanges = () => {
     if (useFormMode) return title !== savedTitle || content !== savedContent;
     if (noteEditorMode === 'structured')
-      return title !== savedTitle || noteType !== savedType;
+      return (
+        title !== savedTitle ||
+        noteType !== savedType ||
+        !structuredValuesEqual(structuredValues, savedStructuredValues)
+      );
     return (
       title !== savedTitle || content !== savedContent || noteType !== savedType
     );
@@ -371,7 +424,9 @@ const NoteForm: React.FC = () => {
       const structuredData = parseStructuredContent(rawContent);
       if (structuredData) {
         setNoteEditorMode('structured');
-        setStructuredValues(structuredData.values ?? {});
+        const loadedValues = structuredData.values ?? {};
+        setStructuredValues(loadedValues);
+        setSavedStructuredValues(loadedValues);
         setContent('');
         if (structuredData.templateId) {
           setSelectedTemplateId(structuredData.templateId);
@@ -865,6 +920,8 @@ const NoteForm: React.FC = () => {
         setSavedTitle(title);
         setSavedContent(content);
         setSavedType(noteType);
+        if (noteEditorMode === 'structured')
+          setSavedStructuredValues(structuredValues);
         setNoteStatus('draft');
         setLastSavedAt(new Date());
         if (currentNoteId && isAiAnalysisMode) {
@@ -890,6 +947,8 @@ const NoteForm: React.FC = () => {
         setSavedContent(content);
         if (newNote.title) setTitle(newNote.title);
         setSavedType(noteType);
+        if (noteEditorMode === 'structured')
+          setSavedStructuredValues(structuredValues);
         setNoteStatus('draft');
         setLastSavedAt(new Date());
         if (newNote.id && isAiAnalysisMode) {
