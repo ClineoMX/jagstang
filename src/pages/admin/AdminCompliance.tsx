@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Accordion,
   AccordionButton,
@@ -22,7 +22,10 @@ import {
 import { FiSearch } from 'react-icons/fi';
 import AdminPageHeader from './AdminPageHeader';
 import AdminStatusPill from './AdminStatusPill';
-import { useAdminCompliance } from '../../hooks/useAdminCompliance';
+import {
+  useAdminCompliance,
+  DEFAULT_COMPLIANCE_PAGE_SIZE,
+} from '../../hooks/useAdminCompliance';
 import { apiService } from '../../services/api';
 import type { ApiAdminDoctorCompliance } from '../../services/api';
 
@@ -41,13 +44,6 @@ const CRITICAL_THRESHOLD = 0.5;
 const WARNING_THRESHOLD = 0.7;
 
 const pct = (v: number) => Math.round(v * 100);
-
-const alertOf = (score: number) =>
-  score < CRITICAL_THRESHOLD
-    ? 'critical'
-    : score < WARNING_THRESHOLD
-      ? 'warning'
-      : 'ok';
 
 const ALERT_VARIANT: Record<
   'ok' | 'warning' | 'critical',
@@ -122,8 +118,8 @@ const StatCell: React.FC<{
 );
 
 const AdminCompliance: React.FC = () => {
-  const { doctors, loading, error, refetch } = useAdminCompliance();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [detail, setDetail] = useState<
     Record<string, ApiAdminDoctorCompliance>
   >({});
@@ -131,57 +127,32 @@ const AdminCompliance: React.FC = () => {
     {}
   );
 
+  const { list, loading, error, refetch } = useAdminCompliance(
+    search,
+    page,
+    DEFAULT_COMPLIANCE_PAGE_SIZE
+  );
+
   const cardBg = useColorModeValue('surface.card', 'surface.card');
   const cardBorder = useColorModeValue('border.subtle', 'border.subtle');
   const rowBorder = useColorModeValue('line.light', 'whiteAlpha.200');
   const rowHoverBg = useColorModeValue('paper.100', 'whiteAlpha.50');
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return doctors;
-    return doctors.filter(({ doctor }) =>
-      `${doctor.Name} ${doctor.Email}`.toLowerCase().includes(q)
-    );
-  }, [doctors, search]);
+  const count = list?.count ?? 0;
+  const pageCount = Math.max(
+    1,
+    Math.ceil(count / DEFAULT_COMPLIANCE_PAGE_SIZE)
+  );
+  useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
-  const aggregate = useMemo(() => {
-    const scored = doctors.filter((d) => d.score);
-    const totalPatients = scored.reduce(
-      (a, d) => a + (d.score?.patient_count ?? 0),
-      0
-    );
-    const weighted = scored.reduce(
-      (a, d) =>
-        a + (d.score?.overall_score ?? 0) * (d.score?.patient_count ?? 0),
-      0
-    );
-    const avg =
-      totalPatients > 0
-        ? weighted / totalPatients
-        : scored.length > 0
-          ? scored.reduce((a, d) => a + (d.score?.overall_score ?? 0), 0) /
-            scored.length
-          : 0;
-    let ok = 0;
-    let warning = 0;
-    let critical = 0;
-    scored.forEach(({ score }) => {
-      if (!score) return;
-      const lvl = alertOf(score.overall_score);
-      if (lvl === 'ok') ok++;
-      else if (lvl === 'warning') warning++;
-      else critical++;
-    });
-    return {
-      totalDoctors: doctors.length,
-      evaluated: scored.length,
-      totalPatients,
-      avg,
-      ok,
-      warning,
-      critical,
-    };
-  }, [doctors]);
+  const rangeStart =
+    count === 0 ? 0 : (page - 1) * DEFAULT_COMPLIANCE_PAGE_SIZE + 1;
+  const rangeEnd = Math.min(page * DEFAULT_COMPLIANCE_PAGE_SIZE, count);
+
+  const results = useMemo(() => list?.results ?? [], [list]);
+  const summary = list?.summary;
 
   const loadDetail = async (id: string) => {
     if (detail[id] || loadingDetail[id]) return;
@@ -207,7 +178,10 @@ const AdminCompliance: React.FC = () => {
           <Input
             placeholder="Filtrar por doctor…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             bg="surface.card"
             h="36px"
             fontSize="13px"
@@ -216,7 +190,7 @@ const AdminCompliance: React.FC = () => {
       </AdminPageHeader>
 
       <Box px={{ base: 4, md: 10 }} py={{ base: 5, md: 7 }}>
-        {/* Resumen de la clínica */}
+        {/* Resumen (agregado de la página actual) */}
         <Box
           bg="surface.card"
           border="1px solid"
@@ -238,13 +212,13 @@ const AdminCompliance: React.FC = () => {
             }}
           >
             <StatCell
-              label="Cumplimiento clínica"
-              value={`${pct(aggregate.avg)}%`}
+              label="Cumplimiento"
+              value={`${pct(summary?.clinic_score ?? 0)}%`}
               sub={
                 <Progress
-                  value={pct(aggregate.avg)}
+                  value={pct(summary?.clinic_score ?? 0)}
                   size="xs"
-                  colorScheme={scoreColor(aggregate.avg)}
+                  colorScheme={scoreColor(summary?.clinic_score ?? 0)}
                   borderRadius="full"
                   mt={1}
                 />
@@ -252,18 +226,20 @@ const AdminCompliance: React.FC = () => {
             />
             <StatCell
               label="Doctores"
-              value={aggregate.totalDoctors}
-              sub={`${aggregate.evaluated} evaluados`}
+              value={count}
+              sub={`${summary?.total_doctors ?? 0} evaluados en la página`}
             />
             <StatCell
               label="Pacientes"
-              value={aggregate.totalPatients}
-              sub="pacientes bajo estos doctores"
+              value={summary?.total_patients ?? 0}
+              sub="pacientes de la página"
             />
             <StatCell
               label="En alerta / críticos"
-              value={`${aggregate.warning} / ${aggregate.critical}`}
-              sub="doctores por nivel de alerta"
+              value={`${summary?.alert_breakdown.warning ?? 0} / ${
+                summary?.alert_breakdown.critical ?? 0
+              }`}
+              sub="doctores de la página por nivel de alerta"
             />
           </SimpleGrid>
         </Box>
@@ -304,7 +280,7 @@ const AdminCompliance: React.FC = () => {
           </Flex>
         )}
 
-        {!loading && !error && filtered.length === 0 && (
+        {!loading && !error && count === 0 && (
           <Flex
             justify="center"
             py={12}
@@ -314,14 +290,29 @@ const AdminCompliance: React.FC = () => {
             borderRadius="8px"
           >
             <Text fontSize="13.5px" color="text.label">
-              {doctors.length === 0
-                ? 'No hay doctores registrados todavía.'
-                : 'Ningún doctor coincide con la búsqueda.'}
+              {search.trim()
+                ? 'Ningún doctor coincide con la búsqueda.'
+                : 'No hay doctores registrados todavía.'}
             </Text>
           </Flex>
         )}
 
-        {!loading && !error && filtered.length > 0 && (
+        {!loading && !error && count > 0 && results.length === 0 && (
+          <Flex
+            justify="center"
+            py={12}
+            bg={cardBg}
+            border="1px solid"
+            borderColor={cardBorder}
+            borderRadius="8px"
+          >
+            <Text fontSize="13.5px" color="text.label">
+              Esta página está vacía.
+            </Text>
+          </Flex>
+        )}
+
+        {!loading && !error && results.length > 0 && (
           <Box
             bg={cardBg}
             border="1px solid"
@@ -330,13 +321,11 @@ const AdminCompliance: React.FC = () => {
             overflow="hidden"
           >
             <Accordion allowToggle>
-              {filtered.map(({ doctor, score }) => {
-                const variant = score
-                  ? ALERT_VARIANT[alertOf(score.overall_score)]
-                  : null;
+              {results.map((row) => {
+                const variant = ALERT_VARIANT[row.alert_level];
                 return (
                   <AccordionItem
-                    key={doctor.ID}
+                    key={row.doctor_id}
                     border="none"
                     borderBottom="1px solid"
                     borderBottomColor={rowBorder}
@@ -346,16 +335,15 @@ const AdminCompliance: React.FC = () => {
                       px={{ base: 4, md: 5 }}
                       py={3}
                       _hover={{ bg: rowHoverBg }}
-                      onClick={() => loadDetail(doctor.ID)}
+                      onClick={() => loadDetail(row.doctor_id)}
                     >
                       <Flex flex="1" alignItems="center" gap={3} minW={0}>
                         <Avatar
                           size="sm"
                           w="32px"
                           h="32px"
-                          name={doctor.Name}
-                          src={doctor.AvatarURL || undefined}
-                          getInitials={() => initialsOf(doctor.Name)}
+                          name={row.doctor_name}
+                          getInitials={() => initialsOf(row.doctor_name)}
                           bg="brand.100"
                           color="brand.700"
                           fontSize="12px"
@@ -368,7 +356,7 @@ const AdminCompliance: React.FC = () => {
                             color="text.strong"
                             noOfLines={1}
                           >
-                            {doctor.Name}
+                            {row.doctor_name}
                           </Text>
                           <Text
                             fontFamily="mono"
@@ -376,60 +364,46 @@ const AdminCompliance: React.FC = () => {
                             color="text.label"
                             noOfLines={1}
                           >
-                            {doctor.Email}
+                            {row.email}
                           </Text>
                         </Box>
                       </Flex>
 
                       <Flex alignItems="center" gap={4} flexShrink={0} minW={0}>
-                        {score ? (
-                          <>
-                            <Text
-                              fontSize="12px"
-                              color="text.label"
-                              whiteSpace="nowrap"
-                            >
-                              {score.patient_count} pac.
-                            </Text>
-                            {variant && (
-                              <AdminStatusPill
-                                label={variant.label}
-                                bg={variant.bg}
-                                fg={variant.fg}
-                                border={variant.border}
-                              />
-                            )}
-                            <Text
-                              fontFamily="mono"
-                              fontSize="14px"
-                              fontWeight={700}
-                              color={`${scoreColor(score.overall_score)}.600`}
-                              minW="48px"
-                              textAlign="right"
-                            >
-                              {pct(score.overall_score)}%
-                            </Text>
-                          </>
-                        ) : (
-                          <Text
-                            fontSize="11.5px"
-                            color="text.faint"
-                            whiteSpace="nowrap"
-                          >
-                            sin dato
-                          </Text>
-                        )}
+                        <Text
+                          fontSize="12px"
+                          color="text.label"
+                          whiteSpace="nowrap"
+                        >
+                          {row.patient_count} pac.
+                        </Text>
+                        <AdminStatusPill
+                          label={variant.label}
+                          bg={variant.bg}
+                          fg={variant.fg}
+                          border={variant.border}
+                        />
+                        <Text
+                          fontFamily="mono"
+                          fontSize="14px"
+                          fontWeight={700}
+                          color={`${scoreColor(row.overall_score)}.600`}
+                          minW="48px"
+                          textAlign="right"
+                        >
+                          {pct(row.overall_score)}%
+                        </Text>
                         <AccordionIcon />
                       </Flex>
                     </AccordionButton>
 
                     <AccordionPanel px={{ base: 4, md: 6 }} pb={4} pt={0}>
-                      {loadingDetail[doctor.ID] ? (
+                      {loadingDetail[row.doctor_id] ? (
                         <Flex justify="center" align="center" py={10}>
                           <Spinner size="sm" color="brand.400" />
                         </Flex>
-                      ) : detail[doctor.ID] ? (
-                        <DoctorDetail report={detail[doctor.ID]!} />
+                      ) : detail[row.doctor_id] ? (
+                        <DoctorDetail report={detail[row.doctor_id]!} />
                       ) : (
                         <Flex
                           justify="center"
@@ -450,10 +424,45 @@ const AdminCompliance: React.FC = () => {
           </Box>
         )}
 
-        {!loading && !error && doctors.length > 0 && (
-          <Text fontSize="11px" color="text.faint" mt={3} pl={1}>
-            {idxShown(filtered.length, aggregate.evaluated)}
-          </Text>
+        {!loading && !error && count > 0 && (
+          <Flex
+            mt={4}
+            alignItems="center"
+            justifyContent="space-between"
+            flexWrap="wrap"
+            gap={3}
+          >
+            <Text fontSize="11px" color="text.faint" pl={1}>
+              Mostrando {rangeStart}–{rangeEnd} de {count} doctores
+            </Text>
+            <Flex gap={2} alignItems="center">
+              <Button
+                size="xs"
+                variant="outline"
+                isDisabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Anterior
+              </Button>
+              <Text
+                fontFamily="mono"
+                fontSize="12px"
+                color="text.label"
+                minW="70px"
+                textAlign="center"
+              >
+                {page} / {pageCount}
+              </Text>
+              <Button
+                size="xs"
+                variant="outline"
+                isDisabled={page >= pageCount}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              >
+                Siguiente
+              </Button>
+            </Flex>
+          </Flex>
         )}
       </Box>
     </Box>
@@ -575,8 +584,5 @@ const DoctorDetail: React.FC<{ report: ApiAdminDoctorCompliance }> = ({
     </Box>
   );
 };
-
-const idxShown = (shown: number, evaluated: number) =>
-  `Mostrando ${shown} de ${evaluated} doctores evaluados`;
 
 export default AdminCompliance;

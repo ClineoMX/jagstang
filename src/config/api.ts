@@ -79,6 +79,7 @@ export const API_ENDPOINTS = {
   ADMIN_TEAM_UNASSIGN: (nurseId: string, doctorId: string) =>
     `/admin/team/${nurseId}/?doctor=${encodeURIComponent(doctorId)}`,
   // Compliance NOM-004 por doctor de la clínica (servido por duosonic)
+  ADMIN_COMPLIANCE_LIST: '/admin/compliance/',
   ADMIN_COMPLIANCE: (doctorId: string) => `/admin/compliance/${doctorId}/`,
   ADMIN_COMPLIANCE_OVERALL: (doctorId: string) =>
     `/admin/compliance/${doctorId}/overall_score/`,

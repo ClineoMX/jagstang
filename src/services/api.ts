@@ -292,6 +292,33 @@ export interface ApiAdminDoctorOverallScore {
   computed_at: string;
 }
 
+/** Fila del listado paginado: un doctor con su score agregado. */
+export interface ApiAdminDoctorComplianceRow {
+  doctor_id: string;
+  doctor_name: string;
+  email: string;
+  overall_score: number;
+  patient_count: number;
+  alert_level: 'ok' | 'warning' | 'critical';
+}
+
+/** Agregado de la página actual (computado server-side). */
+export interface ApiAdminClinicSummary {
+  clinic_score: number;
+  total_doctors: number;
+  total_patients: number;
+  alert_breakdown: { ok: number; warning: number; critical: number };
+}
+
+/** `GET /admin/compliance/` — listado de doctores paginado server-side. */
+export interface ApiAdminComplianceList {
+  count: number;
+  page: number;
+  size: number;
+  summary: ApiAdminClinicSummary;
+  results: ApiAdminDoctorComplianceRow[];
+}
+
 /** `/doctor/team/` — miembro del equipo del doctor (id = user id / Cognito sub). */
 export interface ApiTeamMember {
   id: string;
@@ -993,6 +1020,26 @@ class ApiService {
   async getAdminDoctorComplianceOverallScore(doctorId: string) {
     return this.request<ApiAdminDoctorOverallScore>(
       API_ENDPOINTS.ADMIN_COMPLIANCE_OVERALL(doctorId)
+    );
+  }
+
+  /**
+   * Listado de doctores con su compliance, paginado server-side (ADMIN role
+   * only, servido por duosonic).
+   * GET /admin/compliance/?page=&size=&q= — `q` filtra nombre/apellido/email.
+   */
+  async getAdminComplianceList(params?: {
+    page?: number;
+    size?: number;
+    q?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', String(params.page));
+    if (params?.size) queryParams.append('size', String(params.size));
+    if (params?.q) queryParams.append('q', params.q);
+    const query = queryParams.toString();
+    return this.request<ApiAdminComplianceList>(
+      `${API_ENDPOINTS.ADMIN_COMPLIANCE_LIST}${query ? `?${query}` : ''}`
     );
   }
 
