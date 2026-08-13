@@ -1,5 +1,16 @@
 import React from 'react';
-import { Box, Flex, Text, useColorModeValue, VStack } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Icon,
+  IconButton,
+  Text,
+  Tooltip,
+  useColorMode,
+  useColorModeValue,
+  VStack,
+} from '@chakra-ui/react';
+import { FiMoon, FiSun } from 'react-icons/fi';
 import ClineoLogo from './ClineoLogo';
 
 interface AuthLayoutProps {
@@ -26,9 +37,31 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   const subColor = useColorModeValue('paper.700', 'paper.300');
   const mobileLogoColor = useColorModeValue('black', 'white');
   const sideMuted = 'rgba(246,245,241,0.6)';
+  const { colorMode, toggleColorMode } = useColorMode();
 
   return (
-    <Flex minH="100vh" bg={pageBg}>
+    <Flex minH="100vh" bg={pageBg} position="relative">
+      {/* Theme toggle — top-right, visible en todas las páginas de auth */}
+      <Tooltip
+        label={colorMode === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+        placement="bottom"
+      >
+        <IconButton
+          aria-label="Cambiar tema"
+          icon={
+            <Icon as={colorMode === 'dark' ? FiSun : FiMoon} boxSize="16px" />
+          }
+          onClick={toggleColorMode}
+          size="sm"
+          variant="ghost"
+          position="absolute"
+          top={4}
+          right={4}
+          zIndex={20}
+          color={subColor}
+          _hover={{ bg: 'whiteAlpha.200', color: 'text.strong' }}
+        />
+      </Tooltip>
       {/* Left brand panel — only on md+ */}
       <Box
         display={{ base: 'none', md: 'flex' }}

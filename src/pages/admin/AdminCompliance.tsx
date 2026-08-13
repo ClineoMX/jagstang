@@ -22,7 +22,6 @@ import {
 import { FiSearch } from 'react-icons/fi';
 import AdminPageHeader from './AdminPageHeader';
 import AdminStatusPill from './AdminStatusPill';
-import { normalizePatientSlug } from '../../utils/patientSlug';
 import {
   useAdminCompliance,
   DEFAULT_COMPLIANCE_PAGE_SIZE,
@@ -87,6 +86,12 @@ const initialsOf = (name: string) =>
 
 const shortId = (id: string) =>
   id.length > 13 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id;
+
+/** Muestra el slug de paciente con `#` inicial (más legible para admins). */
+const displaySlug = (slug: string) => {
+  const s = slug.trim();
+  return s.startsWith('#') ? s : `#${s}`;
+};
 
 /** Celdita de resumen superior. */
 const StatCell: React.FC<{
@@ -525,7 +530,7 @@ const DoctorDetail: React.FC<{ report: ApiAdminDoctorCompliance }> = ({
                       fontFamily="mono"
                     >
                       {p.patient_slug
-                        ? normalizePatientSlug(p.patient_slug)
+                        ? displaySlug(p.patient_slug)
                         : shortId(p.patient_id)}
                     </Text>
                     <Text fontSize="11px" color={metaColor}>

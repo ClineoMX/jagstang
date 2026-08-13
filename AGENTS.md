@@ -54,7 +54,7 @@ Always run `bun run lint` (and `tsc -b` via `bun run build` when relevant) after
 - Respect existing ESLint rules, notably `@typescript-eslint/no-unused-vars` (prefix intentionally-unused args with `_`).
 - Match existing file/component naming: PascalCase for components and pages (`PatientDetail.tsx`), camelCase for utilities/hooks/services.
 - New API endpoints belong in `src/config/api.ts` (`API_ENDPOINTS`), not hardcoded in components.
-- **Panel admin / compliance**: los pacientes se muestran **SIEMPRE por `slug`** (`normalizePatientSlug`), nunca por nombre/datos. El admin no tiene grants de paciente y no debe ver PII — por eso el compliance del admin identifica a cada paciente solo con su slug (fallback: id truncado). No llamar a `/patients/` desde el panel admin para resolver nombres.
+- **Panel admin / compliance**: los pacientes se muestran **SIEMPRE por slug** con prefijo `#` (helper `displaySlug`), nunca por nombre/datos. El admin no tiene grants de paciente y no debe ver PII — por eso el compliance del admin identifica a cada paciente solo con su slug (fallback: id truncado). `normalizePatientSlug` (quita el `#`) es solo para URLs; no llamar a `/patients/` desde el panel admin para resolver nombres.
 - Env vars are `VITE_`-prefixed and read via `import.meta.env`; never commit `.env` (already gitignored) or print/log secret values (`VITE_API_KEY`, etc).
 - Prefer Chakra UI primitives and the existing theme (`src/theme`) over ad-hoc inline styles or new UI libraries.
 - The codebase mixes English code/identifiers with Spanish domain language (UI copy, comments, docs). Follow the convention already used in the file you're editing rather than forcing one language.
