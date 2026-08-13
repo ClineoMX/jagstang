@@ -253,6 +253,45 @@ export interface ApiAdminDashboard {
   series: ApiAdminSeriesPoint[];
 }
 
+/**
+ * Compliance NOM-004 por doctor (servido por duosonic, ADMIN role only).
+ * Shape idéntico al que marauder sirve por doctor, pero aquí el `doctor_id`
+ * viene del path (el admin evalúa a cualquier doctor de la clínica).
+ */
+export interface ApiAdminComplianceMetric {
+  name: string;
+  score: number;
+  detail: string;
+  items: number;
+  passing: number;
+}
+
+export interface ApiAdminCompliancePatient {
+  patient_id: string;
+  overall_score: number;
+  alert_level: 'ok' | 'warning' | 'critical';
+  metrics: Record<string, ApiAdminComplianceMetric>;
+  computed_at: string;
+}
+
+/** `GET /admin/compliance/{doctor_id}/` — reporte completo de un doctor. */
+export interface ApiAdminDoctorCompliance {
+  doctor_id: string;
+  overall_score: number;
+  patient_count: number;
+  alert_breakdown: { ok: number; warning: number; critical: number };
+  worst_metric: string;
+  patients: ApiAdminCompliancePatient[];
+}
+
+/** `GET /admin/compliance/{doctor_id}/overall_score/` — score ligero. */
+export interface ApiAdminDoctorOverallScore {
+  doctor_id: string;
+  overall_score: number;
+  patient_count: number;
+  computed_at: string;
+}
+
 /** `/doctor/team/` — miembro del equipo del doctor (id = user id / Cognito sub). */
 export interface ApiTeamMember {
   id: string;
@@ -935,6 +974,26 @@ class ApiService {
    */
   async getAdminDashboard() {
     return this.request<ApiAdminDashboard>(API_ENDPOINTS.ADMIN_DASHBOARD);
+  }
+
+  /**
+   * Compliance NOM-004 completo de un doctor de la clínica (ADMIN role only).
+   * GET /admin/compliance/<doctor_id>/ — incluye el desglose por paciente.
+   */
+  async getAdminDoctorCompliance(doctorId: string) {
+    return this.request<ApiAdminDoctorCompliance>(
+      API_ENDPOINTS.ADMIN_COMPLIANCE(doctorId)
+    );
+  }
+
+  /**
+   * Score agregado ligero de un doctor de la clínica (ADMIN role only).
+   * GET /admin/compliance/<doctor_id>/overall_score/
+   */
+  async getAdminDoctorComplianceOverallScore(doctorId: string) {
+    return this.request<ApiAdminDoctorOverallScore>(
+      API_ENDPOINTS.ADMIN_COMPLIANCE_OVERALL(doctorId)
+    );
   }
 
   // ============ APPOINTMENTS ============

@@ -30,3 +30,6 @@ export const COMPLIANCE_NAV_ENABLED = true;
 
 /** Entrada «Facturas» en el rail del panel admin, y la ruta /admin/facturas. */
 export const ADMIN_INVOICES_NAV_ENABLED = false;
+
+/** Entrada «Compliance» en el rail del panel admin, y la ruta /admin/compliance. */
+export const ADMIN_COMPLIANCE_NAV_ENABLED = true;

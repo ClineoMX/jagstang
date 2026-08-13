@@ -37,6 +37,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminInvoices from './pages/admin/AdminInvoices';
 import AdminAuditLog from './pages/admin/AdminAuditLog';
+import AdminCompliance from './pages/admin/AdminCompliance';
 
 // Components
 import Layout from './components/Layout';
@@ -50,6 +51,7 @@ import {
   LIBRARY_NAV_ENABLED,
   COMPLIANCE_NAV_ENABLED,
   ADMIN_INVOICES_NAV_ENABLED,
+  ADMIN_COMPLIANCE_NAV_ENABLED,
 } from './config/features';
 
 /**
@@ -528,6 +530,16 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route path="audit-log" element={<AdminAuditLog />} />
+        <Route
+          path="compliance"
+          element={
+            ADMIN_COMPLIANCE_NAV_ENABLED ? (
+              <AdminCompliance />
+            ) : (
+              <Navigate to="/admin/dashboard" replace />
+            )
+          }
+        />
         <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
       </Route>
 

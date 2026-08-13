@@ -22,6 +22,7 @@ import {
   FiUsers,
   FiFileText,
   FiShield,
+  FiActivity,
   FiLogOut,
   FiSun,
   FiMoon,
@@ -29,13 +30,19 @@ import {
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import ClineoLogo from './ClineoLogo';
-import { ADMIN_INVOICES_NAV_ENABLED } from '../config/features';
+import {
+  ADMIN_INVOICES_NAV_ENABLED,
+  ADMIN_COMPLIANCE_NAV_ENABLED,
+} from '../config/features';
 
 const NAV_ITEMS = [
   { icon: FiHome, label: 'Dashboard', path: '/admin/dashboard' },
   { icon: FiUsers, label: 'Usuarios', path: '/admin/usuarios' },
   ...(ADMIN_INVOICES_NAV_ENABLED
     ? [{ icon: FiFileText, label: 'Facturas', path: '/admin/facturas' }]
+    : []),
+  ...(ADMIN_COMPLIANCE_NAV_ENABLED
+    ? [{ icon: FiActivity, label: 'Compliance', path: '/admin/compliance' }]
     : []),
   { icon: FiShield, label: 'Audit Log', path: '/admin/audit-log' },
 ];
