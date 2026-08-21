@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-Instructions for Claude (or any AI agent) working in this repository.
+Instructions for AI agents working in this repository.
 
 ## Project Overview
 
@@ -26,6 +26,7 @@ This is a medical records management web app ("Clineo") for clinics/doctors: pat
 src/
 ├── components/      # Reusable UI components (modals, drawers, cards, editors, etc.)
 ├── pages/           # Route-level views
+├── pages/admin/     # Admin panel (ADMIN role only)
 ├── pages/library/   # Library/templates sub-section
 ├── contexts/        # React contexts (e.g. AuthContext)
 ├── services/        # API client (api.ts)
@@ -54,6 +55,7 @@ Always run `bun run lint` (and `tsc -b` via `bun run build` when relevant) after
 - Respect existing ESLint rules, notably `@typescript-eslint/no-unused-vars` (prefix intentionally-unused args with `_`).
 - Match existing file/component naming: PascalCase for components and pages (`PatientDetail.tsx`), camelCase for utilities/hooks/services.
 - New API endpoints belong in `src/config/api.ts` (`API_ENDPOINTS`), not hardcoded in components.
+- Roles: `ADMIN` uses `pages/admin/` (duosonic). `NURSE` / `ASSISTANT` have reduced nav (team-member access via grants, not patient ownership).
 - **Panel admin / compliance**: los pacientes se muestran **SIEMPRE por slug** con prefijo `#` (helper `displaySlug`), nunca por nombre/datos. El admin no tiene grants de paciente y no debe ver PII — por eso el compliance del admin identifica a cada paciente solo con su slug (fallback: id truncado). `normalizePatientSlug` (quita el `#`) es solo para URLs; no llamar a `/patients/` desde el panel admin para resolver nombres.
 - Env vars are `VITE_`-prefixed and read via `import.meta.env`; never commit `.env` (already gitignored) or print/log secret values (`VITE_API_KEY`, etc).
 - Prefer Chakra UI primitives and the existing theme (`src/theme`) over ad-hoc inline styles or new UI libraries.
