@@ -170,10 +170,20 @@ const NotesList: React.FC = () => {
         ) : templates.length === 0 ? (
           <VStack py={12} spacing={4} px={4}>
             <Icon as={FiFileText} boxSize={10} color="paper.400" />
-            <Text fontSize="15px" fontWeight={600} color={nameColor} textAlign="center">
+            <Text
+              fontSize="15px"
+              fontWeight={600}
+              color={nameColor}
+              textAlign="center"
+            >
               Aún no hay notas personalizadas
             </Text>
-            <Text fontSize="13px" color={helpColor} textAlign="center" maxW="360px">
+            <Text
+              fontSize="13px"
+              color={helpColor}
+              textAlign="center"
+              maxW="360px"
+            >
               Crea una nota para definir sus secciones y campos a la medida.
             </Text>
             <Button
@@ -251,13 +261,27 @@ const NotesList: React.FC = () => {
                     >
                       <Td borderColor={rowBorder}>
                         <HStack spacing={3} align="flex-start">
-                          <Icon as={FiFileText} color="brand.500" boxSize={4} mt="2px" />
+                          <Icon
+                            as={FiFileText}
+                            color="brand.500"
+                            boxSize={4}
+                            mt="2px"
+                          />
                           <Box minW={0}>
-                            <Text fontSize="14px" fontWeight={500} color={nameColor} noOfLines={1}>
+                            <Text
+                              fontSize="14px"
+                              fontWeight={500}
+                              color={nameColor}
+                              noOfLines={1}
+                            >
                               {s.name}
                             </Text>
                             {s.description && (
-                              <Text fontSize="12px" color={metaColor} noOfLines={1}>
+                              <Text
+                                fontSize="12px"
+                                color={metaColor}
+                                noOfLines={1}
+                              >
                                 {s.description}
                               </Text>
                             )}
@@ -277,16 +301,22 @@ const NotesList: React.FC = () => {
                           fontWeight={500}
                           whiteSpace="nowrap"
                         >
-                          {s.sectionsCount} {s.sectionsCount === 1 ? 'sección' : 'secciones'}
+                          {s.sectionsCount}{' '}
+                          {s.sectionsCount === 1 ? 'sección' : 'secciones'}
                           {' · '}
-                          {s.fieldsCount} {s.fieldsCount === 1 ? 'campo' : 'campos'}
+                          {s.fieldsCount}{' '}
+                          {s.fieldsCount === 1 ? 'campo' : 'campos'}
                         </Box>
                       </Td>
                       <Td
                         borderColor={rowBorder}
                         display={{ base: 'none', md: 'table-cell' }}
                       >
-                        <Text fontSize="13px" color={metaColor} whiteSpace="nowrap">
+                        <Text
+                          fontSize="13px"
+                          color={metaColor}
+                          whiteSpace="nowrap"
+                        >
                           {formatDate(s.updatedAt)}
                         </Text>
                       </Td>

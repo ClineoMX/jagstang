@@ -22,10 +22,7 @@ import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import SurfaceCard from '../../components/SurfaceCard';
-import {
-  deleteTemplate,
-  useTemplates,
-} from '../../data/templatesStore';
+import { deleteTemplate, useTemplates } from '../../data/templatesStore';
 import type { NoteTemplate, NoteType } from '../../types';
 
 function getNoteTypeLabel(type: NoteType): string {
@@ -136,8 +133,8 @@ const TemplatesList: React.FC = () => {
               No hay plantillas creadas
             </Text>
             <Text fontSize="12px" color={labelColor} textAlign="center">
-              Crea plantillas personalizadas para agilizar la redacción de
-              notas médicas.
+              Crea plantillas personalizadas para agilizar la redacción de notas
+              médicas.
             </Text>
           </VStack>
         </SurfaceCard>
@@ -254,7 +251,12 @@ const TemplatesList: React.FC = () => {
               sx={{
                 '& h1': { fontSize: 'xl', fontWeight: 'bold', mb: 4 },
                 '& h2': { fontSize: 'lg', fontWeight: 'bold', mb: 3, mt: 5 },
-                '& h3': { fontSize: 'md', fontWeight: 'semibold', mb: 2, mt: 3 },
+                '& h3': {
+                  fontSize: 'md',
+                  fontWeight: 'semibold',
+                  mb: 2,
+                  mt: 3,
+                },
                 '& p': { mb: 2, fontSize: '14px' },
                 '& ul, & ol': { ml: 6, mb: 4 },
                 '& li': { mb: 1, fontSize: '14px' },

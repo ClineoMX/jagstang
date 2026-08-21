@@ -48,7 +48,7 @@ const Login: React.FC = () => {
         isClosable: true,
       });
       navigate('/');
-    } catch (error) {
+    } catch {
       toast({
         title: 'Error de autenticación',
         description: 'Email o contraseña incorrectos',

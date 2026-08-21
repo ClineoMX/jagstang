@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
+import { getErrorMessage } from '../utils/apiStatus';
 
 export interface PatientIdentity {
   birthdate?: string;
@@ -80,8 +81,8 @@ export function usePatientIdentity(patientId: string | undefined) {
       const data = patient.identity_sheet ?? null;
       setIdentity(data);
       setExists(!!data);
-    } catch (err: any) {
-      setError(err instanceof Error ? err.message : 'Error al cargar ficha de identidad');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Error al cargar ficha de identidad'));
     } finally {
       setLoading(false);
     }
@@ -98,5 +99,12 @@ export function usePatientIdentity(patientId: string | undefined) {
     await fetchIdentity();
   };
 
-  return { identity, exists, loading, error, saveIdentity, refetch: fetchIdentity };
+  return {
+    identity,
+    exists,
+    loading,
+    error,
+    saveIdentity,
+    refetch: fetchIdentity,
+  };
 }

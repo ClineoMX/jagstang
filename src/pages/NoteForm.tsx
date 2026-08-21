@@ -66,6 +66,7 @@ import PatientClinicalSummary from '../components/PatientClinicalSummary';
 import CollapsibleSideCard from '../components/CollapsibleSideCard';
 import { apiService } from '../services/api';
 import { normalizePatientSlug } from '../utils/patientSlug';
+import { getErrorMessage } from '../utils/apiStatus';
 import { STRUCTURED_NOTE_EDITOR_ENABLED } from '../config/features';
 import { useAuth } from '../contexts/AuthContext';
 import PageHead from '../components/PageHead';
@@ -322,10 +323,10 @@ const NoteForm: React.FC = () => {
         isClosable: true,
       });
       setIsEditingDate(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: 'Error al actualizar fecha',
-        description: err?.message || 'No se pudo actualizar la fecha',
+        description: getErrorMessage(err, 'No se pudo actualizar la fecha'),
         status: 'error',
         duration: 4000,
         isClosable: true,
@@ -540,6 +541,8 @@ const NoteForm: React.FC = () => {
     return () => {
       cancelled = true;
     };
+    // patientPathBase derived from patientSlug; intentional omit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId, noteId, location.state, navigate, toast]);
 
   // v2.0: the completeness analysis is pushed over the SSE events stream when the
@@ -962,10 +965,13 @@ const NoteForm: React.FC = () => {
           isClosable: true,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'Ocurrió un error al guardar la nota',
+        description: getErrorMessage(
+          error,
+          'Ocurrió un error al guardar la nota'
+        ),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -1004,10 +1010,13 @@ const NoteForm: React.FC = () => {
       const shouldShowModal = !localStorage.getItem('dontShowSignModal');
       if (shouldShowModal) onSignModalOpen();
       else navigate(patientPathBase);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'Ocurrió un error al firmar la nota',
+        description: getErrorMessage(
+          error,
+          'Ocurrió un error al firmar la nota'
+        ),
         status: 'error',
         duration: 5000,
         isClosable: true,

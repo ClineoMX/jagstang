@@ -14,15 +14,7 @@ export interface Doctor {
 }
 
 // Patient types
-export type BloodType =
-  | 'A+'
-  | 'A-'
-  | 'B+'
-  | 'B-'
-  | 'AB+'
-  | 'AB-'
-  | 'O+'
-  | 'O-';
+export type BloodType = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
 export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
 export interface Patient {
@@ -219,7 +211,7 @@ export interface AccountConfirm {
 // Search types
 export interface SearchParams {
   query: string;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
   page?: number;
   pageSize?: number;
 }

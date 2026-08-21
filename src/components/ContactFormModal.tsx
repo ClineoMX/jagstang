@@ -66,7 +66,13 @@ const Section: React.FC<SectionProps> = ({
   labelColor,
   children,
 }) => (
-  <Box bg={bg} border="1px solid" borderColor={borderColor} borderRadius="8px" p={4}>
+  <Box
+    bg={bg}
+    border="1px solid"
+    borderColor={borderColor}
+    borderRadius="8px"
+    p={4}
+  >
     <HStack
       spacing={2}
       mb={3}

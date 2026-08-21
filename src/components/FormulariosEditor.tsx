@@ -319,6 +319,8 @@ const FormulariosEditorView: React.FC<FormulariosEditorViewProps> = ({
     if (formId && !fieldsLoading) {
       loadSavedForm(formId);
     }
+    // loadSavedForm is stable enough for this mount-style load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formId, fieldsLoading]);
 
   const pdfSource = pdfFile ?? pdfBlobUrl;

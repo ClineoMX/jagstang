@@ -1,5 +1,13 @@
 import React from 'react';
-import { Box, HStack, Icon, Text, Tooltip, VStack, useColorModeValue } from '@chakra-ui/react';
+import {
+  Box,
+  HStack,
+  Icon,
+  Text,
+  Tooltip,
+  VStack,
+  useColorModeValue,
+} from '@chakra-ui/react';
 import { RiSparkling2Line } from 'react-icons/ri';
 import type { PatientVitals } from '../hooks/usePatientVitals';
 
@@ -81,7 +89,11 @@ const PatientClinicalSummary: React.FC<Props> = ({
                   openDelay={200}
                 >
                   <Box as="span" display="inline-flex" mt="2px">
-                    <Icon as={RiSparkling2Line} boxSize={3.5} color="brand.400" />
+                    <Icon
+                      as={RiSparkling2Line}
+                      boxSize={3.5}
+                      color="brand.400"
+                    />
                   </Box>
                 </Tooltip>
               ) : (

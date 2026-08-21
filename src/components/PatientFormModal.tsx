@@ -40,10 +40,8 @@ const PatientFormModal: React.FC<PatientFormModalProps> = ({
   const labelColor = useColorModeValue('paper.600', 'paper.500');
   const subColor = useColorModeValue('paper.700', 'paper.400');
 
-  const {
-    patient: apiPatient,
-    loading: loadingPatient,
-  } = usePatient(patientId);
+  const { patient: apiPatient, loading: loadingPatient } =
+    usePatient(patientId);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');

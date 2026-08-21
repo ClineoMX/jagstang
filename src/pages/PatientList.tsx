@@ -79,12 +79,7 @@ const genderInitial = (g?: string): string => {
   return '';
 };
 
-type PatientSortKey =
-  | 'name'
-  | 'age'
-  | 'gender'
-  | 'isRecurrent'
-  | 'lastVisit';
+type PatientSortKey = 'name' | 'age' | 'gender' | 'isRecurrent' | 'lastVisit';
 type SortDir = 'asc' | 'desc';
 type RecurrentFilter = 'all' | 'recurrent' | 'first';
 type GenderFilter = 'all' | 'male' | 'female' | 'other';
@@ -155,7 +150,8 @@ function FilterSection<T extends string>({
 
 const PatientList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [recurrentFilter, setRecurrentFilter] = useState<RecurrentFilter>('all');
+  const [recurrentFilter, setRecurrentFilter] =
+    useState<RecurrentFilter>('all');
   const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
   const [sortKey, setSortKey] = useState<PatientSortKey>('lastVisit');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -185,7 +181,9 @@ const PatientList: React.FC = () => {
     onOpen: onEditOpen,
     onClose: onEditClose,
   } = useDisclosure();
-  const [editingPatientId, setEditingPatientId] = useState<string | undefined>();
+  const [editingPatientId, setEditingPatientId] = useState<
+    string | undefined
+  >();
 
   const { patients, loading, error, refetch } = usePatients();
   const { createAppointment } = useAppointments();
@@ -223,12 +221,14 @@ const PatientList: React.FC = () => {
     const compare = (a: Patient, b: Patient): number => {
       switch (sortKey) {
         case 'name': {
-          const aName = `${a.firstName ?? ''} ${a.lastName ?? ''} ${a.lastNameMaternal ?? ''}`
-            .trim()
-            .toLowerCase();
-          const bName = `${b.firstName ?? ''} ${b.lastName ?? ''} ${b.lastNameMaternal ?? ''}`
-            .trim()
-            .toLowerCase();
+          const aName =
+            `${a.firstName ?? ''} ${a.lastName ?? ''} ${a.lastNameMaternal ?? ''}`
+              .trim()
+              .toLowerCase();
+          const bName =
+            `${b.firstName ?? ''} ${b.lastName ?? ''} ${b.lastNameMaternal ?? ''}`
+              .trim()
+              .toLowerCase();
           return aName.localeCompare(bName, 'es');
         }
         case 'age': {
@@ -791,7 +791,11 @@ const PatientList: React.FC = () => {
                           <VStack align="start" spacing={0}>
                             {patient.email && (
                               <HStack spacing={1.5} color={inkStrong}>
-                                <Icon as={FiMail} boxSize={3} color={labelColor} />
+                                <Icon
+                                  as={FiMail}
+                                  boxSize={3}
+                                  color={labelColor}
+                                />
                                 <Text fontSize="12.5px" noOfLines={1}>
                                   {patient.email}
                                 </Text>
@@ -799,7 +803,11 @@ const PatientList: React.FC = () => {
                             )}
                             {patient.phone && (
                               <HStack spacing={1.5} color={subColor}>
-                                <Icon as={FiPhone} boxSize={3} color={labelColor} />
+                                <Icon
+                                  as={FiPhone}
+                                  boxSize={3}
+                                  color={labelColor}
+                                />
                                 <Text
                                   fontFamily="mono"
                                   fontSize="11.5px"
@@ -871,11 +879,9 @@ const PatientList: React.FC = () => {
                             color={inkStrong}
                             letterSpacing="0.02em"
                           >
-                            {format(
-                              new Date(patient.lastVisit),
-                              "d MMM yyyy",
-                              { locale: es }
-                            )}
+                            {format(new Date(patient.lastVisit), 'd MMM yyyy', {
+                              locale: es,
+                            })}
                           </Text>
                         ) : (
                           <Text fontSize="12.5px" color={labelColor}>
@@ -905,7 +911,8 @@ const PatientList: React.FC = () => {
                             <MenuItem
                               icon={<FiExternalLink />}
                               onClick={() =>
-                                patient.slug?.trim() && navigate(`/patients/${patient.slug}`)
+                                patient.slug?.trim() &&
+                                navigate(`/patients/${patient.slug}`)
                               }
                             >
                               Abrir expediente

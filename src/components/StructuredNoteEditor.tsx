@@ -19,12 +19,7 @@ import {
   WrapItem,
   Tooltip,
 } from '@chakra-ui/react';
-import {
-  FiCheck,
-  FiPlus,
-  FiCopy,
-  FiTrash2,
-} from 'react-icons/fi';
+import { FiCheck, FiPlus, FiCopy, FiTrash2 } from 'react-icons/fi';
 import {
   getSchema,
   getSectionCompletion,
@@ -198,10 +193,22 @@ function NumberUnit({
   ariaLabel?: string;
 }) {
   const borderColor = useColorModeValue('line.strong', 'whiteAlpha.300');
-  const bg = useColorModeValue(calc ? 'statusSoft.infoBg' : 'white', calc ? 'whiteAlpha.100' : 'paper.800');
-  const unitBg = useColorModeValue(calc ? 'transparent' : 'paper.50', 'paper.900');
-  const textColor = useColorModeValue(calc ? 'statusSoft.infoFg' : 'text.strong', 'paper.100');
-  const unitColor = useColorModeValue(calc ? 'statusSoft.infoFg' : 'text.label', 'paper.400');
+  const bg = useColorModeValue(
+    calc ? 'statusSoft.infoBg' : 'white',
+    calc ? 'whiteAlpha.100' : 'paper.800'
+  );
+  const unitBg = useColorModeValue(
+    calc ? 'transparent' : 'paper.50',
+    'paper.900'
+  );
+  const textColor = useColorModeValue(
+    calc ? 'statusSoft.infoFg' : 'text.strong',
+    'paper.100'
+  );
+  const unitColor = useColorModeValue(
+    calc ? 'statusSoft.infoFg' : 'text.label',
+    'paper.400'
+  );
   const focusBorderColor = useColorModeValue('brand.500', 'brand.400');
 
   return (
@@ -213,7 +220,12 @@ function NumberUnit({
       overflow="hidden"
       bg={bg}
       _focusWithin={
-        calc ? undefined : { borderColor: focusBorderColor, boxShadow: '0 0 0 3px rgba(76,183,215,.2)' }
+        calc
+          ? undefined
+          : {
+              borderColor: focusBorderColor,
+              boxShadow: '0 0 0 3px rgba(76,183,215,.2)',
+            }
       }
       transition="border-color 0.14s, box-shadow 0.14s"
     >
@@ -430,7 +442,11 @@ function SignaturePad({
 
 // ── Vitals grid ───────────────────────────────────────────────────────────────
 
-function VitalsGrid({ lastVitals }: { lastVitals?: { vitals: StructuredVitals; recordedAt: string } | null }) {
+function VitalsGrid({
+  lastVitals,
+}: {
+  lastVitals?: { vitals: StructuredVitals; recordedAt: string } | null;
+}) {
   const { values, setVital, setValue } = useFormCtx();
   const vitals = (values.vitals as StructuredVitals) ?? {};
   const bmi = computeBMI(vitals);
@@ -456,7 +472,11 @@ function VitalsGrid({ lastVitals }: { lastVitals?: { vitals: StructuredVitals; r
     <Box>
       <HStack justify="flex-end" mb={3}>
         <Tooltip
-          label={lastVitals ? `Registrado: ${lastVitals.recordedAt}` : 'Sin signos vitales previos'}
+          label={
+            lastVitals
+              ? `Registrado: ${lastVitals.recordedAt}`
+              : 'Sin signos vitales previos'
+          }
           placement="top"
         >
           <Button
@@ -485,7 +505,13 @@ function VitalsGrid({ lastVitals }: { lastVitals?: { vitals: StructuredVitals; r
                   <Text fontSize="13px" fontWeight={600} color="text.body">
                     {vf.label}
                   </Text>
-                  <Text color="statusSoft.critFg" fontWeight={700} fontSize="13px">*</Text>
+                  <Text
+                    color="statusSoft.critFg"
+                    fontWeight={700}
+                    fontSize="13px"
+                  >
+                    *
+                  </Text>
                 </HStack>
                 <HStack
                   spacing={0}
@@ -494,7 +520,10 @@ function VitalsGrid({ lastVitals }: { lastVitals?: { vitals: StructuredVitals; r
                   borderRadius="8px"
                   overflow="hidden"
                   bg={inputBg}
-                  _focusWithin={{ borderColor: 'brand.500', boxShadow: '0 0 0 3px rgba(76,183,215,.2)' }}
+                  _focusWithin={{
+                    borderColor: 'brand.500',
+                    boxShadow: '0 0 0 3px rgba(76,183,215,.2)',
+                  }}
                   transition="border-color 0.14s, box-shadow 0.14s"
                 >
                   <Input
@@ -565,17 +594,38 @@ function VitalsGrid({ lastVitals }: { lastVitals?: { vitals: StructuredVitals; r
                   {vf.label}
                 </Text>
                 {reqMark && (
-                  <Text color="statusSoft.critFg" fontWeight={700} fontSize="13px">*</Text>
+                  <Text
+                    color="statusSoft.critFg"
+                    fontWeight={700}
+                    fontSize="13px"
+                  >
+                    *
+                  </Text>
                 )}
                 {isCalc && (
-                  <Text fontFamily="mono" fontSize="10px" letterSpacing="0.05em" color="text.faint" textTransform="uppercase" fontWeight={600}>
+                  <Text
+                    fontFamily="mono"
+                    fontSize="10px"
+                    letterSpacing="0.05em"
+                    color="text.faint"
+                    textTransform="uppercase"
+                    fontWeight={600}
+                  >
                     auto
                   </Text>
                 )}
               </HStack>
               <NumberUnit
-                value={isCalc ? bmi : (vitals[vf.key as keyof StructuredVitals] ?? '')}
-                onChange={isCalc ? undefined : (v) => setVital(vf.key as keyof StructuredVitals, v)}
+                value={
+                  isCalc
+                    ? bmi
+                    : (vitals[vf.key as keyof StructuredVitals] ?? '')
+                }
+                onChange={
+                  isCalc
+                    ? undefined
+                    : (v) => setVital(vf.key as keyof StructuredVitals, v)
+                }
                 unit={vf.unit}
                 calc={isCalc}
                 ariaLabel={vf.label}
@@ -590,19 +640,39 @@ function VitalsGrid({ lastVitals }: { lastVitals?: { vitals: StructuredVitals; r
 
 // ── Field renderer ────────────────────────────────────────────────────────────
 
-function FieldLabel({ label, required, optional }: { label: string; required?: boolean; optional?: boolean }) {
+function FieldLabel({
+  label,
+  required,
+  optional,
+}: {
+  label: string;
+  required?: boolean;
+  optional?: boolean;
+}) {
   return (
     <HStack spacing={1.5} mb={2}>
       <Text fontSize="13px" fontWeight={600} color="text.body">
         {label}
       </Text>
       {required && (
-        <Text color="statusSoft.critFg" fontWeight={700} fontSize="13px" title="Obligatorio">
+        <Text
+          color="statusSoft.critFg"
+          fontWeight={700}
+          fontSize="13px"
+          title="Obligatorio"
+        >
           *
         </Text>
       )}
       {optional && (
-        <Text fontFamily="mono" fontSize="10px" letterSpacing="0.05em" color="text.faint" textTransform="uppercase" fontWeight={600}>
+        <Text
+          fontFamily="mono"
+          fontSize="10px"
+          letterSpacing="0.05em"
+          color="text.faint"
+          textTransform="uppercase"
+          fontWeight={600}
+        >
           opcional
         </Text>
       )}
@@ -633,7 +703,11 @@ function FieldRenderer({
     case 'richlite':
       return (
         <Box mb={4}>
-          <FieldLabel label={field.label} required={field.required} optional={!field.required} />
+          <FieldLabel
+            label={field.label}
+            required={field.required}
+            optional={!field.required}
+          />
           <RichTextEditor
             value={String(v ?? '')}
             onChange={(val) => setValue(field.id, val)}
@@ -728,7 +802,11 @@ function FieldRenderer({
     case 'number':
       return (
         <Box mb={4}>
-          <FieldLabel label={field.label} required={field.required} optional={!field.required} />
+          <FieldLabel
+            label={field.label}
+            required={field.required}
+            optional={!field.required}
+          />
           <Box maxW="220px">
             <NumberUnit
               value={String(v ?? '')}
@@ -744,7 +822,11 @@ function FieldRenderer({
     case 'yesno':
       return (
         <Box mb={4}>
-          <FieldLabel label={field.label} required={field.required} optional={!field.required} />
+          <FieldLabel
+            label={field.label}
+            required={field.required}
+            optional={!field.required}
+          />
           <YesNoToggle
             value={String(v ?? '')}
             onChange={(val) => setValue(field.id, val)}
@@ -755,7 +837,11 @@ function FieldRenderer({
     case 'multi':
       return (
         <Box mb={4}>
-          <FieldLabel label={field.label} required={field.required} optional={!field.required} />
+          <FieldLabel
+            label={field.label}
+            required={field.required}
+            optional={!field.required}
+          />
           <ChipGroup
             options={field.options ?? []}
             value={Array.isArray(v) ? (v as string[]) : []}
@@ -768,7 +854,11 @@ function FieldRenderer({
     case 'signature':
       return (
         <Box mb={4}>
-          <FieldLabel label={field.label} required={field.required} optional={!field.required} />
+          <FieldLabel
+            label={field.label}
+            required={field.required}
+            optional={!field.required}
+          />
           <SignaturePad
             value={String(v ?? '')}
             onChange={(val) => setValue(field.id, val)}
@@ -836,11 +926,22 @@ function SectionContent({
         >
           {String(index + 1).padStart(2, '0')}
         </Box>
-        <Text fontSize="15px" fontWeight={700} letterSpacing="-0.01em" color="text.strong" flex={1}>
+        <Text
+          fontSize="15px"
+          fontWeight={700}
+          letterSpacing="-0.01em"
+          color="text.strong"
+          flex={1}
+        >
           {section.title}
         </Text>
         <CompletionDot state={state} />
-        <Text fontFamily="mono" fontSize="10.5px" letterSpacing="0.04em" color="text.faint">
+        <Text
+          fontFamily="mono"
+          fontSize="10.5px"
+          letterSpacing="0.04em"
+          color="text.faint"
+        >
           {filled}/{section.fields.length}
         </Text>
       </HStack>
@@ -1006,7 +1107,9 @@ const StructuredNoteEditor: React.FC<StructuredNoteEditorProps> = ({
                 sectionRefs.current[s.id] = el;
               }}
               py={6}
-              borderBottom={i < schema.sections.length - 1 ? '1px solid' : 'none'}
+              borderBottom={
+                i < schema.sections.length - 1 ? '1px solid' : 'none'
+              }
               borderColor={sectionBorderColor}
             >
               <SectionContent section={s} index={i} lastVitals={lastVitals} />
@@ -1155,7 +1258,13 @@ export function StructuredNomMeter({
             {reqFields.map(({ section, field }, i) => {
               const ok = isFieldFilled(field, values);
               return (
-                <HStack key={i} spacing={2} align="start" fontSize="12px" color={subColor}>
+                <HStack
+                  key={i}
+                  spacing={2}
+                  align="start"
+                  fontSize="12px"
+                  color={subColor}
+                >
                   <Box
                     as="span"
                     color={ok ? 'statusSoft.okFg' : 'statusSoft.critFg'}

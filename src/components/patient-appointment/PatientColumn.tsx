@@ -146,90 +146,94 @@ const PatientColumn: React.FC<PatientColumnProps> = ({
             />
           ) : (
             <VStack align="stretch" spacing={3}>
-            <Box ref={wrapRef} position="relative">
-              {showDupes && (
-                <Alert status="warning" size="sm" mb={3} borderRadius="6px">
-                  <AlertIcon />
-                  <Text fontSize="12px">
-                    Hay pacientes con nombres similares. Revisa edad, teléfono y
-                    última visita antes de elegir.
-                  </Text>
-                </Alert>
-              )}
-              <FormControl>
-                <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
-                  Buscar paciente
-                </FormLabel>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none" h="36px">
-                    <Icon as={FiSearch} color={labelColor} boxSize={4} />
-                  </InputLeftElement>
-                  <Input
-                    {...INPUT_STYLES}
-                    pl={10}
-                    value={query}
-                    placeholder={
-                      loadingPatients
-                        ? 'Cargando pacientes…'
-                        : 'Nombre o teléfono (3+ dígitos)…'
-                    }
-                    isDisabled={loadingPatients}
-                    onMouseDown={() => setDropdownOpen(true)}
-                    onChange={(e) => {
-                      setQuery(e.target.value);
-                      setDropdownOpen(true);
-                    }}
-                  />
-                </InputGroup>
-              </FormControl>
-              {dropdownOpen && !loadingPatients && (
-                <Box
-                  position="absolute"
-                  top="100%"
-                  left={0}
-                  right={0}
-                  mt={1}
-                  maxH="280px"
-                  overflowY="auto"
-                  bg={dropdownBg}
-                  border="1px solid"
-                  borderColor={dropdownBorder}
-                  borderRadius="6px"
-                  boxShadow="0 4px 12px rgba(20,22,27,.08)"
-                  zIndex={10}
-                >
-                  {results.map((p) => (
-                    <PatientSearchRow
-                      key={p.id}
-                      patient={p}
-                      query={query}
-                      onClick={() => {
-                        onSelectPatient(p.id);
-                        setQuery('');
-                        setDropdownOpen(false);
+              <Box ref={wrapRef} position="relative">
+                {showDupes && (
+                  <Alert status="warning" size="sm" mb={3} borderRadius="6px">
+                    <AlertIcon />
+                    <Text fontSize="12px">
+                      Hay pacientes con nombres similares. Revisa edad, teléfono
+                      y última visita antes de elegir.
+                    </Text>
+                  </Alert>
+                )}
+                <FormControl>
+                  <FormLabel {...FIELD_LABEL_STYLES} color={labelColor}>
+                    Buscar paciente
+                  </FormLabel>
+                  <InputGroup>
+                    <InputLeftElement pointerEvents="none" h="36px">
+                      <Icon as={FiSearch} color={labelColor} boxSize={4} />
+                    </InputLeftElement>
+                    <Input
+                      {...INPUT_STYLES}
+                      pl={10}
+                      value={query}
+                      placeholder={
+                        loadingPatients
+                          ? 'Cargando pacientes…'
+                          : 'Nombre o teléfono (3+ dígitos)…'
+                      }
+                      isDisabled={loadingPatients}
+                      onMouseDown={() => setDropdownOpen(true)}
+                      onChange={(e) => {
+                        setQuery(e.target.value);
+                        setDropdownOpen(true);
                       }}
                     />
-                  ))}
-                </Box>
-              )}
-            </Box>
-            <HStack spacing={3} color="text.muted" px={1}>
-              <Box flex={1} h="1px" bg={borderColor} />
-              <Text fontSize="11px" textTransform="uppercase" letterSpacing="0.06em">
-                o
-              </Text>
-              <Box flex={1} h="1px" bg={borderColor} />
-            </HStack>
-            <Button
-              variant="ghost"
-              size="sm"
-              justifyContent="flex-start"
-              leftIcon={<Icon as={FiUser} boxSize={4} />}
-              color="brand.600"
-              onClick={() => onModeChange('new')}
-            >
-              Nuevo paciente
-            </Button>
+                  </InputGroup>
+                </FormControl>
+                {dropdownOpen && !loadingPatients && (
+                  <Box
+                    position="absolute"
+                    top="100%"
+                    left={0}
+                    right={0}
+                    mt={1}
+                    maxH="280px"
+                    overflowY="auto"
+                    bg={dropdownBg}
+                    border="1px solid"
+                    borderColor={dropdownBorder}
+                    borderRadius="6px"
+                    boxShadow="0 4px 12px rgba(20,22,27,.08)"
+                    zIndex={10}
+                  >
+                    {results.map((p) => (
+                      <PatientSearchRow
+                        key={p.id}
+                        patient={p}
+                        query={query}
+                        onClick={() => {
+                          onSelectPatient(p.id);
+                          setQuery('');
+                          setDropdownOpen(false);
+                        }}
+                      />
+                    ))}
+                  </Box>
+                )}
+              </Box>
+              <HStack spacing={3} color="text.muted" px={1}>
+                <Box flex={1} h="1px" bg={borderColor} />
+                <Text
+                  fontSize="11px"
+                  textTransform="uppercase"
+                  letterSpacing="0.06em"
+                >
+                  o
+                </Text>
+                <Box flex={1} h="1px" bg={borderColor} />
+              </HStack>
+              <Button
+                variant="ghost"
+                size="sm"
+                justifyContent="flex-start"
+                leftIcon={<Icon as={FiUser} boxSize={4} />}
+                color="brand.600"
+                onClick={() => onModeChange('new')}
+              >
+                Nuevo paciente
+              </Button>
             </VStack>
           )
         ) : (
@@ -285,9 +289,7 @@ const PatientColumn: React.FC<PatientColumnProps> = ({
                 {...INPUT_STYLES}
                 value={draft.firstName}
                 placeholder="Ej. Juan Carlos"
-                onChange={(e) =>
-                  onDraftChange({ firstName: e.target.value })
-                }
+                onChange={(e) => onDraftChange({ firstName: e.target.value })}
               />
             </FormControl>
             <FormControl isRequired>

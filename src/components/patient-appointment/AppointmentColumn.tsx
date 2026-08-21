@@ -201,9 +201,7 @@ const AppointmentColumn: React.FC<AppointmentColumnProps> = ({
           <Textarea
             {...TEXTAREA_STYLES}
             value={appt.additionalNotes}
-            onChange={(e) =>
-              onApptChange({ additionalNotes: e.target.value })
-            }
+            onChange={(e) => onApptChange({ additionalNotes: e.target.value })}
             placeholder="Contexto o indicaciones para la cita…"
             rows={3}
             resize="vertical"
@@ -306,10 +304,10 @@ function DrawerMiniCalendar({
                       ? 'text.strong'
                       : offColor
               }
-              bg={
-                isTodayCell ? todayBg : isSelected ? onBg : 'transparent'
+              bg={isTodayCell ? todayBg : isSelected ? onBg : 'transparent'}
+              _hover={
+                muted ? undefined : { bg: isTodayCell ? todayBg : hoverBg }
               }
-              _hover={muted ? undefined : { bg: isTodayCell ? todayBg : hoverBg }}
               borderRadius="4px"
               py="6px"
               onClick={() => !muted && onSelectDate(d)}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
-import type { Contact } from '../types';
+import type { Contact, ContactType } from '../types';
 
 export const useContacts = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -28,7 +28,7 @@ export const useContacts = () => {
         alias: c.alias ?? undefined,
         email: c.email ?? undefined,
         phone: c.phone ?? undefined,
-        type: (c.type as any) ?? 'other',
+        type: (c.type as ContactType) ?? 'other',
         company: c.organization ?? undefined,
         position: c.role ?? undefined,
         notes: undefined,
@@ -40,7 +40,9 @@ export const useContacts = () => {
       setCount(response.count);
     } catch (err) {
       if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : 'Error al cargar contactos');
+      setError(
+        err instanceof Error ? err.message : 'Error al cargar contactos'
+      );
     } finally {
       if (!signal?.aborted) {
         setLoading(false);
@@ -62,4 +64,3 @@ export const useContacts = () => {
     refetch: () => fetchContacts(),
   };
 };
-

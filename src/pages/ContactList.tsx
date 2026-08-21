@@ -85,7 +85,9 @@ const ContactList: React.FC = () => {
   const inkStrong = useColorModeValue('paper.900', 'paper.50');
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [editingContactId, setEditingContactId] = useState<string | undefined>();
+  const [editingContactId, setEditingContactId] = useState<
+    string | undefined
+  >();
 
   const { contacts, loading, error, refetch } = useContacts();
 
@@ -265,13 +267,22 @@ const ContactList: React.FC = () => {
               <Thead bg={headerBg}>
                 <Tr>
                   <Th {...headerCellProps}>Contacto</Th>
-                  <Th {...headerCellProps} display={{ base: 'none', md: 'table-cell' }}>
+                  <Th
+                    {...headerCellProps}
+                    display={{ base: 'none', md: 'table-cell' }}
+                  >
                     Tipo
                   </Th>
-                  <Th {...headerCellProps} display={{ base: 'none', lg: 'table-cell' }}>
+                  <Th
+                    {...headerCellProps}
+                    display={{ base: 'none', lg: 'table-cell' }}
+                  >
                     Organización
                   </Th>
-                  <Th {...headerCellProps} display={{ base: 'none', lg: 'table-cell' }}>
+                  <Th
+                    {...headerCellProps}
+                    display={{ base: 'none', lg: 'table-cell' }}
+                  >
                     Contacto
                   </Th>
                   <Th
@@ -326,7 +337,11 @@ const ContactList: React.FC = () => {
                                 {contact.alias}
                               </Text>
                             ) : contact.position ? (
-                              <Text fontSize="11.5px" color={subColor} noOfLines={1}>
+                              <Text
+                                fontSize="11.5px"
+                                color={subColor}
+                                noOfLines={1}
+                              >
                                 {contact.position}
                               </Text>
                             ) : null}
@@ -390,7 +405,11 @@ const ContactList: React.FC = () => {
                           <VStack align="start" spacing={0}>
                             {contact.email && (
                               <HStack spacing={1.5} color={inkStrong}>
-                                <Icon as={FiMail} boxSize={3} color={labelColor} />
+                                <Icon
+                                  as={FiMail}
+                                  boxSize={3}
+                                  color={labelColor}
+                                />
                                 <Text fontSize="12.5px" noOfLines={1}>
                                   {contact.email}
                                 </Text>
@@ -398,7 +417,11 @@ const ContactList: React.FC = () => {
                             )}
                             {contact.phone && (
                               <HStack spacing={1.5} color={subColor}>
-                                <Icon as={FiPhone} boxSize={3} color={labelColor} />
+                                <Icon
+                                  as={FiPhone}
+                                  boxSize={3}
+                                  color={labelColor}
+                                />
                                 <Text
                                   fontFamily="mono"
                                   fontSize="11.5px"

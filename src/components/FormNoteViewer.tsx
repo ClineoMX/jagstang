@@ -25,7 +25,10 @@ import { apiService } from '../services/api';
 import type { FormFieldValue } from './FormNoteFiller';
 
 /** API returns position.page; we use position.pageIndex. Support both. */
-function getPositionPageIndex(pos: { pageIndex?: number; page?: number }): number {
+function getPositionPageIndex(pos: {
+  pageIndex?: number;
+  page?: number;
+}): number {
   return pos.pageIndex ?? pos.page ?? 0;
 }
 
@@ -50,396 +53,423 @@ export interface FormNoteViewerHandle {
 
 const FormNoteViewer = forwardRef<FormNoteViewerHandle, FormNoteViewerProps>(
   ({ formId, values, title }, ref) => {
-  const toast = useToast();
-  const cardBg = useColorModeValue('white', 'paper.800');
-  const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
-  const mutedColor = useColorModeValue('paper.600', 'paper.400');
-  const filledFieldBg = 'statusSoft.okBg';
-  const filledFieldFg = 'statusSoft.okFg';
-  const filledFieldBorder = 'statusSoft.okBorder';
+    const toast = useToast();
+    const cardBg = useColorModeValue('white', 'paper.800');
+    const pdfPanelBg = useColorModeValue('paper.100', 'paper.900');
+    const mutedColor = useColorModeValue('paper.600', 'paper.400');
+    const pdfBorderColor = useColorModeValue('line.light', 'line.dark');
+    const filledFieldBg = 'statusSoft.okBg';
+    const filledFieldFg = 'statusSoft.okFg';
+    const filledFieldBorder = 'statusSoft.okBorder';
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
-  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [pdfContainerWidth, setPdfContainerWidth] = useState<number>(0);
-  const [pdfLoadError, setPdfLoadError] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+    const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+    const [numPages, setNumPages] = useState<number | null>(null);
+    const [pdfContainerWidth, setPdfContainerWidth] = useState<number>(0);
+    const [pdfLoadError, setPdfLoadError] = useState(false);
 
-  const pdfContainerRef = useRef<HTMLDivElement>(null);
-  const initialWidthSet = useRef(false);
+    const pdfContainerRef = useRef<HTMLDivElement>(null);
+    const initialWidthSet = useRef(false);
 
-  const fieldsWithPosition = values.filter((v) => v.position != null);
+    const fieldsWithPosition = values.filter((v) => v.position != null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setPdfBlob(null);
-    setPdfBlobUrl(null);
-    setNumPages(null);
+    useEffect(() => {
+      let cancelled = false;
+      setLoading(true);
+      setError(null);
+      setPdfBlob(null);
+      setPdfBlobUrl(null);
+      setNumPages(null);
 
-    (async () => {
-      try {
-        const form = await apiService.getDoctorForm(formId);
-        if (cancelled) return;
-
-        if (form.key) {
-          const blob = await apiService.getDoctorAsset(form.key);
-          if (cancelled) return;
-          setPdfBlob(blob);
-          setPdfBlobUrl(URL.createObjectURL(blob));
-        }
-      } catch {
-        if (!cancelled) setError('No se pudo cargar el documento');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [formId]);
-
-  useEffect(() => {
-    return () => {
-      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
-    };
-  }, [pdfBlobUrl]);
-
-  useEffect(() => {
-    initialWidthSet.current = false;
-  }, [pdfBlobUrl]);
-
-  useEffect(() => {
-    if (!pdfContainerRef.current) return;
-    let timeoutId = 0;
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (typeof w !== 'number' || w < 1) return;
-      const next = Math.floor(w);
-      const apply = () => {
-        setPdfContainerWidth((prev) => (Math.abs(prev - next) > 2 ? next : prev));
-      };
-      if (!initialWidthSet.current) {
-        initialWidthSet.current = true;
-        apply();
-        return;
-      }
-      window.clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(apply, 250);
-    });
-    ro.observe(pdfContainerRef.current);
-    return () => {
-      window.clearTimeout(timeoutId);
-      ro.disconnect();
-    };
-  }, [pdfBlobUrl]);
-
-  const onDocumentLoadSuccess = useCallback(({ numPages: n }: { numPages: number }) => {
-    setNumPages(n);
-    setPdfLoadError(false);
-  }, []);
-
-  const onDocumentLoadError = useCallback(() => {
-    setPdfLoadError(true);
-  }, []);
-
-  const buildExportPdfBlob = useCallback(async (): Promise<Blob> => {
-    if (!pdfBlob) throw new Error('NOT_READY');
-    if (fieldsWithPosition.length === 0) return pdfBlob;
-
-    const doc = await PDFDocument.load(await pdfBlob.arrayBuffer());
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-
-    for (const field of fieldsWithPosition) {
-      const pos = field.position!;
-      const page = doc.getPage(getPositionPageIndex(pos));
-      const { width: pageWidth, height: pageHeight } = page.getSize();
-
-      const x = (pos.x / 100) * pageWidth + 2;
-      const boxHeight = (pos.height / 100) * pageHeight;
-      const yPdf = pageHeight - (pos.y / 100) * pageHeight - boxHeight;
-      const boxWidth = (pos.width / 100) * pageWidth - 4;
-
-      let displayValue = (field.value || '').trim() || '—';
-      const fontSize = Math.min(10, Math.max(6, boxHeight * 0.5));
-      const maxChars = Math.floor(boxWidth / (fontSize * 0.5));
-      if (displayValue.length > maxChars) {
-        displayValue = displayValue.slice(0, Math.max(0, maxChars - 1)) + '…';
-      }
-      const textWidth = font.widthOfTextAtSize(displayValue, fontSize);
-
-      page.drawText(displayValue, {
-        x: Math.min(x + boxWidth - textWidth, x + 2),
-        y: yPdf + (boxHeight - fontSize) / 2,
-        size: fontSize,
-        font,
-        color: rgb(0.2, 0.2, 0.2),
-      });
-    }
-
-    const filledPdf = await doc.save();
-    return new Blob([new Uint8Array(filledPdf)], { type: 'application/pdf' });
-  }, [pdfBlob, fieldsWithPosition]);
-
-  const safeFilename = useMemo(
-    () =>
-      `${(title || 'documento').replace(/[^a-zA-Z0-9áéíóúñÑ\s-]/g, '').trim() || 'documento'}.pdf`,
-    [title]
-  );
-
-  const handleDownload = useCallback(async () => {
-    try {
-      const blob = await buildExportPdfBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = safeFilename;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast({ title: 'PDF descargado', status: 'success', duration: 2000 });
-    } catch (e) {
-      if (e instanceof Error && e.message === 'NOT_READY') {
-        toast({
-          title: 'El PDF aún no está listo',
-          status: 'info',
-          duration: 2500,
-        });
-      } else {
-        toast({ title: 'Error al generar el PDF', status: 'error', duration: 3000 });
-      }
-    }
-  }, [buildExportPdfBlob, safeFilename, toast]);
-
-  const handlePrintPdf = useCallback(async () => {
-    let objectUrl: string | null = null;
-    let iframe: HTMLIFrameElement | null = null;
-
-    const cleanup = () => {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-        objectUrl = null;
-      }
-      if (iframe?.parentNode) iframe.parentNode.removeChild(iframe);
-      iframe = null;
-    };
-
-    try {
-      const blob = await buildExportPdfBlob();
-      objectUrl = URL.createObjectURL(blob);
-
-      iframe = document.createElement('iframe');
-      iframe.setAttribute('title', 'Impresión de documento');
-      iframe.style.cssText =
-        'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
-      iframe.src = objectUrl;
-      document.body.appendChild(iframe);
-
-      const win = iframe.contentWindow;
-      if (!win) {
-        cleanup();
-        toast({
-          title: 'No se pudo abrir la impresión',
-          status: 'error',
-          duration: 4000,
-          isClosable: true,
-        });
-        return;
-      }
-
-      let cleanedUp = false;
-      const safeCleanup = () => {
-        if (cleanedUp) return;
-        cleanedUp = true;
-        cleanup();
-      };
-
-      let didPrint = false;
-      const runPrint = () => {
-        if (didPrint) return;
-        didPrint = true;
+      (async () => {
         try {
-          win.focus();
-          win.print();
+          const form = await apiService.getDoctorForm(formId);
+          if (cancelled) return;
+
+          if (form.key) {
+            const blob = await apiService.getDoctorAsset(form.key);
+            if (cancelled) return;
+            setPdfBlob(blob);
+            setPdfBlobUrl(URL.createObjectURL(blob));
+          }
         } catch {
+          if (!cancelled) setError('No se pudo cargar el documento');
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [formId]);
+
+    useEffect(() => {
+      return () => {
+        if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+      };
+    }, [pdfBlobUrl]);
+
+    useEffect(() => {
+      initialWidthSet.current = false;
+    }, [pdfBlobUrl]);
+
+    useEffect(() => {
+      if (!pdfContainerRef.current) return;
+      let timeoutId = 0;
+      const ro = new ResizeObserver((entries) => {
+        const w = entries[0]?.contentRect.width;
+        if (typeof w !== 'number' || w < 1) return;
+        const next = Math.floor(w);
+        const apply = () => {
+          setPdfContainerWidth((prev) =>
+            Math.abs(prev - next) > 2 ? next : prev
+          );
+        };
+        if (!initialWidthSet.current) {
+          initialWidthSet.current = true;
+          apply();
+          return;
+        }
+        window.clearTimeout(timeoutId);
+        timeoutId = window.setTimeout(apply, 250);
+      });
+      ro.observe(pdfContainerRef.current);
+      return () => {
+        window.clearTimeout(timeoutId);
+        ro.disconnect();
+      };
+    }, [pdfBlobUrl]);
+
+    const onDocumentLoadSuccess = useCallback(
+      ({ numPages: n }: { numPages: number }) => {
+        setNumPages(n);
+        setPdfLoadError(false);
+      },
+      []
+    );
+
+    const onDocumentLoadError = useCallback(() => {
+      setPdfLoadError(true);
+    }, []);
+
+    const buildExportPdfBlob = useCallback(async (): Promise<Blob> => {
+      if (!pdfBlob) throw new Error('NOT_READY');
+      if (fieldsWithPosition.length === 0) return pdfBlob;
+
+      const doc = await PDFDocument.load(await pdfBlob.arrayBuffer());
+      const font = await doc.embedFont(StandardFonts.Helvetica);
+
+      for (const field of fieldsWithPosition) {
+        const pos = field.position!;
+        const page = doc.getPage(getPositionPageIndex(pos));
+        const { width: pageWidth, height: pageHeight } = page.getSize();
+
+        const x = (pos.x / 100) * pageWidth + 2;
+        const boxHeight = (pos.height / 100) * pageHeight;
+        const yPdf = pageHeight - (pos.y / 100) * pageHeight - boxHeight;
+        const boxWidth = (pos.width / 100) * pageWidth - 4;
+
+        let displayValue = (field.value || '').trim() || '—';
+        const fontSize = Math.min(10, Math.max(6, boxHeight * 0.5));
+        const maxChars = Math.floor(boxWidth / (fontSize * 0.5));
+        if (displayValue.length > maxChars) {
+          displayValue = displayValue.slice(0, Math.max(0, maxChars - 1)) + '…';
+        }
+        const textWidth = font.widthOfTextAtSize(displayValue, fontSize);
+
+        page.drawText(displayValue, {
+          x: Math.min(x + boxWidth - textWidth, x + 2),
+          y: yPdf + (boxHeight - fontSize) / 2,
+          size: fontSize,
+          font,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+      }
+
+      const filledPdf = await doc.save();
+      return new Blob([new Uint8Array(filledPdf)], { type: 'application/pdf' });
+    }, [pdfBlob, fieldsWithPosition]);
+
+    const safeFilename = useMemo(
+      () =>
+        `${(title || 'documento').replace(/[^a-zA-Z0-9áéíóúñÑ\s-]/g, '').trim() || 'documento'}.pdf`,
+      [title]
+    );
+
+    const handleDownload = useCallback(async () => {
+      try {
+        const blob = await buildExportPdfBlob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = safeFilename;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: 'PDF descargado', status: 'success', duration: 2000 });
+      } catch (e) {
+        if (e instanceof Error && e.message === 'NOT_READY') {
           toast({
-            title: 'Error al abrir el diálogo de impresión',
+            title: 'El PDF aún no está listo',
+            status: 'info',
+            duration: 2500,
+          });
+        } else {
+          toast({
+            title: 'Error al generar el PDF',
+            status: 'error',
+            duration: 3000,
+          });
+        }
+      }
+    }, [buildExportPdfBlob, safeFilename, toast]);
+
+    const handlePrintPdf = useCallback(async () => {
+      let objectUrl: string | null = null;
+      let iframe: HTMLIFrameElement | null = null;
+
+      const cleanup = () => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
+        if (iframe?.parentNode) iframe.parentNode.removeChild(iframe);
+        iframe = null;
+      };
+
+      try {
+        const blob = await buildExportPdfBlob();
+        objectUrl = URL.createObjectURL(blob);
+
+        iframe = document.createElement('iframe');
+        iframe.setAttribute('title', 'Impresión de documento');
+        iframe.style.cssText =
+          'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+        iframe.src = objectUrl;
+        document.body.appendChild(iframe);
+
+        const win = iframe.contentWindow;
+        if (!win) {
+          cleanup();
+          toast({
+            title: 'No se pudo abrir la impresión',
             status: 'error',
             duration: 4000,
             isClosable: true,
           });
-          safeCleanup();
+          return;
         }
-      };
 
-      win.addEventListener('afterprint', () => safeCleanup(), { once: true });
-      window.setTimeout(() => safeCleanup(), 90_000);
+        let cleanedUp = false;
+        const safeCleanup = () => {
+          if (cleanedUp) return;
+          cleanedUp = true;
+          cleanup();
+        };
 
-      iframe.addEventListener('load', () => {
-        window.setTimeout(runPrint, 500);
-      });
-      window.setTimeout(() => {
-        if (!didPrint) runPrint();
-      }, 2800);
-    } catch (e) {
-      cleanup();
-      if (e instanceof Error && e.message === 'NOT_READY') {
-        toast({
-          title: 'El PDF aún no está listo',
-          status: 'info',
-          duration: 2500,
+        let didPrint = false;
+        const runPrint = () => {
+          if (didPrint) return;
+          didPrint = true;
+          try {
+            win.focus();
+            win.print();
+          } catch {
+            toast({
+              title: 'Error al abrir el diálogo de impresión',
+              status: 'error',
+              duration: 4000,
+              isClosable: true,
+            });
+            safeCleanup();
+          }
+        };
+
+        win.addEventListener('afterprint', () => safeCleanup(), { once: true });
+        window.setTimeout(() => safeCleanup(), 90_000);
+
+        iframe.addEventListener('load', () => {
+          window.setTimeout(runPrint, 500);
         });
-      } else {
-        toast({
-          title: 'Error al preparar el PDF para imprimir',
-          status: 'error',
-          duration: 4000,
-          isClosable: true,
-        });
+        window.setTimeout(() => {
+          if (!didPrint) runPrint();
+        }, 2800);
+      } catch (e) {
+        cleanup();
+        if (e instanceof Error && e.message === 'NOT_READY') {
+          toast({
+            title: 'El PDF aún no está listo',
+            status: 'info',
+            duration: 2500,
+          });
+        } else {
+          toast({
+            title: 'Error al preparar el PDF para imprimir',
+            status: 'error',
+            duration: 4000,
+            isClosable: true,
+          });
+        }
       }
+    }, [buildExportPdfBlob, toast]);
+
+    useImperativeHandle(
+      ref,
+      () => ({ download: handleDownload, printPdf: handlePrintPdf }),
+      [handleDownload, handlePrintPdf]
+    );
+
+    const pdfReady = Boolean(
+      pdfBlobUrl && pdfContainerWidth > 0 && numPages != null
+    );
+
+    if (loading) {
+      return (
+        <VStack py={12} spacing={3}>
+          <Spinner size="xl" colorScheme="brand" thickness="3px" />
+          <Text fontSize="sm" color={mutedColor}>
+            Cargando documento…
+          </Text>
+        </VStack>
+      );
     }
-  }, [buildExportPdfBlob, toast]);
 
-  useImperativeHandle(
-    ref,
-    () => ({ download: handleDownload, printPdf: handlePrintPdf }),
-    [handleDownload, handlePrintPdf]
-  );
+    if (error) {
+      return (
+        <Alert status="error" borderRadius="md">
+          <AlertIcon />
+          <Text>{error}</Text>
+        </Alert>
+      );
+    }
 
-  const pdfReady = Boolean(pdfBlobUrl && pdfContainerWidth > 0 && numPages != null);
+    if (!pdfBlobUrl) {
+      return (
+        <Text color={mutedColor} py={4}>
+          Este documento no tiene un PDF asociado.
+        </Text>
+      );
+    }
 
-  if (loading) {
     return (
-      <VStack py={12} spacing={3}>
-        <Spinner size="xl" colorScheme="brand" thickness="3px" />
-        <Text fontSize="sm" color={mutedColor}>Cargando documento…</Text>
+      <VStack align="stretch" spacing={4}>
+        <Box
+          ref={pdfContainerRef}
+          borderWidth="1px"
+          borderColor={pdfBorderColor}
+          borderRadius="lg"
+          overflow="auto"
+          bg={pdfPanelBg}
+          maxH="70vh"
+          minH="320px"
+          position="relative"
+        >
+          {!pdfReady && !pdfLoadError && (
+            <Box
+              position="absolute"
+              inset={0}
+              bg={cardBg}
+              zIndex={8}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              borderRadius="lg"
+            >
+              <VStack spacing={4}>
+                <Spinner size="xl" colorScheme="brand" thickness="3px" />
+                <Text fontSize="sm" color={mutedColor}>
+                  Cargando PDF…
+                </Text>
+              </VStack>
+            </Box>
+          )}
+          {pdfLoadError && (
+            <Box
+              position="absolute"
+              inset={0}
+              bg={cardBg}
+              zIndex={8}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              borderRadius="lg"
+              p={4}
+            >
+              <Alert status="error" borderRadius="md">
+                <AlertIcon />
+                <Text>No se pudo cargar el PDF.</Text>
+              </Alert>
+            </Box>
+          )}
+          <Document
+            file={pdfBlobUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={onDocumentLoadError}
+            loading={null}
+            error={null}
+            noData={null}
+          >
+            {numPages != null &&
+              pdfContainerWidth > 0 &&
+              Array.from({ length: numPages }, (_, pageIdx) => (
+                <Box
+                  key={pageIdx}
+                  position="relative"
+                  display="inline-block"
+                  my={2}
+                >
+                  <Page
+                    pageNumber={pageIdx + 1}
+                    width={Math.max(1, Math.floor(pdfContainerWidth))}
+                    renderTextLayer={true}
+                    renderAnnotationLayer={true}
+                  />
+                  {fieldsWithPosition
+                    .filter(
+                      (v) => getPositionPageIndex(v.position!) === pageIdx
+                    )
+                    .map((v, i) => {
+                      const pos = v.position!;
+                      const displayValue = (v.value || '').trim() || '—';
+                      return (
+                        <Box
+                          key={`${v.name}-${i}`}
+                          position="absolute"
+                          left={`${pos.x}%`}
+                          top={`${pos.y}%`}
+                          w={`${pos.width}%`}
+                          h={`${pos.height}%`}
+                          borderWidth="1px"
+                          borderColor={filledFieldBorder}
+                          bg={filledFieldBg}
+                          opacity={0.95}
+                          borderRadius="sm"
+                          zIndex={5}
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          fontSize="xs"
+                          color={filledFieldFg}
+                          fontWeight="medium"
+                          overflow="hidden"
+                          pointerEvents="none"
+                        >
+                          <Text px={1} noOfLines={2} textAlign="center">
+                            {displayValue}
+                          </Text>
+                        </Box>
+                      );
+                    })}
+                </Box>
+              ))}
+          </Document>
+        </Box>
       </VStack>
     );
   }
-
-  if (error) {
-    return (
-      <Alert status="error" borderRadius="md">
-        <AlertIcon />
-        <Text>{error}</Text>
-      </Alert>
-    );
-  }
-
-  if (!pdfBlobUrl) {
-    return (
-      <Text color={mutedColor} py={4}>
-        Este documento no tiene un PDF asociado.
-      </Text>
-    );
-  }
-
-  return (
-    <VStack align="stretch" spacing={4}>
-      <Box
-      ref={pdfContainerRef}
-      borderWidth="1px"
-      borderColor={useColorModeValue('line.light', 'line.dark')}
-      borderRadius="lg"
-      overflow="auto"
-      bg={pdfPanelBg}
-      maxH="70vh"
-      minH="320px"
-      position="relative"
-    >
-      {!pdfReady && !pdfLoadError && (
-        <Box
-          position="absolute"
-          inset={0}
-          bg={cardBg}
-          zIndex={8}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          borderRadius="lg"
-        >
-          <VStack spacing={4}>
-            <Spinner size="xl" colorScheme="brand" thickness="3px" />
-            <Text fontSize="sm" color={mutedColor}>Cargando PDF…</Text>
-          </VStack>
-        </Box>
-      )}
-      {pdfLoadError && (
-        <Box
-          position="absolute"
-          inset={0}
-          bg={cardBg}
-          zIndex={8}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          borderRadius="lg"
-          p={4}
-        >
-          <Alert status="error" borderRadius="md">
-            <AlertIcon />
-            <Text>No se pudo cargar el PDF.</Text>
-          </Alert>
-        </Box>
-      )}
-      <Document
-        file={pdfBlobUrl}
-        onLoadSuccess={onDocumentLoadSuccess}
-        onLoadError={onDocumentLoadError}
-        loading={null}
-        error={null}
-        noData={null}
-      >
-        {numPages != null && pdfContainerWidth > 0 &&
-          Array.from({ length: numPages }, (_, pageIdx) => (
-            <Box key={pageIdx} position="relative" display="inline-block" my={2}>
-              <Page
-                pageNumber={pageIdx + 1}
-                width={Math.max(1, Math.floor(pdfContainerWidth))}
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-              />
-              {fieldsWithPosition
-                .filter((v) => getPositionPageIndex(v.position!) === pageIdx)
-                .map((v, i) => {
-                  const pos = v.position!;
-                  const displayValue = (v.value || '').trim() || '—';
-                  return (
-                    <Box
-                      key={`${v.name}-${i}`}
-                      position="absolute"
-                      left={`${pos.x}%`}
-                      top={`${pos.y}%`}
-                      w={`${pos.width}%`}
-                      h={`${pos.height}%`}
-                      borderWidth="1px"
-                      borderColor={filledFieldBorder}
-                      bg={filledFieldBg}
-                      opacity={0.95}
-                      borderRadius="sm"
-                      zIndex={5}
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                      fontSize="xs"
-                      color={filledFieldFg}
-                      fontWeight="medium"
-                      overflow="hidden"
-                      pointerEvents="none"
-                    >
-                      <Text px={1} noOfLines={2} textAlign="center">
-                        {displayValue}
-                      </Text>
-                    </Box>
-                  );
-                })}
-            </Box>
-          ))}
-      </Document>
-    </Box>
-    </VStack>
-  );
-});
+);
 FormNoteViewer.displayName = 'FormNoteViewer';
 
 export default FormNoteViewer;

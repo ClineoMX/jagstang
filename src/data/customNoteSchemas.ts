@@ -54,13 +54,19 @@ export function newField(kind: FieldDef['kind']): FieldDef {
     signature: 'Firma',
   };
   const extras: Partial<FieldDef> =
-    kind === 'text' ? { placeholder: 'Escribe aquí…' }
-    : kind === 'richlite' ? { placeholder: 'Describe…' }
-    : kind === 'vitals' ? { requiredKeys: ['bp_sys', 'bp_dia', 'hr'] }
-    : kind === 'select' ? { options: ['Opción A', 'Opción B'], placeholder: 'Seleccionar…' }
-    : kind === 'multi' ? { options: ['Opción A', 'Opción B'] }
-    : kind === 'number' ? { unit: '' }
-    : {};
+    kind === 'text'
+      ? { placeholder: 'Escribe aquí…' }
+      : kind === 'richlite'
+        ? { placeholder: 'Describe…' }
+        : kind === 'vitals'
+          ? { requiredKeys: ['bp_sys', 'bp_dia', 'hr'] }
+          : kind === 'select'
+            ? { options: ['Opción A', 'Opción B'], placeholder: 'Seleccionar…' }
+            : kind === 'multi'
+              ? { options: ['Opción A', 'Opción B'] }
+              : kind === 'number'
+                ? { unit: '' }
+                : {};
   return { id, kind, label: labelMap[kind], ...extras };
 }
 

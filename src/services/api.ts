@@ -9,7 +9,11 @@ import {
   API_KEY,
   API_ENDPOINTS,
 } from '../config/api';
-import { fetchWithTimeout, ApiTimeoutError } from '../utils/apiStatus';
+import {
+  fetchWithTimeout,
+  ApiTimeoutError,
+  getErrorMessage,
+} from '../utils/apiStatus';
 
 /** Wider timeout for the enriched (and slower) v2.0 patients list. */
 const PATIENTS_LIST_TIMEOUT_MS = 60000;
@@ -1724,7 +1728,7 @@ class ApiService {
             const trimmed = (data || '').trim();
             if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
               try {
-                const parsed = JSON.parse(trimmed) as any;
+                const parsed = JSON.parse(trimmed) as Record<string, unknown>;
                 if (parsed?.error) {
                   const apiErr = {
                     message: String(parsed.error),
@@ -1779,7 +1783,7 @@ class ApiService {
           response,
           signal,
           onObject: (obj) => {
-            const o = obj as any;
+            const o = obj as Record<string, unknown>;
             const t = typeof o?.type === 'string' ? o.type : undefined;
             const d = typeof o?.data === 'string' ? o.data : '';
 
@@ -1811,13 +1815,13 @@ class ApiService {
         });
       }
       safeDone();
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (signal?.aborted) return;
       const apiErr: ApiError =
         err && typeof err === 'object' && 'status' in err
           ? (err as ApiError)
           : ({
-              message: err?.message || 'Error de streaming',
+              message: getErrorMessage(err, 'Error de streaming'),
               status: 0,
             } as ApiError);
       onError?.(apiErr);
@@ -1883,13 +1887,13 @@ class ApiService {
           onEvent({ event, data: parsed });
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (signal?.aborted) return;
       const apiErr: ApiError =
         err && typeof err === 'object' && 'status' in err
           ? (err as ApiError)
           : ({
-              message: err?.message || 'Events stream error',
+              message: getErrorMessage(err, 'Events stream error'),
               status: 0,
             } as ApiError);
       onError?.(apiErr);

@@ -64,9 +64,7 @@ export function formatFollowUpChainLabel(
   chainTotal: number
 ): string {
   const typeLabel = getNoteTypeLabel(ref.noteType);
-  const dateLabel = ref.customDate
-    ? formatFollowUpDate(ref.customDate)
-    : '—';
+  const dateLabel = ref.customDate ? formatFollowUpDate(ref.customDate) : '—';
   return `${typeLabel}: ${dateLabel} ${chainIndex}/${chainTotal}`;
 }
 

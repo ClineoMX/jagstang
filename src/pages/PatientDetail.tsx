@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from 'react';
 import {
   Box,
   ButtonGroup,
@@ -59,7 +65,11 @@ import { FaWandMagicSparkles } from 'react-icons/fa6';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { usePatient, usePatients, usePatientAssets } from '../hooks/usePatients';
+import {
+  usePatient,
+  usePatients,
+  usePatientAssets,
+} from '../hooks/usePatients';
 import { useNotes } from '../hooks/useNotes';
 import { usePatientInterrogatory } from '../hooks/usePatientInterrogatory';
 import { useClientEvents, type ClientEvent } from '../hooks/useClientEvents';
@@ -100,6 +110,7 @@ import {
 import { parseTemplateContent } from '../data/customNoteSchemas';
 import { apiService } from '../services/api';
 import { normalizePatientSlug } from '../utils/patientSlug';
+import { getErrorMessage } from '../utils/apiStatus';
 import {
   formatFollowUpChainLabel,
   formatFollowUpChainRootLabel,
@@ -111,7 +122,7 @@ import PatientAppointmentDrawer from '../components/PatientAppointmentDrawer';
 import { usePatientNotesSummary } from '../hooks/usePatientNotesSummary';
 import StreamingMarkdown from '../components/StreamingMarkdown';
 import SummaryLoadingSkeleton from '../components/SummaryLoadingSkeleton';
-import type { Patient } from '../types';
+import type { MedicalNote, Patient } from '../types';
 
 const PatientDetail: React.FC = () => {
   const { patientSlug } = useParams<{ patientSlug: string }>();
@@ -140,7 +151,7 @@ const PatientDetail: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [selectedNote, setSelectedNote] = useState<any>(null);
+  const [selectedNote, setSelectedNote] = useState<MedicalNote | null>(null);
   const formNoteViewerRef = React.useRef<FormNoteViewerHandle>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -174,7 +185,9 @@ const PatientDetail: React.FC = () => {
     try {
       const isoDate = new Date(editingDateValue).toISOString();
       await updateNoteDate(selectedNote.id, isoDate);
-      setSelectedNote((prev: any) => prev ? { ...prev, createdAt: isoDate } : prev);
+      setSelectedNote((prev) =>
+        prev ? { ...prev, createdAt: isoDate } : prev
+      );
       toast({
         title: 'Fecha actualizada',
         status: 'success',
@@ -182,10 +195,10 @@ const PatientDetail: React.FC = () => {
         isClosable: true,
       });
       setIsEditingDate(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: 'Error al actualizar fecha',
-        description: err?.message || 'No se pudo actualizar la fecha',
+        description: getErrorMessage(err, 'No se pudo actualizar la fecha'),
         status: 'error',
         duration: 4000,
         isClosable: true,
@@ -304,9 +317,10 @@ const PatientDetail: React.FC = () => {
     if (!raw) return undefined;
     const match = patients.find((p: Patient) => p.slug === raw || p.id === raw);
     if (match?.id) return match.id;
-    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      raw
-    );
+    const looksLikeUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        raw
+      );
     return looksLikeUuid ? raw : undefined;
   }, [patients, patientSlug]);
 
@@ -392,7 +406,11 @@ const PatientDetail: React.FC = () => {
     setBloodType,
   } = usePatientVitals(patientId);
 
-  const { assets, loading: assetsLoading, refetch: refetchAssets } = usePatientAssets(patientId);
+  const {
+    assets,
+    loading: assetsLoading,
+    refetch: refetchAssets,
+  } = usePatientAssets(patientId);
   const notesSummary = usePatientNotesSummary(patientId);
 
   // Suscripción al stream de eventos (SSE) del paciente mientras se está en su
@@ -424,10 +442,13 @@ const PatientDetail: React.FC = () => {
     const raw = (patientSlug ?? '').trim().replace(/^#/, '');
     if (!slug || !raw || raw === slug) return;
     if (location.pathname.startsWith(`/patients/${raw}`)) {
-      navigate(location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`), {
-        replace: true,
-        state: location.state,
-      });
+      navigate(
+        location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`),
+        {
+          replace: true,
+          state: location.state,
+        }
+      );
     }
   }, [location.pathname, location.state, navigate, patient?.slug, patientSlug]);
 
@@ -440,6 +461,8 @@ const PatientDetail: React.FC = () => {
   const handleOpenSummaryDrawer = useCallback(() => {
     onSummaryDrawerOpen();
     void notesSummary.start();
+    // notesSummary object identity churns; depend on .start only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onSummaryDrawerOpen, notesSummary.start]);
 
   const {
@@ -521,7 +544,7 @@ const PatientDetail: React.FC = () => {
       .trim();
   };
 
-  const handleViewNote = (note: any) => {
+  const handleViewNote = (note: MedicalNote) => {
     setSelectedNote(note);
     setIsEditingDate(false);
     onOpen();
@@ -787,10 +810,10 @@ const PatientDetail: React.FC = () => {
         duration: 3000,
         isClosable: true,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: 'Error',
-        description: err?.message || 'No se pudo guardar la ficha',
+        description: getErrorMessage(err, 'No se pudo guardar la ficha'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -961,7 +984,11 @@ const PatientDetail: React.FC = () => {
             </Button>
             {canShowSummary && (
               <>
-                <Tooltip label="Resumen del expediente" hasArrow placement="bottom">
+                <Tooltip
+                  label="Resumen del expediente"
+                  hasArrow
+                  placement="bottom"
+                >
                   <IconButton
                     aria-label="Resumen del expediente"
                     icon={<FaWandMagicSparkles />}
@@ -976,7 +1003,11 @@ const PatientDetail: React.FC = () => {
                     display={{ base: 'inline-flex', md: 'none' }}
                   />
                 </Tooltip>
-                <Tooltip label="Resumen del expediente" hasArrow placement="bottom">
+                <Tooltip
+                  label="Resumen del expediente"
+                  hasArrow
+                  placement="bottom"
+                >
                   <Button
                     leftIcon={<FaWandMagicSparkles />}
                     variant="outline"
@@ -1037,9 +1068,7 @@ const PatientDetail: React.FC = () => {
                   <MenuList>
                     <MenuItem
                       icon={<FiEdit3 />}
-                      onClick={() =>
-                        navigate(`${patientPathBase}/notes/new`)
-                      }
+                      onClick={() => navigate(`${patientPathBase}/notes/new`)}
                     >
                       Nota de texto
                     </MenuItem>
@@ -1348,7 +1377,9 @@ const PatientDetail: React.FC = () => {
               lineHeight="1.25"
               color={activeTab === 'expediente' ? inkStrong : labelColor}
               borderBottom="2px solid"
-              borderColor={activeTab === 'expediente' ? 'brand.600' : 'transparent'}
+              borderColor={
+                activeTab === 'expediente' ? 'brand.600' : 'transparent'
+              }
               mb="-1px"
               cursor="pointer"
               bg="transparent"
@@ -1391,7 +1422,9 @@ const PatientDetail: React.FC = () => {
               lineHeight="1.25"
               color={activeTab === 'documentos' ? inkStrong : labelColor}
               borderBottom="2px solid"
-              borderColor={activeTab === 'documentos' ? 'brand.600' : 'transparent'}
+              borderColor={
+                activeTab === 'documentos' ? 'brand.600' : 'transparent'
+              }
               mb="-1px"
               cursor="pointer"
               bg="transparent"
@@ -1566,7 +1599,12 @@ const PatientDetail: React.FC = () => {
                       _hover={{ color: 'brand.600' }}
                       transition="color 0.15s"
                     >
-                      <Icon as={FiCalendar} boxSize="12px" color={labelColor} _groupHover={{ color: 'brand.600' }} />
+                      <Icon
+                        as={FiCalendar}
+                        boxSize="12px"
+                        color={labelColor}
+                        _groupHover={{ color: 'brand.600' }}
+                      />
                       <Text
                         fontFamily="mono"
                         fontSize="11.5px"
@@ -1574,7 +1612,8 @@ const PatientDetail: React.FC = () => {
                         letterSpacing="0.04em"
                         _groupHover={{ color: 'brand.600' }}
                       >
-                        {selectedNote?.status === 'signed' && selectedNote?.signedAt
+                        {selectedNote?.status === 'signed' &&
+                        selectedNote?.signedAt
                           ? `Firmada · ${format(
                               new Date(selectedNote.signedAt),
                               "d 'de' MMM, yyyy · HH:mm",
@@ -1588,7 +1627,14 @@ const PatientDetail: React.FC = () => {
                               )}`
                             : 'Sin fecha'}
                       </Text>
-                      <Icon as={FiEdit} boxSize="11px" color={labelColor} opacity={0} _groupHover={{ opacity: 1, color: 'brand.600' }} transition="opacity 0.15s" />
+                      <Icon
+                        as={FiEdit}
+                        boxSize="11px"
+                        color={labelColor}
+                        opacity={0}
+                        _groupHover={{ opacity: 1, color: 'brand.600' }}
+                        transition="opacity 0.15s"
+                      />
                     </HStack>
                   )}
                 </HStack>
@@ -1762,6 +1808,7 @@ const PatientDetail: React.FC = () => {
                     bg={cardBg}
                     _hover={{ borderColor: 'paper.600' }}
                     onClick={() => {
+                      if (!selectedNote) return;
                       onClose();
                       navigate(
                         `${patientPathBase}/notes/${selectedNote.id}/edit`
@@ -1851,7 +1898,11 @@ const PatientDetail: React.FC = () => {
                     px={4}
                     py={4}
                     cursor="pointer"
-                    _hover={{ borderColor: isGranted ? consentGrantedBorder : 'paper.600' }}
+                    _hover={{
+                      borderColor: isGranted
+                        ? consentGrantedBorder
+                        : 'paper.600',
+                    }}
                     onClick={() => handleConsentClick(consent)}
                   >
                     <HStack align="start" spacing={4}>
@@ -2065,7 +2116,12 @@ const PatientDetail: React.FC = () => {
                     >
                       Revocado el
                     </Text>
-                    <Text fontSize="13.5px" fontWeight={700} color="red.600" mt={1}>
+                    <Text
+                      fontSize="13.5px"
+                      fontWeight={700}
+                      color="red.600"
+                      mt={1}
+                    >
                       {format(
                         new Date(selectedConsent.revokedAt),
                         "d 'de' MMM yyyy",
@@ -2132,8 +2188,8 @@ const PatientDetail: React.FC = () => {
                 <SummaryLoadingSkeleton />
               ) : !notesSummary.hasText && !notesSummary.loading ? (
                 <Text fontSize="13px" color={subColor}>
-                  No hay resumen para mostrar. Cierra el panel y vuelve a abrirlo
-                  con el botón Resumen del encabezado.
+                  No hay resumen para mostrar. Cierra el panel y vuelve a
+                  abrirlo con el botón Resumen del encabezado.
                 </Text>
               ) : (
                 <StreamingMarkdown

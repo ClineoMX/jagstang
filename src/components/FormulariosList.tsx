@@ -104,10 +104,20 @@ const FormulariosList: React.FC<FormulariosListProps> = ({
       ) : savedForms.length === 0 ? (
         <VStack py={12} spacing={4} px={4}>
           <Icon as={FiFileText} boxSize={10} color="paper.400" />
-          <Text fontSize="15px" fontWeight={600} color={nameColor} textAlign="center">
+          <Text
+            fontSize="15px"
+            fontWeight={600}
+            color={nameColor}
+            textAlign="center"
+          >
             No hay formularios guardados
           </Text>
-          <Text fontSize="13px" color={helpColor} textAlign="center" maxW="360px">
+          <Text
+            fontSize="13px"
+            color={helpColor}
+            textAlign="center"
+            maxW="360px"
+          >
             Crea un formulario para definir campos sobre un PDF y posicionarlos.
           </Text>
           <Button
@@ -140,83 +150,88 @@ const FormulariosList: React.FC<FormulariosListProps> = ({
           <Table variant="simple" size="md">
             <Thead>
               <Tr>
-              <Th
-                fontFamily="mono"
-                fontSize="10.5px"
-                letterSpacing="0.08em"
-                color={headerColor}
-                borderColor={rowBorder}
-                textTransform="uppercase"
-              >
-                Nombre
-              </Th>
-              <Th
-                fontFamily="mono"
-                fontSize="10.5px"
-                letterSpacing="0.08em"
-                color={headerColor}
-                borderColor={rowBorder}
-                textTransform="uppercase"
-              >
-                Tipo
-              </Th>
-              <Th
-                fontFamily="mono"
-                fontSize="10.5px"
-                letterSpacing="0.08em"
-                color={headerColor}
-                borderColor={rowBorder}
-                textTransform="uppercase"
-                w="56px"
-                px={2}
-              />
+                <Th
+                  fontFamily="mono"
+                  fontSize="10.5px"
+                  letterSpacing="0.08em"
+                  color={headerColor}
+                  borderColor={rowBorder}
+                  textTransform="uppercase"
+                >
+                  Nombre
+                </Th>
+                <Th
+                  fontFamily="mono"
+                  fontSize="10.5px"
+                  letterSpacing="0.08em"
+                  color={headerColor}
+                  borderColor={rowBorder}
+                  textTransform="uppercase"
+                >
+                  Tipo
+                </Th>
+                <Th
+                  fontFamily="mono"
+                  fontSize="10.5px"
+                  letterSpacing="0.08em"
+                  color={headerColor}
+                  borderColor={rowBorder}
+                  textTransform="uppercase"
+                  w="56px"
+                  px={2}
+                />
               </Tr>
             </Thead>
             <Tbody>
               {pagedForms.map((form) => (
-              <Tr
-                key={form.id}
-                cursor="pointer"
-                transition="background .12s ease"
-                _hover={{ bg: rowHoverBg }}
-                onClick={() => onSelectForm(form.id)}
-              >
-                <Td borderColor={rowBorder}>
-                  <HStack spacing={3}>
-                    <Icon as={FiFileText} color="brand.500" boxSize={4} />
-                    <Text fontSize="14px" fontWeight={500} color={nameColor} noOfLines={2}>
-                      {form.name}
-                    </Text>
-                  </HStack>
-                </Td>
-                <Td borderColor={rowBorder}>
-                  <Box
-                    as="span"
-                    display="inline-block"
-                    px={2}
-                    py={0.5}
-                    borderRadius="4px"
-                    bg={badgeBg}
-                    color={badgeColor}
-                    fontSize="11px"
-                    fontWeight={500}
-                  >
-                    Formulario PDF
-                  </Box>
-                </Td>
-                <Td borderColor={rowBorder} px={2}>
-                  <IconButton
-                    aria-label={`Abrir ${form.name}`}
-                    icon={<FiChevronRight />}
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectForm(form.id);
-                    }}
-                  />
-                </Td>
-              </Tr>
+                <Tr
+                  key={form.id}
+                  cursor="pointer"
+                  transition="background .12s ease"
+                  _hover={{ bg: rowHoverBg }}
+                  onClick={() => onSelectForm(form.id)}
+                >
+                  <Td borderColor={rowBorder}>
+                    <HStack spacing={3}>
+                      <Icon as={FiFileText} color="brand.500" boxSize={4} />
+                      <Text
+                        fontSize="14px"
+                        fontWeight={500}
+                        color={nameColor}
+                        noOfLines={2}
+                      >
+                        {form.name}
+                      </Text>
+                    </HStack>
+                  </Td>
+                  <Td borderColor={rowBorder}>
+                    <Box
+                      as="span"
+                      display="inline-block"
+                      px={2}
+                      py={0.5}
+                      borderRadius="4px"
+                      bg={badgeBg}
+                      color={badgeColor}
+                      fontSize="11px"
+                      fontWeight={500}
+                    >
+                      Formulario PDF
+                    </Box>
+                  </Td>
+                  <Td borderColor={rowBorder} px={2}>
+                    <IconButton
+                      aria-label={`Abrir ${form.name}`}
+                      icon={<FiChevronRight />}
+                      size="sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectForm(form.id);
+                      }}
+                    />
+                  </Td>
+                </Tr>
               ))}
             </Tbody>
           </Table>

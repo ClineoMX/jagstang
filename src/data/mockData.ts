@@ -947,7 +947,8 @@ export const mockConsentTypes: ConsentType[] = [
   {
     id: 'consent-1',
     name: 'Tratamiento de Datos Personales',
-    description: 'Autorización para el tratamiento y almacenamiento de datos personales del paciente.',
+    description:
+      'Autorización para el tratamiento y almacenamiento de datos personales del paciente.',
     fullText: `# Consentimiento para el Tratamiento de Datos Personales
 
 ## Propósito
@@ -984,7 +985,8 @@ Usted tiene derecho a Acceder, Rectificar, Cancelar u Oponerse al tratamiento de
   {
     id: 'consent-2',
     name: 'Procedimientos Médicos',
-    description: 'Consentimiento para realizar procedimientos médicos y tratamientos.',
+    description:
+      'Consentimiento para realizar procedimientos médicos y tratamientos.',
     fullText: `# Consentimiento para Procedimientos Médicos
 
 ## Autorización General
@@ -1019,7 +1021,8 @@ Para procedimientos quirúrgicos o invasivos, se requerirá un consentimiento in
   {
     id: 'consent-3',
     name: 'Comunicaciones Electrónicas',
-    description: 'Autorización para recibir comunicaciones por medios electrónicos.',
+    description:
+      'Autorización para recibir comunicaciones por medios electrónicos.',
     fullText: `# Consentimiento para Comunicaciones Electrónicas
 
 ## Medios de Comunicación
@@ -1052,7 +1055,8 @@ Puede revocar este consentimiento en cualquier momento, notificando a la institu
   {
     id: 'consent-4',
     name: 'Compartir Información con Aseguradoras',
-    description: 'Autorización para compartir información médica con compañías de seguros.',
+    description:
+      'Autorización para compartir información médica con compañías de seguros.',
     fullText: `# Consentimiento para Compartir Información con Aseguradoras
 
 ## Propósito

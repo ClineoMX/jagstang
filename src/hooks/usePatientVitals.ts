@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiService } from '../services/api';
+import { getErrorMessage, getErrorStatus } from '../utils/apiStatus';
 
 /** One named clinical line (allergy, medication, chronic condition). */
 export interface VitalsLine {
@@ -53,10 +54,7 @@ function parseVitalsLine(
   return null;
 }
 
-function parseLines(
-  raw: unknown,
-  fallbackCreatedAt: string
-): VitalsLine[] {
+function parseLines(raw: unknown, fallbackCreatedAt: string): VitalsLine[] {
   if (!Array.isArray(raw)) return [];
   const out: VitalsLine[] = [];
   for (const item of raw) {
@@ -91,7 +89,10 @@ function toUpsertPayload(v: PatientVitals) {
     suggested: !!e.suggested,
   });
   return {
-    blood_type: v.bloodType != null && v.bloodType.trim() !== '' ? v.bloodType.trim() : null,
+    blood_type:
+      v.bloodType != null && v.bloodType.trim() !== ''
+        ? v.bloodType.trim()
+        : null,
     allergies: v.allergies.map(line),
     medications: v.medications.map(line),
     chronic_conditions: v.chronicConditions.map(line),
@@ -118,11 +119,11 @@ export function usePatientVitals(patientId: string | undefined) {
         // v2.0: the clinical summary is read from the unified patient view.
         const patient = await apiService.getPatient(patientId);
         setRemote(mapApiToPatientVitals(patient.summary ?? {}));
-      } catch (err: any) {
-        if (err?.status === 404) {
+      } catch (err: unknown) {
+        if (getErrorStatus(err) === 404) {
           setRemote({ ...EMPTY_VITALS });
         } else {
-          setError(err instanceof Error ? err.message : 'Error al cargar resumen clínico');
+          setError(getErrorMessage(err, 'Error al cargar resumen clínico'));
         }
       } finally {
         if (!opts?.silent) {
@@ -153,12 +154,8 @@ export function usePatientVitals(patientId: string | undefined) {
           toUpsertPayload(next)
         );
         await fetchVitals({ silent: true });
-      } catch (err: any) {
-        const message =
-          err && typeof err === 'object' && 'message' in err
-            ? String((err as { message: string }).message)
-            : 'No se pudo guardar el resumen clínico';
-        setError(message);
+      } catch (err: unknown) {
+        setError(getErrorMessage(err, 'No se pudo guardar el resumen clínico'));
         throw err;
       } finally {
         setSaving(false);
@@ -178,7 +175,10 @@ export function usePatientVitals(patientId: string | undefined) {
       const b = snapshot();
       await persistVitals({
         ...b,
-        allergies: [...b.allergies, { name, createdAt: new Date().toISOString() }],
+        allergies: [
+          ...b.allergies,
+          { name, createdAt: new Date().toISOString() },
+        ],
       });
     },
     [patientId, snapshot, persistVitals]
@@ -231,7 +231,10 @@ export function usePatientVitals(patientId: string | undefined) {
       const b = snapshot();
       await persistVitals({
         ...b,
-        medications: [...b.medications, { name, createdAt: new Date().toISOString() }],
+        medications: [
+          ...b.medications,
+          { name, createdAt: new Date().toISOString() },
+        ],
       });
     },
     [patientId, snapshot, persistVitals]

@@ -38,8 +38,18 @@ export interface NoteSchema {
 }
 
 export const COMMON_SYMPTOMS = [
-  'Dolor', 'Fiebre', 'Fatiga', 'Náusea', 'Tos', 'Disnea',
-  'Cefalea', 'Mareo', 'Insomnio', 'Palpitaciones', 'Vómito', 'Diarrea',
+  'Dolor',
+  'Fiebre',
+  'Fatiga',
+  'Náusea',
+  'Tos',
+  'Disnea',
+  'Cefalea',
+  'Mareo',
+  'Insomnio',
+  'Palpitaciones',
+  'Vómito',
+  'Diarrea',
 ];
 
 export const COMMON_DIAGNOSES = [
@@ -541,7 +551,8 @@ const PSYCH_INTERROGATION_SCHEMA: NoteSchema = {
           kind: 'richlite',
           label: 'Plan',
           required: true,
-          placeholder: 'Objetivos terapéuticos, enfoque, frecuencia de sesiones…',
+          placeholder:
+            'Objetivos terapéuticos, enfoque, frecuencia de sesiones…',
         },
       ],
     },
@@ -609,7 +620,9 @@ export function isStructuredContent(raw: string): boolean {
   }
 }
 
-export function parseStructuredContent(raw: string): StructuredNoteContent | null {
+export function parseStructuredContent(
+  raw: string
+): StructuredNoteContent | null {
   try {
     const p = JSON.parse(raw);
     if (p?.structured === true) return p as StructuredNoteContent;
@@ -620,10 +633,16 @@ export function parseStructuredContent(raw: string): StructuredNoteContent | nul
 }
 
 function stripHtml(s: string): string {
-  return (s || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  return (s || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
 }
 
-export function isFieldFilled(field: FieldDef, values: StructuredFormValues): boolean {
+export function isFieldFilled(
+  field: FieldDef,
+  values: StructuredFormValues
+): boolean {
   const v = values[field.id];
   switch (field.kind) {
     case 'richlite':
@@ -635,7 +654,9 @@ export function isFieldFilled(field: FieldDef, values: StructuredFormValues): bo
     case 'vitals': {
       const keys = field.requiredKeys ?? [];
       const vv = values.vitals ?? {};
-      return keys.every((k) => String(vv[k as keyof StructuredVitals] ?? '').trim() !== '');
+      return keys.every(
+        (k) => String(vv[k as keyof StructuredVitals] ?? '').trim() !== ''
+      );
     }
     case 'yesno':
       return v === 'yes' || v === 'no';
@@ -647,7 +668,10 @@ export function isFieldFilled(field: FieldDef, values: StructuredFormValues): bo
 }
 
 export function isFieldRequired(field: FieldDef): boolean {
-  return !!(field.required || (field.requiredKeys && field.requiredKeys.length > 0));
+  return !!(
+    field.required ||
+    (field.requiredKeys && field.requiredKeys.length > 0)
+  );
 }
 
 export function getSectionCompletion(

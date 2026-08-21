@@ -51,7 +51,7 @@ export function hhmmToMins(s: string): number {
 }
 
 export function fmt12(min: number): string {
-  let h = Math.floor(min / 60);
+  const h = Math.floor(min / 60);
   const m = min % 60;
   const ap = h >= 12 ? 'p.m.' : 'a.m.';
   let hh = h % 12;
@@ -120,7 +120,10 @@ export function addDays(d: Date, n: number): Date {
   return x;
 }
 
-export function summaryWhen(dateISO: string | null, timeMin: number | null): string | null {
+export function summaryWhen(
+  dateISO: string | null,
+  timeMin: number | null
+): string | null {
   if (!dateISO || timeMin == null) return null;
   const d = new Date(dateISO + 'T00:00:00');
   const dl = dayLabel(d, { relative: true, long: true });
@@ -158,8 +161,7 @@ function bookedForDay(
     .map((a) => {
       const start = new Date(a.starts_at);
       const end = new Date(a.ends_at);
-      const s =
-        start.getHours() * 60 + start.getMinutes();
+      const s = start.getHours() * 60 + start.getMinutes();
       const e = end.getHours() * 60 + end.getMinutes();
       return {
         s,

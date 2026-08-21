@@ -32,6 +32,33 @@ export class ApiTimeoutError extends Error {
 }
 
 /**
+ * Extract a human-readable message from unknown catch values
+ * (`Error`, ApiError-like `{ message }`, etc.).
+ */
+export function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (
+    err &&
+    typeof err === 'object' &&
+    'message' in err &&
+    typeof (err as { message: unknown }).message === 'string' &&
+    (err as { message: string }).message
+  ) {
+    return (err as { message: string }).message;
+  }
+  return fallback;
+}
+
+/** HTTP status on ApiError-like objects thrown by `apiService`. */
+export function getErrorStatus(err: unknown): number | undefined {
+  if (err && typeof err === 'object' && 'status' in err) {
+    const status = (err as { status: unknown }).status;
+    return typeof status === 'number' ? status : undefined;
+  }
+  return undefined;
+}
+
+/**
  * `fetch` con timeout. Aborta la petición tras `timeoutMs` y, si el aborto se
  * debió al timeout (no a un `signal` externo), emite el evento global y lanza
  * un `ApiTimeoutError`.

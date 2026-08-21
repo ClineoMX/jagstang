@@ -28,6 +28,20 @@ export default defineConfig([
     rules: {
       'prettier/prettier': 'error',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      // Context hooks + co-located utils next to components (Vite HMR allowlist).
+      'react-refresh/only-export-components': [
+        'error',
+        {
+          allowConstantExport: true,
+          allowExportNames: [
+            'useAuth',
+            'renderAppToast',
+            'phoneNumberFieldUtils',
+            'patientFullName',
+            'normalizePatientSearch',
+          ],
+        },
+      ],
     },
   },
 ])

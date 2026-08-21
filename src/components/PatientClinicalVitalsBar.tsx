@@ -143,7 +143,12 @@ const ListEditorPopover: React.FC<ListEditorPopoverProps> = ({
               {barLabel}
             </Text>
           ) : null}
-          <Icon as={FiChevronDown} boxSize="14px" opacity={0.85} flexShrink={0} />
+          <Icon
+            as={FiChevronDown}
+            boxSize="14px"
+            opacity={0.85}
+            flexShrink={0}
+          />
         </HStack>
       </PopoverTrigger>
       <Portal>
@@ -174,14 +179,34 @@ const ListEditorPopover: React.FC<ListEditorPopoverProps> = ({
                             hasArrow
                             openDelay={200}
                           >
-                            <Box as="span" display="inline-flex" mt="2px" flexShrink={0}>
-                              <Icon as={RiSparkling2Line} boxSize="14px" color="brand.400" />
+                            <Box
+                              as="span"
+                              display="inline-flex"
+                              mt="2px"
+                              flexShrink={0}
+                            >
+                              <Icon
+                                as={RiSparkling2Line}
+                                boxSize="14px"
+                                color="brand.400"
+                              />
                             </Box>
                           </Tooltip>
                         ) : (
-                          <Box as="span" w="14px" h="14px" mt="2px" flexShrink={0} />
+                          <Box
+                            as="span"
+                            w="14px"
+                            h="14px"
+                            mt="2px"
+                            flexShrink={0}
+                          />
                         )}
-                        <Text fontSize="13px" fontWeight={500} noOfLines={2} minW={0}>
+                        <Text
+                          fontSize="13px"
+                          fontWeight={500}
+                          noOfLines={2}
+                          minW={0}
+                        >
                           {item.name}
                         </Text>
                       </HStack>
@@ -198,7 +223,12 @@ const ListEditorPopover: React.FC<ListEditorPopoverProps> = ({
                   ))}
                 </VStack>
               ) : (
-                <Text fontSize="12px" color={labelColor} lineHeight="1.25" mb={0}>
+                <Text
+                  fontSize="12px"
+                  color={labelColor}
+                  lineHeight="1.25"
+                  mb={0}
+                >
                   {emptyLabel}
                 </Text>
               )}
@@ -302,7 +332,11 @@ const BloodTypePopover: React.FC<BloodTypePopoverProps> = ({
     const val = bloodSelect.trim();
     try {
       await onSetBloodType(val === '' ? null : val);
-      toast({ title: 'Tipo de sangre actualizado', status: 'success', duration: 2000 });
+      toast({
+        title: 'Tipo de sangre actualizado',
+        status: 'success',
+        duration: 2000,
+      });
     } catch {
       toastSaveError();
     }
@@ -339,10 +373,21 @@ const BloodTypePopover: React.FC<BloodTypePopoverProps> = ({
               {barLabel}
             </Text>
           ) : null}
-          <Text as="span" fontSize="13px" fontWeight={500} color="text.strong" lineHeight="1.25">
+          <Text
+            as="span"
+            fontSize="13px"
+            fontWeight={500}
+            color="text.strong"
+            lineHeight="1.25"
+          >
             {displayValue}
           </Text>
-          <Icon as={FiChevronDown} boxSize="14px" opacity={0.85} flexShrink={0} />
+          <Icon
+            as={FiChevronDown}
+            boxSize="14px"
+            opacity={0.85}
+            flexShrink={0}
+          />
         </HStack>
       </PopoverTrigger>
       <Portal>
@@ -369,7 +414,12 @@ const BloodTypePopover: React.FC<BloodTypePopoverProps> = ({
                   </option>
                 ))}
               </Select>
-              <Button size="sm" colorScheme="brand" isLoading={saving} onClick={() => void applyBlood()}>
+              <Button
+                size="sm"
+                colorScheme="brand"
+                isLoading={saving}
+                onClick={() => void applyBlood()}
+              >
                 Guardar
               </Button>
             </VStack>
@@ -485,4 +535,3 @@ const PatientClinicalVitalsBar: React.FC<PatientClinicalVitalsBarProps> = ({
 };
 
 export default PatientClinicalVitalsBar;
-

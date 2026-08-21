@@ -55,64 +55,69 @@ export const usePatient = (patientId: string | undefined) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadPatient = useCallback(async (signal?: AbortSignal) => {
-    if (!patientId) {
-      setPatient(null);
-      setLoading(false);
-      return;
-    }
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const patientData = await apiService.getPatient(patientId);
-      if (signal?.aborted) return;
-
-      // v2.0: identity comes embedded in the unified patient view.
-      const identityData = patientData.identity_sheet ?? null;
-      const identityBirth = identityData?.birthdate;
-      const identityGender = identityData?.gender;
-      const dateOfBirth =
-        typeof identityBirth === 'string' && !isSentinelDate(identityBirth)
-          ? identityBirth
-          : undefined;
-      const gender = normalizeGender(
-        typeof identityGender === 'string' ? identityGender : undefined
-      );
-      const transformedPatient: Patient = {
-        id: patientData.id,
-        slug:
-          typeof (patientData as { slug?: string }).slug === 'string' &&
-          (patientData as { slug?: string }).slug?.trim()
-            ? (patientData as { slug: string }).slug.trim().replace(/^#/, '')
-            : undefined,
-        firstName: patientData.name,
-        lastName: patientData.lastname,
-        lastNameMaternal: patientData.lastname_m ?? undefined,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        isRecurrent: patientData.is_recurrent,
-        ...(patientData.phone != null && { phone: patientData.phone }),
-        ...(dateOfBirth && { dateOfBirth }),
-        ...(gender && { gender }),
-      };
-
-      setPatient(transformedPatient);
-    } catch (err) {
-      if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : 'Error al cargar paciente');
-    } finally {
-      if (!signal?.aborted) {
+  const loadPatient = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!patientId) {
+        setPatient(null);
         setLoading(false);
+        return;
       }
-    }
-  }, [patientId]);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const patientData = await apiService.getPatient(patientId);
+        if (signal?.aborted) return;
+
+        // v2.0: identity comes embedded in the unified patient view.
+        const identityData = patientData.identity_sheet ?? null;
+        const identityBirth = identityData?.birthdate;
+        const identityGender = identityData?.gender;
+        const dateOfBirth =
+          typeof identityBirth === 'string' && !isSentinelDate(identityBirth)
+            ? identityBirth
+            : undefined;
+        const gender = normalizeGender(
+          typeof identityGender === 'string' ? identityGender : undefined
+        );
+        const transformedPatient: Patient = {
+          id: patientData.id,
+          slug:
+            typeof (patientData as { slug?: string }).slug === 'string' &&
+            (patientData as { slug?: string }).slug?.trim()
+              ? (patientData as { slug: string }).slug.trim().replace(/^#/, '')
+              : undefined,
+          firstName: patientData.name,
+          lastName: patientData.lastname,
+          lastNameMaternal: patientData.lastname_m ?? undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isRecurrent: patientData.is_recurrent,
+          ...(patientData.phone != null && { phone: patientData.phone }),
+          ...(dateOfBirth && { dateOfBirth }),
+          ...(gender && { gender }),
+        };
+
+        setPatient(transformedPatient);
+      } catch (err) {
+        if (signal?.aborted) return;
+        setError(
+          err instanceof Error ? err.message : 'Error al cargar paciente'
+        );
+      } finally {
+        if (!signal?.aborted) {
+          setLoading(false);
+        }
+      }
+    },
+    [patientId]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -158,7 +163,9 @@ export const usePatientAssets = (patientId: string | undefined) => {
         setAssets(transformed);
       } catch (err) {
         if (signal?.aborted) return;
-        setError(err instanceof Error ? err.message : 'Error al cargar archivos');
+        setError(
+          err instanceof Error ? err.message : 'Error al cargar archivos'
+        );
       } finally {
         if (!signal?.aborted) {
           setLoading(false);

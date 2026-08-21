@@ -18,7 +18,10 @@ import {
 import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
-import PhoneNumberField, { phoneNumberFieldUtils } from '../components/PhoneNumberField';
+import { getErrorMessage } from '../utils/apiStatus';
+import PhoneNumberField, {
+  phoneNumberFieldUtils,
+} from '../components/PhoneNumberField';
 
 const PatientForm: React.FC = () => {
   const navigate = useNavigate();
@@ -48,7 +51,10 @@ const PatientForm: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const phoneE164 = phoneNumberFieldUtils.toE164(phone.countryIso2, phone.nationalNumber);
+      const phoneE164 = phoneNumberFieldUtils.toE164(
+        phone.countryIso2,
+        phone.nationalNumber
+      );
       await apiService.createPatient({
         name: firstName,
         lastname: lastName,
@@ -63,10 +69,13 @@ const PatientForm: React.FC = () => {
         isClosable: true,
       });
       navigate('/patients');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'Ocurrió un error al crear el paciente',
+        description: getErrorMessage(
+          error,
+          'Ocurrió un error al crear el paciente'
+        ),
         status: 'error',
         duration: 5000,
         isClosable: true,

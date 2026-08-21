@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+} from 'react';
 import {
   Box,
   Container,
@@ -68,13 +74,20 @@ const TemplateFillForm: React.FC = () => {
   const inkStrong = useColorModeValue('paper.900', 'paper.50');
   const previewBodyBg = useColorModeValue('paper.50', 'paper.900');
 
-  const state = location.state as {
-    template?: TemplateItem;
-    pdfUrl?: string | null;
-    patientId?: string;
-    patientName?: string;
-  } | undefined;
-  const { template: stateTemplate, pdfUrl, patientId, patientName } = state ?? {};
+  const state = location.state as
+    | {
+        template?: TemplateItem;
+        pdfUrl?: string | null;
+        patientId?: string;
+        patientName?: string;
+      }
+    | undefined;
+  const {
+    template: stateTemplate,
+    pdfUrl,
+    patientId,
+    patientName,
+  } = state ?? {};
   const template = stateTemplate ?? FALLBACK_TEMPLATE;
 
   const { patients } = usePatients();
@@ -124,9 +137,12 @@ const TemplateFillForm: React.FC = () => {
     return () => ro.disconnect();
   }, [pdfUrl]);
 
-  const onDocumentLoadSuccess = useCallback(({ numPages: n }: { numPages: number }) => {
-    setNumPages(n);
-  }, []);
+  const onDocumentLoadSuccess = useCallback(
+    ({ numPages: n }: { numPages: number }) => {
+      setNumPages(n);
+    },
+    []
+  );
 
   const setFieldValue = (fieldId: string, value: string | number | boolean) => {
     setFormValues((prev) => ({ ...prev, [fieldId]: value }));
@@ -161,7 +177,10 @@ const TemplateFillForm: React.FC = () => {
       templateName: template.name,
       values: formValues,
     };
-    console.log('POST /patients/:patientId/forms/:formId/submissions - Payload:', submissionPayload);
+    console.log(
+      'POST /patients/:patientId/forms/:formId/submissions - Payload:',
+      submissionPayload
+    );
 
     setSubmitModalOpen(true);
     toast({
@@ -175,7 +194,8 @@ const TemplateFillForm: React.FC = () => {
 
   const renderFieldInput = (field: TemplateField) => {
     const value = formValues[field.id];
-    const setValue = (v: string | number | boolean) => setFieldValue(field.id, v);
+    const setValue = (v: string | number | boolean) =>
+      setFieldValue(field.id, v);
 
     switch (field.type) {
       case 'text':
@@ -186,7 +206,10 @@ const TemplateFillForm: React.FC = () => {
             onChange={(e) => setValue(e.target.value)}
             placeholder={field.name}
             borderColor="brand.400"
-            _focus={{ borderColor: 'brand.500', boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)' }}
+            _focus={{
+              borderColor: 'brand.500',
+              boxShadow: '0 0 0 1px var(--chakra-colors-brand-500)',
+            }}
           />
         );
       case 'number':
@@ -195,7 +218,9 @@ const TemplateFillForm: React.FC = () => {
             size="sm"
             type="number"
             value={(value as number) ?? ''}
-            onChange={(e) => setValue(e.target.value === '' ? '' : Number(e.target.value))}
+            onChange={(e) =>
+              setValue(e.target.value === '' ? '' : Number(e.target.value))
+            }
             placeholder={field.name}
             borderColor="brand.400"
           />
@@ -247,7 +272,10 @@ const TemplateFillForm: React.FC = () => {
   const hasPositionedFields = template.fields.some((f) => f.position);
   const showPdfWithOverlays = pdfUrl && hasPositionedFields && numPages != null;
 
-  const formatValueForPreview = (fieldId: string, _value: string | number | boolean): string => {
+  const formatValueForPreview = (
+    fieldId: string,
+    _value: string | number | boolean
+  ): string => {
     const v = formValues[fieldId];
     if (v === undefined || v === null) return '—';
     if (typeof v === 'boolean') return v ? 'Sí' : 'No';
@@ -265,7 +293,9 @@ const TemplateFillForm: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() =>
-                  patientPathBase ? navigate(patientPathBase) : navigate('/profile')
+                  patientPathBase
+                    ? navigate(patientPathBase)
+                    : navigate('/profile')
                 }
               >
                 Volver
@@ -297,10 +327,18 @@ const TemplateFillForm: React.FC = () => {
           </HStack>
 
           <Text color={mutedColor}>
-            Completa los Formulario. Los datos se guardan al enviar (PoC con mock).
+            Completa los Formulario. Los datos se guardan al enviar (PoC con
+            mock).
           </Text>
 
-          <Box display="grid" gridTemplateColumns={{ base: '1fr', lg: showPdfWithOverlays ? '1fr 360px' : '1fr' }} gap={6}>
+          <Box
+            display="grid"
+            gridTemplateColumns={{
+              base: '1fr',
+              lg: showPdfWithOverlays ? '1fr 360px' : '1fr',
+            }}
+            gap={6}
+          >
             {/* PDF con campos superpuestos (si hay PDF y campos posicionados) */}
             {pdfUrl && (
               <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
@@ -321,14 +359,25 @@ const TemplateFillForm: React.FC = () => {
                       loading={
                         <VStack py={12}>
                           <Spinner size="lg" colorScheme="brand" />
-                          <Text fontSize="sm" color={labelColor}>Cargando PDF…</Text>
+                          <Text fontSize="sm" color={labelColor}>
+                            Cargando PDF…
+                          </Text>
                         </VStack>
                       }
-                      error={<Text p={4} color="red.500">No se pudo cargar el PDF.</Text>}
+                      error={
+                        <Text p={4} color="red.500">
+                          No se pudo cargar el PDF.
+                        </Text>
+                      }
                     >
                       {numPages != null &&
                         Array.from({ length: numPages }, (_, i) => (
-                          <Box key={i} position="relative" display="inline-block" my={2}>
+                          <Box
+                            key={i}
+                            position="relative"
+                            display="inline-block"
+                            my={2}
+                          >
                             <Page
                               pageNumber={i + 1}
                               width={Math.min(containerWidth, 600)}
@@ -355,10 +404,17 @@ const TemplateFillForm: React.FC = () => {
                                     <Checkbox
                                       size="sm"
                                       isChecked={!!formValues[field.id]}
-                                      onChange={(e) => setFieldValue(field.id, e.target.checked)}
+                                      onChange={(e) =>
+                                        setFieldValue(
+                                          field.id,
+                                          e.target.checked
+                                        )
+                                      }
                                       colorScheme="brand"
                                     >
-                                      <Text fontSize="xs" noOfLines={1}>{field.name}</Text>
+                                      <Text fontSize="xs" noOfLines={1}>
+                                        {field.name}
+                                      </Text>
                                     </Checkbox>
                                   ) : (
                                     <Input
@@ -368,11 +424,19 @@ const TemplateFillForm: React.FC = () => {
                                         setFieldValue(
                                           field.id,
                                           field.type === 'number'
-                                            ? (e.target.value === '' ? '' : Number(e.target.value))
+                                            ? e.target.value === ''
+                                              ? ''
+                                              : Number(e.target.value)
                                             : e.target.value
                                         )
                                       }
-                                      type={field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'}
+                                      type={
+                                        field.type === 'date'
+                                          ? 'date'
+                                          : field.type === 'number'
+                                            ? 'number'
+                                            : 'text'
+                                      }
                                       placeholder={field.name}
                                       borderColor="brand.400"
                                       bg="white"
@@ -393,7 +457,9 @@ const TemplateFillForm: React.FC = () => {
             <Card bg={cardBg} borderWidth="1px" borderColor={borderColor}>
               <CardHeader>
                 <Heading size="md">
-                  {showPdfWithOverlays ? 'Campos (también sobre el PDF)' : 'Formulario'}
+                  {showPdfWithOverlays
+                    ? 'Campos (también sobre el PDF)'
+                    : 'Formulario'}
                 </Heading>
               </CardHeader>
               <CardBody pt={0}>
@@ -473,80 +539,107 @@ const TemplateFillForm: React.FC = () => {
           </ModalHeader>
           <ModalBody px={0} py={0} bg={previewBodyBg}>
             <Box px={7} py={6}>
-            {pdfUrl && hasPositionedFields && numPages != null ? (
-              <Box
-                ref={previewContainerRef}
-                overflow="auto"
-                maxH="75vh"
-                bg={pdfPanelBg}
-                borderRadius="lg"
-                borderWidth="1px"
-                borderColor={borderColor}
-                p={2}
-              >
-                <Document file={pdfUrl}>
-                  {Array.from({ length: numPages }, (_, i) => (
-                    <Box key={i} position="relative" display="inline-block" my={2}>
-                      <Page
-                        pageNumber={i + 1}
-                        width={previewContainerWidth}
-                        renderTextLayer={true}
-                        renderAnnotationLayer={true}
-                      />
-                      {template.fields
-                        .filter((f) => f.position?.pageIndex === i)
-                        .map((field) => (
-                          <Box
-                            key={field.id}
-                            position="absolute"
-                            left={`${field.position!.x}%`}
-                            top={`${field.position!.y}%`}
-                            w={`${field.position!.width}%`}
-                            h={`${field.position!.height}%`}
-                            minH="24px"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="flex-start"
-                            px={2}
-                            bg="surface.card"
-                            borderWidth="1px"
-                            borderColor={borderColor}
-                            borderRadius="sm"
-                          >
-                            <Text fontSize="xs" noOfLines={2} fontWeight="medium">
-                              {formatValueForPreview(field.id, formValues[field.id] as string | number | boolean)}
-                            </Text>
-                          </Box>
-                        ))}
-                    </Box>
-                  ))}
-                </Document>
-              </Box>
-            ) : (
-              <Box
-                bg={cardBg}
-                borderWidth="1px"
-                borderColor={borderColor}
-                borderRadius="lg"
-                p={5}
-              >
-                <Text fontSize="sm" color={mutedColor} mb={4}>
-                  Resumen del formulario llenado:
-                </Text>
-                <VStack align="stretch" spacing={3}>
-                  {template.fields.map((f) => (
-                    <Box key={f.id} borderBottomWidth="1px" borderColor={borderColor} pb={2}>
-                      <Text fontSize="xs" color={labelColor} fontWeight="medium">
-                        {f.name}
-                      </Text>
-                      <Text fontSize="md" color={inkStrong}>
-                        {formatValueForPreview(f.id, formValues[f.id] as string | number | boolean)}
-                      </Text>
-                    </Box>
-                  ))}
-                </VStack>
-              </Box>
-            )}
+              {pdfUrl && hasPositionedFields && numPages != null ? (
+                <Box
+                  ref={previewContainerRef}
+                  overflow="auto"
+                  maxH="75vh"
+                  bg={pdfPanelBg}
+                  borderRadius="lg"
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  p={2}
+                >
+                  <Document file={pdfUrl}>
+                    {Array.from({ length: numPages }, (_, i) => (
+                      <Box
+                        key={i}
+                        position="relative"
+                        display="inline-block"
+                        my={2}
+                      >
+                        <Page
+                          pageNumber={i + 1}
+                          width={previewContainerWidth}
+                          renderTextLayer={true}
+                          renderAnnotationLayer={true}
+                        />
+                        {template.fields
+                          .filter((f) => f.position?.pageIndex === i)
+                          .map((field) => (
+                            <Box
+                              key={field.id}
+                              position="absolute"
+                              left={`${field.position!.x}%`}
+                              top={`${field.position!.y}%`}
+                              w={`${field.position!.width}%`}
+                              h={`${field.position!.height}%`}
+                              minH="24px"
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="flex-start"
+                              px={2}
+                              bg="surface.card"
+                              borderWidth="1px"
+                              borderColor={borderColor}
+                              borderRadius="sm"
+                            >
+                              <Text
+                                fontSize="xs"
+                                noOfLines={2}
+                                fontWeight="medium"
+                              >
+                                {formatValueForPreview(
+                                  field.id,
+                                  formValues[field.id] as
+                                    | string
+                                    | number
+                                    | boolean
+                                )}
+                              </Text>
+                            </Box>
+                          ))}
+                      </Box>
+                    ))}
+                  </Document>
+                </Box>
+              ) : (
+                <Box
+                  bg={cardBg}
+                  borderWidth="1px"
+                  borderColor={borderColor}
+                  borderRadius="lg"
+                  p={5}
+                >
+                  <Text fontSize="sm" color={mutedColor} mb={4}>
+                    Resumen del formulario llenado:
+                  </Text>
+                  <VStack align="stretch" spacing={3}>
+                    {template.fields.map((f) => (
+                      <Box
+                        key={f.id}
+                        borderBottomWidth="1px"
+                        borderColor={borderColor}
+                        pb={2}
+                      >
+                        <Text
+                          fontSize="xs"
+                          color={labelColor}
+                          fontWeight="medium"
+                        >
+                          {f.name}
+                        </Text>
+                        <Text fontSize="md" color={inkStrong}>
+                          {formatValueForPreview(
+                            f.id,
+                            formValues[f.id] as string | number | boolean
+                          )}
+                        </Text>
+                      </Box>
+                    ))}
+                  </VStack>
+                </Box>
+              )}
             </Box>
           </ModalBody>
           <ModalFooter
@@ -618,7 +711,13 @@ const TemplateFillForm: React.FC = () => {
             >
               Resumen
             </Text>
-            <Heading as="h2" fontSize="xl" fontWeight={600} letterSpacing="-0.02em" color={inkStrong}>
+            <Heading
+              as="h2"
+              fontSize="xl"
+              fontWeight={600}
+              letterSpacing="-0.02em"
+              color={inkStrong}
+            >
               Formulario enviado
             </Heading>
             <Text fontSize="sm" color={mutedColor} mt={2}>
@@ -678,7 +777,9 @@ const TemplateFillForm: React.FC = () => {
                 color="text.strong"
                 _hover={{ bg: 'surface.hover' }}
                 onClick={() =>
-                  patientPathBase ? navigate(patientPathBase) : navigate('/profile')
+                  patientPathBase
+                    ? navigate(patientPathBase)
+                    : navigate('/profile')
                 }
               >
                 Volver al paciente

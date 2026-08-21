@@ -55,8 +55,7 @@ const TemplateEditor: React.FC = () => {
     if (isWellness) {
       toast({
         title: 'Plantillas no editables',
-        description:
-          'En modo WELLNESS solo existen tipos predefinidos.',
+        description: 'En modo WELLNESS solo existen tipos predefinidos.',
         status: 'info',
         duration: 3500,
       });
@@ -111,12 +110,13 @@ const TemplateEditor: React.FC = () => {
 
   if (!isNew && !existing) {
     return (
-      <PageShell crumbs="Biblioteca · Plantillas" title="Plantilla no encontrada">
+      <PageShell
+        crumbs="Biblioteca · Plantillas"
+        title="Plantilla no encontrada"
+      >
         <SurfaceCard>
           <VStack align="start" spacing={4}>
-            <Text fontSize="14px">
-              No se encontró la plantilla solicitada.
-            </Text>
+            <Text fontSize="14px">No se encontró la plantilla solicitada.</Text>
             <Button
               leftIcon={<FiArrowLeft />}
               variant="outline"

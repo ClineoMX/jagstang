@@ -430,14 +430,16 @@ const theme = extendTheme({
         // gives ~5:1 with white. Identity is preserved through hover/active and
         // the cyan brand.400 still appears in outline / ghost / link variants
         // and as accent in icons, focus rings, and links.
-        solid: (props: any) => ({
+        solid: (props: { colorScheme?: string }) => ({
           bg: props.colorScheme === 'brand' ? 'brand.600' : undefined,
           color: 'white',
           _hover: {
             bg: props.colorScheme === 'brand' ? 'brand.700' : undefined,
             transform: 'translateY(-1px)',
             boxShadow: 'md',
-            _disabled: { bg: props.colorScheme === 'brand' ? 'brand.600' : undefined },
+            _disabled: {
+              bg: props.colorScheme === 'brand' ? 'brand.600' : undefined,
+            },
           },
           _active: {
             bg: props.colorScheme === 'brand' ? 'brand.800' : undefined,

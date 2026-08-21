@@ -7,7 +7,11 @@ import {
   VStack,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { useNavigate, useSearchParams, Link as RouterLink } from 'react-router-dom';
+import {
+  useNavigate,
+  useSearchParams,
+  Link as RouterLink,
+} from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import AuthLayout from '../components/AuthLayout';
 

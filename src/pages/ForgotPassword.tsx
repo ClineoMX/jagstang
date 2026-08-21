@@ -12,6 +12,7 @@ import {
 import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { getErrorMessage } from '../utils/apiStatus';
 import AuthLayout from '../components/AuthLayout';
 import { AuthField } from '../components/AuthField';
 
@@ -48,11 +49,13 @@ const ForgotPassword: React.FC = () => {
         isClosable: true,
       });
       navigate('/reset-password', { state: { email } });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description:
-          error.message || 'No se pudo enviar el código de verificación',
+        description: getErrorMessage(
+          error,
+          'No se pudo enviar el código de verificación'
+        ),
         status: 'error',
         duration: 3000,
         isClosable: true,

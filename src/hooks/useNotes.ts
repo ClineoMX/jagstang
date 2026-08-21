@@ -1,23 +1,23 @@
 import { useState, useEffect } from 'react';
-import { apiService } from '../services/api';
-import type { MedicalNote, NoteCompletenessAnalysis } from '../types';
+import { apiService, type ApiNote } from '../services/api';
+import type { MedicalNote, NoteCompletenessAnalysis, NoteType } from '../types';
 import { parseFollowUpFromApi } from '../utils/noteFollowUp';
 
 /** Shared with `usePatientInterrogatory`, which maps the same raw note shape. */
-export function transformNote(n: any, pid: string): MedicalNote {
+export function transformNote(n: ApiNote, pid: string): MedicalNote {
   return {
     id: n.id,
     patientId: pid,
     doctorId: '',
     title: n.title || `${n.note_type || n.type || 'Nota'}`,
-    type: (n.note_type || n.type) as any,
+    type: (n.note_type || n.type || 'custom') as NoteType,
     content: n.content || '',
     status: n.status === 'signed' || n.is_signed ? 'signed' : 'draft',
-    isSigned: n.status === 'signed' || n.is_signed,
+    isSigned: n.status === 'signed' || n.is_signed || false,
     signedAt: n.signed_at,
     signedBy: n.signed_by,
     createdAt: n.created_at,
-    updatedAt: n.updated_at,
+    updatedAt: n.updated_at || n.created_at,
     isFollowUpOf: parseFollowUpFromApi(n.parent),
   };
 }
@@ -27,7 +27,7 @@ export const useNotes = (patientId: string | undefined) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const transformNotes = (results: any[], pid: string): MedicalNote[] =>
+  const transformNotes = (results: ApiNote[], pid: string): MedicalNote[] =>
     results.map((n) => transformNote(n, pid));
 
   useEffect(() => {

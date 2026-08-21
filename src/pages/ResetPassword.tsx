@@ -17,6 +17,7 @@ import {
 import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { getErrorMessage } from '../utils/apiStatus';
 import AuthLayout from '../components/AuthLayout';
 import { AuthField, PasswordField } from '../components/AuthField';
 
@@ -59,10 +60,10 @@ const ResetPassword: React.FC = () => {
         duration: 3000,
         isClosable: true,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo reenviar el código',
+        description: getErrorMessage(error, 'No se pudo reenviar el código'),
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -126,12 +127,13 @@ const ResetPassword: React.FC = () => {
       });
 
       navigate('/login');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description:
-          error.message ||
-          'No se pudo cambiar la contraseña. Verifica el código e intenta de nuevo.',
+        description: getErrorMessage(
+          error,
+          'No se pudo cambiar la contraseña. Verifica el código e intenta de nuevo.'
+        ),
         status: 'error',
         duration: 3000,
         isClosable: true,

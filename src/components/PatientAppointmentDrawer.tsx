@@ -135,8 +135,11 @@ const PatientAppointmentDrawer: React.FC<PatientAppointmentDrawerProps> = ({
   createAppointment,
 }) => {
   const toast = useToast();
-  const { patients, loading: loadingPatients, refetch: refetchPatients } =
-    usePatients();
+  const {
+    patients,
+    loading: loadingPatients,
+    refetch: refetchPatients,
+  } = usePatients();
   const { appointments, refetch: refetchAppointments } = useAppointments();
   const [state, setState] = useState<DrawerFormState>(() =>
     buildInitialState(entry, initialDate, initialTime, initialPatientId)
@@ -154,13 +157,7 @@ const PatientAppointmentDrawer: React.FC<PatientAppointmentDrawerProps> = ({
         buildInitialState(entry, initialDate, initialTime, initialPatientId)
       );
     }
-  }, [
-    isOpen,
-    entry,
-    initialDate,
-    initialTime,
-    initialPatientId,
-  ]);
+  }, [isOpen, entry, initialDate, initialTime, initialPatientId]);
 
   const { patientMode, selectedPatientId, draft, appt, apptOpen } = state;
 
@@ -169,11 +166,9 @@ const PatientAppointmentDrawer: React.FC<PatientAppointmentDrawerProps> = ({
     [patients, selectedPatientId]
   );
 
-  const draftValid =
-    !!draft.firstName.trim() && !!draft.lastName.trim();
+  const draftValid = !!draft.firstName.trim() && !!draft.lastName.trim();
 
-  const hasPatient =
-    patientMode === 'new' ? draftValid : !!selectedPatientId;
+  const hasPatient = patientMode === 'new' ? draftValid : !!selectedPatientId;
 
   const hasWhen = apptOpen && !!appt.dateISO && appt.timeMin != null;
 
@@ -183,8 +178,10 @@ const PatientAppointmentDrawer: React.FC<PatientAppointmentDrawerProps> = ({
     (patientMode === 'new' && draftValid && !apptOpen);
 
   const submitLabel = useMemo(() => {
-    if (patientMode === 'new' && hasPatient && hasWhen) return 'Crear y agendar';
-    if (patientMode === 'new' && hasPatient && !hasWhen) return 'Crear paciente';
+    if (patientMode === 'new' && hasPatient && hasWhen)
+      return 'Crear y agendar';
+    if (patientMode === 'new' && hasPatient && !hasWhen)
+      return 'Crear paciente';
     if (hasPatient && hasWhen) return 'Agendar cita';
     return 'Guardar';
   }, [patientMode, hasPatient, hasWhen]);
@@ -260,7 +257,8 @@ const PatientAppointmentDrawer: React.FC<PatientAppointmentDrawerProps> = ({
     if (apptOpen && hasPatient && !hasWhen) {
       toast({
         title: 'Falta el horario',
-        description: 'Elige un día y una hora en el calendario para agendar la cita.',
+        description:
+          'Elige un día y una hora en el calendario para agendar la cita.',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -286,9 +284,7 @@ const PatientAppointmentDrawer: React.FC<PatientAppointmentDrawerProps> = ({
           ...(phoneE164 && { phone: phoneE164 }),
         });
         patientId =
-          created.id ??
-          (created as { patient_id?: string }).patient_id ??
-          null;
+          created.id ?? (created as { patient_id?: string }).patient_id ?? null;
         if (!patientId) {
           throw new Error(
             'El paciente se registró pero no se recibió su identificador.'
@@ -305,7 +301,12 @@ const PatientAppointmentDrawer: React.FC<PatientAppointmentDrawerProps> = ({
       }
 
       let appointmentCreated = false;
-      if (hasWhen && patientId && appt.dateISO != null && appt.timeMin != null) {
+      if (
+        hasWhen &&
+        patientId &&
+        appt.dateISO != null &&
+        appt.timeMin != null
+      ) {
         const h = Math.floor(appt.timeMin / 60);
         const m = appt.timeMin % 60;
         const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
@@ -328,8 +329,7 @@ const PatientAppointmentDrawer: React.FC<PatientAppointmentDrawerProps> = ({
 
       if (appointmentCreated) {
         toast({
-          title:
-            patientCreated ? 'Paciente y cita creados' : 'Cita agendada',
+          title: patientCreated ? 'Paciente y cita creados' : 'Cita agendada',
           description: who ? `${who} · ${whenSummary}` : whenSummary,
           status: 'success',
           duration: 3000,
@@ -397,8 +397,7 @@ const PatientAppointmentDrawer: React.FC<PatientAppointmentDrawerProps> = ({
   );
 
   const crumb = entry === 'agenda' ? 'Agenda · Nueva cita' : 'Pacientes';
-  const title =
-    entry === 'agenda' ? 'Registrar y agendar' : 'Nuevo paciente';
+  const title = entry === 'agenda' ? 'Registrar y agendar' : 'Nuevo paciente';
   const sub =
     entry === 'agenda'
       ? 'Elige o crea al paciente a la izquierda y resérvale un horario a la derecha.'

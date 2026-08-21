@@ -19,7 +19,8 @@ interface Props {
 
 const DEFAULT_PAGE_SIZES = [10, 25, 50] as const;
 
-const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+const clamp = (n: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, n));
 
 const TablePagination: React.FC<Props> = ({
   totalItems,
@@ -34,7 +35,10 @@ const TablePagination: React.FC<Props> = ({
   const subColor = useColorModeValue('paper.700', 'paper.400');
   const cardBg = useColorModeValue('white', 'paper.800');
 
-  const totalPages = Math.max(1, Math.ceil(Math.max(0, totalItems) / Math.max(1, pageSize)));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(Math.max(0, totalItems) / Math.max(1, pageSize))
+  );
   const safePage = clamp(page, 1, totalPages);
 
   useEffect(() => {
@@ -56,7 +60,9 @@ const TablePagination: React.FC<Props> = ({
       <HStack justify="space-between" gap={3} flexWrap="wrap">
         <HStack spacing={2} fontSize="12px" color={subColor}>
           <Text fontFamily="mono" color={labelColor}>
-            {totalItems === 0 ? '0 resultados' : `${start}–${end} de ${totalItems}`}
+            {totalItems === 0
+              ? '0 resultados'
+              : `${start}–${end} de ${totalItems}`}
           </Text>
           {onPageSizeChange && (
             <>
@@ -116,4 +122,3 @@ const TablePagination: React.FC<Props> = ({
 };
 
 export default TablePagination;
-

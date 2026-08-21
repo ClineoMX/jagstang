@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from 'react';
 import {
   Avatar,
   Box,
@@ -26,7 +32,12 @@ import {
   useDisclosure,
   useToast,
 } from '@chakra-ui/react';
-import { useLocation, useNavigate, useParams, Link as RouterLink } from 'react-router-dom';
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  Link as RouterLink,
+} from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -64,6 +75,7 @@ import PatientClinicalSummary from '../components/PatientClinicalSummary';
 import CollapsibleSideCard from '../components/CollapsibleSideCard';
 import { apiService } from '../services/api';
 import { normalizePatientSlug } from '../utils/patientSlug';
+import { getErrorMessage } from '../utils/apiStatus';
 
 interface FormSummary {
   id: string;
@@ -88,6 +100,7 @@ const FormNoteForm: React.FC = () => {
   const headingColor = useColorModeValue('ink.700', 'paper.50');
   const hoverBg = useColorModeValue('paper.50', 'whiteAlpha.50');
   const iconBg = useColorModeValue('brand.50', 'whiteAlpha.100');
+  const modalTitleColor = useColorModeValue('paper.900', 'paper.50');
 
   const { patients } = usePatients();
   const patientId = useMemo(() => {
@@ -95,9 +108,10 @@ const FormNoteForm: React.FC = () => {
     if (!raw) return undefined;
     const match = patients.find((p) => p.slug === raw || p.id === raw);
     if (match?.id) return match.id;
-    const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      raw
-    );
+    const looksLikeUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        raw
+      );
     return looksLikeUuid ? raw : undefined;
   }, [patients, patientSlug]);
 
@@ -116,10 +130,13 @@ const FormNoteForm: React.FC = () => {
     const raw = (patientSlug ?? '').trim().replace(/^#/, '');
     if (!slug || !raw || raw === slug) return;
     if (location.pathname.startsWith(`/patients/${raw}`)) {
-      navigate(location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`), {
-        replace: true,
-        state: location.state,
-      });
+      navigate(
+        location.pathname.replace(`/patients/${raw}`, `/patients/${slug}`),
+        {
+          replace: true,
+          state: location.state,
+        }
+      );
     }
   }, [location.pathname, location.state, navigate, patient?.slug, patientSlug]);
   const { vitals, loading: vitalsLoading } = usePatientVitals(patientId);
@@ -188,10 +205,10 @@ const FormNoteForm: React.FC = () => {
         isClosable: true,
       });
       setIsEditingDate(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: 'Error al actualizar fecha',
-        description: err?.message || 'No se pudo actualizar la fecha',
+        description: getErrorMessage(err, 'No se pudo actualizar la fecha'),
         status: 'error',
         duration: 4000,
         isClosable: true,
@@ -355,7 +372,9 @@ const FormNoteForm: React.FC = () => {
       });
       return false;
     }
-    const anyFilled = formFieldValues.some((f) => (f.value ?? '').trim() !== '');
+    const anyFilled = formFieldValues.some(
+      (f) => (f.value ?? '').trim() !== ''
+    );
     if (!anyFilled) {
       toast({
         title: 'Completa al menos un campo del formulario',
@@ -367,7 +386,8 @@ const FormNoteForm: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    const payload = serializedContent ||
+    const payload =
+      serializedContent ||
       JSON.stringify({ formId: selectedFormId, fields: formFieldValues });
 
     try {
@@ -398,10 +418,10 @@ const FormNoteForm: React.FC = () => {
         isClosable: true,
       });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error al guardar',
-        description: error?.message || 'No se pudo guardar el borrador.',
+        description: getErrorMessage(error, 'No se pudo guardar el borrador.'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -437,10 +457,10 @@ const FormNoteForm: React.FC = () => {
         isClosable: true,
       });
       navigate(patientPathBase);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error al firmar',
-        description: error?.message || 'No se pudo firmar la nota.',
+        description: getErrorMessage(error, 'No se pudo firmar la nota.'),
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -520,7 +540,9 @@ const FormNoteForm: React.FC = () => {
           <>
             Pacientes · {patient.firstName} {patient.lastName}
             {' · '}
-            {isDraft ? 'Editar nota por formulario' : 'Nueva nota por formulario'}
+            {isDraft
+              ? 'Editar nota por formulario'
+              : 'Nueva nota por formulario'}
           </>
         }
         title={
@@ -765,14 +787,23 @@ const FormNoteForm: React.FC = () => {
                         role="group"
                         _hover={{ color: 'brand.600' }}
                       >
-                        <Icon as={FiCalendar} boxSize="12px" color={labelColor} _groupHover={{ color: 'brand.600' }} />
+                        <Icon
+                          as={FiCalendar}
+                          boxSize="12px"
+                          color={labelColor}
+                          _groupHover={{ color: 'brand.600' }}
+                        />
                         <Text
                           fontFamily="mono"
                           fontSize="12px"
                           color={subColor}
                           _groupHover={{ color: 'brand.600' }}
                         >
-                          {format(new Date(noteCreatedAt), "d 'de' MMM, yyyy · HH:mm", { locale: es })}
+                          {format(
+                            new Date(noteCreatedAt),
+                            "d 'de' MMM, yyyy · HH:mm",
+                            { locale: es }
+                          )}
                         </Text>
                         <Icon
                           as={FiEdit3}
@@ -935,7 +966,12 @@ const FormNoteForm: React.FC = () => {
                     }
                     const meta = parts.filter(Boolean).join(' · ');
                     return meta ? (
-                      <Text fontSize="12px" color={subColor} lineHeight="1.25" mt={0.5}>
+                      <Text
+                        fontSize="12px"
+                        color={subColor}
+                        lineHeight="1.25"
+                        mt={0.5}
+                      >
                         {meta}
                       </Text>
                     ) : null;
@@ -1000,8 +1036,9 @@ const FormNoteForm: React.FC = () => {
                     {formFieldValues.map((field, index) => {
                       const filled = (field.value ?? '').trim() !== '';
                       const FieldIcon =
-                        FIELD_TYPE_ICONS[(field.type || 'TEXT').toUpperCase()] ??
-                        FiType;
+                        FIELD_TYPE_ICONS[
+                          (field.type || 'TEXT').toUpperCase()
+                        ] ?? FiType;
                       return (
                         <ListItem
                           key={`${field.name}-${index}`}
@@ -1095,16 +1132,12 @@ const FormNoteForm: React.FC = () => {
       )}
 
       {/* Confirm sign modal */}
-      <Modal
-        isOpen={isConfirmSignOpen}
-        onClose={onConfirmSignClose}
-        isCentered
-      >
+      <Modal isOpen={isConfirmSignOpen} onClose={onConfirmSignClose} isCentered>
         <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(6px)" />
         <ModalContent
-          bg={useColorModeValue('white', 'paper.800')}
+          bg={cardBg}
           border="1px solid"
-          borderColor={useColorModeValue('line.light', 'whiteAlpha.200')}
+          borderColor={borderColor}
           borderRadius="10px"
           boxShadow="0 20px 60px -20px rgba(15, 23, 42, 0.25)"
           overflow="hidden"
@@ -1120,14 +1153,14 @@ const FormNoteForm: React.FC = () => {
             pt={6}
             pb={4}
             borderBottom="1px solid"
-            borderColor={useColorModeValue('line.light', 'whiteAlpha.200')}
+            borderColor={borderColor}
           >
             <Box pr={8}>
               <Text
                 as="span"
                 fontFamily="mono"
                 fontSize="11px"
-                color={useColorModeValue('paper.600', 'paper.500')}
+                color={labelColor}
                 letterSpacing="0.08em"
                 textTransform="uppercase"
                 fontWeight={500}
@@ -1135,12 +1168,7 @@ const FormNoteForm: React.FC = () => {
                 alignItems="center"
                 gap="8px"
               >
-                <Box
-                  w="8px"
-                  h="8px"
-                  borderRadius="full"
-                  bg="statusSoft.okFg"
-                />
+                <Box w="8px" h="8px" borderRadius="full" bg="statusSoft.okFg" />
                 Firma
               </Text>
               <Text
@@ -1148,7 +1176,7 @@ const FormNoteForm: React.FC = () => {
                 fontSize="18px"
                 fontWeight={600}
                 letterSpacing="-0.012em"
-                color={useColorModeValue('paper.900', 'paper.50')}
+                color={modalTitleColor}
               >
                 Firmar nota por formulario
               </Text>
@@ -1156,7 +1184,8 @@ const FormNoteForm: React.FC = () => {
           </ModalHeader>
           <ModalBody px={7} py={5}>
             <Text fontSize="13.5px" color={subColor} lineHeight="1.55">
-              Una vez firmada, la nota no podrá editarse. Esta acción es permanente e irreversible.
+              Una vez firmada, la nota no podrá editarse. Esta acción es
+              permanente e irreversible.
             </Text>
           </ModalBody>
           <ModalFooter px={7} pt={0} pb={6}>

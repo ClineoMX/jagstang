@@ -44,11 +44,7 @@ const FILTERS: Array<{
 ];
 
 const kindLabel = (k: TimelineItemKind) =>
-  k === 'signed'
-    ? 'Nota firmada'
-    : k === 'draft'
-      ? 'Nota en borrador'
-      : 'Cita';
+  k === 'signed' ? 'Nota firmada' : k === 'draft' ? 'Nota en borrador' : 'Cita';
 
 const kindDotColor = (k: TimelineItemKind): string => {
   switch (k) {
@@ -129,7 +125,9 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
               display="inline-flex"
               alignItems="center"
               gap="5px"
-              _hover={!on ? { color: inkStrong, borderColor: 'border.strong' } : {}}
+              _hover={
+                !on ? { color: inkStrong, borderColor: 'border.strong' } : {}
+              }
             >
               {f.dotColor && (
                 <Box w="6px" h="6px" borderRadius="full" bg={f.dotColor} />
@@ -222,7 +220,10 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
                     as="button"
                     onClick={item.onClick}
                     display="grid"
-                    gridTemplateColumns={{ base: '64px 22px 1fr', sm: '72px 24px 1fr' }}
+                    gridTemplateColumns={{
+                      base: '64px 22px 1fr',
+                      sm: '72px 24px 1fr',
+                    }}
                     columnGap={{ base: 2, sm: 3 }}
                     alignItems="start"
                     pt="10px"
@@ -254,8 +255,8 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
                         {format(item.date, 'dd')}
                       </Text>
                       <Text as="span" display="block" whiteSpace="nowrap">
-                        {format(item.date, 'EEE', { locale: es }).toUpperCase()} ·{' '}
-                        {format(item.date, 'HH:mm')}
+                        {format(item.date, 'EEE', { locale: es }).toUpperCase()}{' '}
+                        · {format(item.date, 'HH:mm')}
                       </Text>
                     </Box>
 
@@ -317,68 +318,65 @@ const Timeline: React.FC<TimelineProps> = ({ items }) => {
                       >
                         <Text>{kindLabel(item.kind)}</Text>
                         {item.chainColor && item.chainLabel && (
-                            <HStack
-                              as="span"
-                              role={item.onChainLabelClick ? 'button' : undefined}
-                              tabIndex={item.onChainLabelClick ? 0 : undefined}
-                              spacing="5px"
-                              px="6px"
-                              py="1px"
-                              borderRadius="3px"
-                              bg={`${item.chainColor}22`}
-                              color={item.chainColor}
-                              align="center"
-                              textTransform="none"
-                              letterSpacing="normal"
-                              fontSize="10px"
-                              lineHeight="1.35"
-                              maxW="100%"
-                              cursor={
-                                item.onChainLabelClick ? 'pointer' : 'default'
-                              }
-                              title={
-                                item.onChainLabelClick
-                                  ? 'Ver nota anterior en la cadena'
-                                  : undefined
-                              }
-                              _hover={
-                                item.onChainLabelClick
-                                  ? { textDecoration: 'underline' }
-                                  : undefined
-                              }
-                              onClick={
-                                item.onChainLabelClick
-                                  ? (e) => {
+                          <HStack
+                            as="span"
+                            role={item.onChainLabelClick ? 'button' : undefined}
+                            tabIndex={item.onChainLabelClick ? 0 : undefined}
+                            spacing="5px"
+                            px="6px"
+                            py="1px"
+                            borderRadius="3px"
+                            bg={`${item.chainColor}22`}
+                            color={item.chainColor}
+                            align="center"
+                            textTransform="none"
+                            letterSpacing="normal"
+                            fontSize="10px"
+                            lineHeight="1.35"
+                            maxW="100%"
+                            cursor={
+                              item.onChainLabelClick ? 'pointer' : 'default'
+                            }
+                            title={
+                              item.onChainLabelClick
+                                ? 'Ver nota anterior en la cadena'
+                                : undefined
+                            }
+                            _hover={
+                              item.onChainLabelClick
+                                ? { textDecoration: 'underline' }
+                                : undefined
+                            }
+                            onClick={
+                              item.onChainLabelClick
+                                ? (e) => {
+                                    e.stopPropagation();
+                                    item.onChainLabelClick?.();
+                                  }
+                                : undefined
+                            }
+                            onKeyDown={
+                              item.onChainLabelClick
+                                ? (e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
                                       e.stopPropagation();
                                       item.onChainLabelClick?.();
                                     }
-                                  : undefined
-                              }
-                              onKeyDown={
-                                item.onChainLabelClick
-                                  ? (e) => {
-                                      if (
-                                        e.key === 'Enter' ||
-                                        e.key === ' '
-                                      ) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        item.onChainLabelClick?.();
-                                      }
-                                    }
-                                  : undefined
-                              }
-                            >
-                              <Box
-                                w="5px"
-                                h="5px"
-                                borderRadius="full"
-                                bg={item.chainColor}
-                                flexShrink={0}
-                              />
-                              <Text noOfLines={2}>{item.chainLabel}</Text>
-                            </HStack>
-                          )}
+                                  }
+                                : undefined
+                            }
+                          >
+                            <Box
+                              w="5px"
+                              h="5px"
+                              borderRadius="full"
+                              bg={item.chainColor}
+                              flexShrink={0}
+                            />
+                            <Text noOfLines={2}>{item.chainLabel}</Text>
+                          </HStack>
+                        )}
                       </HStack>
                       <Text
                         fontSize="14px"

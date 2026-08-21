@@ -7,7 +7,13 @@ import {
   VStack,
   type UseToastOptions,
 } from '@chakra-ui/react';
-import { FiX, FiCheck, FiAlertTriangle, FiAlertCircle, FiInfo } from 'react-icons/fi';
+import {
+  FiX,
+  FiCheck,
+  FiAlertTriangle,
+  FiAlertCircle,
+  FiInfo,
+} from 'react-icons/fi';
 
 /**
  * Custom toast renderer aligned with the redesign:
@@ -102,14 +108,7 @@ const AppToast: React.FC<AppToastProps> = ({
     >
       <HStack align="stretch" spacing={0}>
         <Box w="3px" bg={tone.rail} flexShrink={0} aria-hidden />
-        <HStack
-          align="flex-start"
-          spacing={3}
-          px={4}
-          py={3}
-          flex={1}
-          minW={0}
-        >
+        <HStack align="flex-start" spacing={3} px={4} py={3} flex={1} minW={0}>
           <Box
             flexShrink={0}
             mt="2px"

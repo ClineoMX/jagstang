@@ -2,11 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Doctor, LoginCredentials } from '../types';
 import { apiService } from '../services/api';
 import { warmClinicData, clearClinicData } from '../lib/clinicDataStore';
+import { getErrorMessage } from '../utils/apiStatus';
 
 /** Decode X-Clineo-Identity token (JWT payload or JSON) to get name, family_name, gender, avatar_url */
-function decodeIdentityToken(
-  idToken: string | null
-): {
+function decodeIdentityToken(idToken: string | null): {
   name?: string;
   family_name?: string;
   gender?: 'male' | 'female';
@@ -15,7 +14,9 @@ function decodeIdentityToken(
 } | null {
   if (!idToken || typeof idToken !== 'string') return null;
 
-  const getRoleFromParsed = (parsed: Record<string, unknown>): string | undefined => {
+  const getRoleFromParsed = (
+    parsed: Record<string, unknown>
+  ): string | undefined => {
     const groups = parsed['cognito:groups'];
     if (
       Array.isArray(groups) &&
@@ -34,9 +35,16 @@ function decodeIdentityToken(
     if (parsed && typeof parsed === 'object') {
       return {
         name: typeof parsed.name === 'string' ? parsed.name : undefined,
-        family_name: typeof parsed.family_name === 'string' ? parsed.family_name : undefined,
-        gender: parsed.gender === 'male' || parsed.gender === 'female' ? parsed.gender : undefined,
-        avatar_url: typeof parsed.avatar_url === 'string' ? parsed.avatar_url : undefined,
+        family_name:
+          typeof parsed.family_name === 'string'
+            ? parsed.family_name
+            : undefined,
+        gender:
+          parsed.gender === 'male' || parsed.gender === 'female'
+            ? parsed.gender
+            : undefined,
+        avatar_url:
+          typeof parsed.avatar_url === 'string' ? parsed.avatar_url : undefined,
         role: getRoleFromParsed(parsed),
       };
     }
@@ -53,9 +61,16 @@ function decodeIdentityToken(
       const parsed = JSON.parse(decoded) as Record<string, unknown>;
       return {
         name: typeof parsed.name === 'string' ? parsed.name : undefined,
-        family_name: typeof parsed.family_name === 'string' ? parsed.family_name : undefined,
-        gender: parsed.gender === 'male' || parsed.gender === 'female' ? parsed.gender : undefined,
-        avatar_url: typeof parsed.avatar_url === 'string' ? parsed.avatar_url : undefined,
+        family_name:
+          typeof parsed.family_name === 'string'
+            ? parsed.family_name
+            : undefined,
+        gender:
+          parsed.gender === 'male' || parsed.gender === 'female'
+            ? parsed.gender
+            : undefined,
+        avatar_url:
+          typeof parsed.avatar_url === 'string' ? parsed.avatar_url : undefined,
         role: getRoleFromParsed(parsed),
       };
     }
@@ -134,7 +149,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('token', response.access);
     localStorage.setItem('refresh_token', response.refresh);
     const idTokenValue =
-      typeof response.id === 'string' ? response.id : JSON.stringify(response.id);
+      typeof response.id === 'string'
+        ? response.id
+        : JSON.stringify(response.id);
     localStorage.setItem('id_token', idTokenValue);
 
     const identity = decodeIdentityToken(idTokenValue);
@@ -167,11 +184,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         method: 'email',
       });
       applyCredentials(response, credentials.email);
-    } catch (error: any) {
-      if (error.message) {
+    } catch (error: unknown) {
+      if (getErrorMessage(error, '')) {
         throw error;
       }
-      throw new Error(error.message || 'Error al iniciar sesión');
+      throw new Error('Error al iniciar sesión');
     } finally {
       setIsLoading(false);
     }
@@ -182,11 +199,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await apiService.verifyMagicLink(token);
       applyCredentials(response, '');
-    } catch (error: any) {
-      if (error.message) {
+    } catch (error: unknown) {
+      if (getErrorMessage(error, '')) {
         throw error;
       }
-      throw new Error(error.message || 'Enlace inválido o expirado');
+      throw new Error('Enlace inválido o expirado');
     } finally {
       setIsLoading(false);
     }

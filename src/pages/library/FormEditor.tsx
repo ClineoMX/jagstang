@@ -38,7 +38,7 @@ const FormEditor: React.FC = () => {
     >
       <FormulariosEditor
         viewMode="editor"
-        editingFormId={isNew ? null : id ?? null}
+        editingFormId={isNew ? null : (id ?? null)}
         onSelectNew={() => navigate('/library/forms/new')}
         onSelectForm={(formId) => navigate(`/library/forms/${formId}`)}
         onBack={goBack}

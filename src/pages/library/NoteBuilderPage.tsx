@@ -69,6 +69,7 @@ import {
   serializeTemplateContent,
 } from '../../data/customNoteSchemas';
 import { apiService } from '../../services/api';
+import { getErrorMessage } from '../../utils/apiStatus';
 
 // ── Field kind metadata ─────────────────────────────────────────────────────
 
@@ -80,28 +81,98 @@ interface KindMeta {
 }
 
 const KIND_META: Record<FieldDef['kind'], KindMeta> = {
-  richlite: { kind: 'richlite', label: 'Texto enriquecido', description: 'Narrativa con formato', icon: FiAlignLeft },
-  text: { kind: 'text', label: 'Texto corto', description: 'Una sola línea', icon: FiType },
-  number: { kind: 'number', label: 'Número + unidad', description: 'p. ej. 36.7 °C', icon: FiHash },
-  yesno: { kind: 'yesno', label: 'Sí / No', description: 'Presente / ausente', icon: FiCheckSquare },
-  select: { kind: 'select', label: 'Selector', description: 'Una opción de una lista', icon: FiChevronDown },
-  multi: { kind: 'multi', label: 'Selección múltiple', description: 'Varias opciones (chips)', icon: FiCheckCircle },
-  date: { kind: 'date', label: 'Fecha', description: 'Selector de fecha', icon: FiCalendar },
-  signature: { kind: 'signature', label: 'Firma', description: 'Captura de firma', icon: FiEdit3 },
-  symptoms: { kind: 'symptoms', label: 'Síntomas', description: 'Chips de síntomas comunes', icon: FiActivity },
-  diagnoses: { kind: 'diagnoses', label: 'Diagnósticos', description: 'Chips CIE-10', icon: FiClipboard },
-  vitals: { kind: 'vitals', label: 'Signos vitales', description: 'Batería con IMC automático', icon: FiHeart },
+  richlite: {
+    kind: 'richlite',
+    label: 'Texto enriquecido',
+    description: 'Narrativa con formato',
+    icon: FiAlignLeft,
+  },
+  text: {
+    kind: 'text',
+    label: 'Texto corto',
+    description: 'Una sola línea',
+    icon: FiType,
+  },
+  number: {
+    kind: 'number',
+    label: 'Número + unidad',
+    description: 'p. ej. 36.7 °C',
+    icon: FiHash,
+  },
+  yesno: {
+    kind: 'yesno',
+    label: 'Sí / No',
+    description: 'Presente / ausente',
+    icon: FiCheckSquare,
+  },
+  select: {
+    kind: 'select',
+    label: 'Selector',
+    description: 'Una opción de una lista',
+    icon: FiChevronDown,
+  },
+  multi: {
+    kind: 'multi',
+    label: 'Selección múltiple',
+    description: 'Varias opciones (chips)',
+    icon: FiCheckCircle,
+  },
+  date: {
+    kind: 'date',
+    label: 'Fecha',
+    description: 'Selector de fecha',
+    icon: FiCalendar,
+  },
+  signature: {
+    kind: 'signature',
+    label: 'Firma',
+    description: 'Captura de firma',
+    icon: FiEdit3,
+  },
+  symptoms: {
+    kind: 'symptoms',
+    label: 'Síntomas',
+    description: 'Chips de síntomas comunes',
+    icon: FiActivity,
+  },
+  diagnoses: {
+    kind: 'diagnoses',
+    label: 'Diagnósticos',
+    description: 'Chips CIE-10',
+    icon: FiClipboard,
+  },
+  vitals: {
+    kind: 'vitals',
+    label: 'Signos vitales',
+    description: 'Batería con IMC automático',
+    icon: FiHeart,
+  },
 };
 
 const PALETTE_ORDER: FieldDef['kind'][] = [
-  'richlite', 'text', 'number', 'yesno', 'select', 'multi',
-  'date', 'signature', 'symptoms', 'diagnoses', 'vitals',
+  'richlite',
+  'text',
+  'number',
+  'yesno',
+  'select',
+  'multi',
+  'date',
+  'signature',
+  'symptoms',
+  'diagnoses',
+  'vitals',
 ];
 
 const MOCK_LAST_VITALS = {
   vitals: {
-    bp_sys: '128', bp_dia: '82', hr: '74', rr: '16',
-    temp: '36.7', spo2: '97', weight: '68', height: '162',
+    bp_sys: '128',
+    bp_dia: '82',
+    hr: '74',
+    rr: '16',
+    temp: '36.7',
+    spo2: '97',
+    weight: '68',
+    height: '162',
   },
   recordedAt: '14 may 2025',
 };
@@ -121,7 +192,10 @@ const MonoLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   </Text>
 );
 
-const KindBadge: React.FC<{ kind: FieldDef['kind']; size?: number }> = ({ kind, size = 14 }) => {
+const KindBadge: React.FC<{ kind: FieldDef['kind']; size?: number }> = ({
+  kind,
+  size = 14,
+}) => {
   const meta = KIND_META[kind];
   const Glyph = meta.icon;
   const bg = useColorModeValue('brand.50', 'whiteAlpha.100');
@@ -144,7 +218,10 @@ const KindBadge: React.FC<{ kind: FieldDef['kind']; size?: number }> = ({ kind, 
 
 // ── Palette entry ─────────────────────────────────────────────────────────────
 
-const PaletteButton: React.FC<{ meta: KindMeta; onAdd: () => void }> = ({ meta, onAdd }) => {
+const PaletteButton: React.FC<{ meta: KindMeta; onAdd: () => void }> = ({
+  meta,
+  onAdd,
+}) => {
   const itemBg = useColorModeValue('surface.card', 'paper.800');
   return (
     <Box
@@ -165,10 +242,20 @@ const PaletteButton: React.FC<{ meta: KindMeta; onAdd: () => void }> = ({ meta, 
       <HStack spacing={2.5} align="center">
         <KindBadge kind={meta.kind} />
         <Box flex={1} minW={0}>
-          <Text fontSize="13px" fontWeight={600} color="text.strong" lineHeight="1.3">
+          <Text
+            fontSize="13px"
+            fontWeight={600}
+            color="text.strong"
+            lineHeight="1.3"
+          >
             {meta.label}
           </Text>
-          <Text fontSize="11px" color="text.muted" lineHeight="1.35" noOfLines={1}>
+          <Text
+            fontSize="11px"
+            color="text.muted"
+            lineHeight="1.35"
+            noOfLines={1}
+          >
             {meta.description}
           </Text>
         </Box>
@@ -191,7 +278,16 @@ const FieldRow: React.FC<{
   onMoveUp: () => void;
   onMoveDown: () => void;
   onDelete: () => void;
-}> = ({ field, selected, isFirst, isLast, onSelect, onMoveUp, onMoveDown, onDelete }) => {
+}> = ({
+  field,
+  selected,
+  isFirst,
+  isLast,
+  onSelect,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+}) => {
   const selectedBg = useColorModeValue('brand.50', 'whiteAlpha.100');
   const hoverBg = useColorModeValue('surface.hover', 'whiteAlpha.50');
   const meta = KIND_META[field.kind];
@@ -215,11 +311,18 @@ const FieldRow: React.FC<{
       <KindBadge kind={field.kind} />
       <Box flex={1} minW={0}>
         <HStack spacing={1.5}>
-          <Text fontSize="13px" fontWeight={600} color="text.strong" noOfLines={1}>
+          <Text
+            fontSize="13px"
+            fontWeight={600}
+            color="text.strong"
+            noOfLines={1}
+          >
             {field.label || 'Campo sin título'}
           </Text>
           {field.required && (
-            <Text color="statusSoft.critFg" fontWeight={700} fontSize="13px">*</Text>
+            <Text color="statusSoft.critFg" fontWeight={700} fontSize="13px">
+              *
+            </Text>
           )}
         </HStack>
         <Text fontSize="11px" color="text.faint" noOfLines={1}>
@@ -274,7 +377,9 @@ const Inspector: React.FC<{
   if (field && section) {
     const meta = KIND_META[field.kind];
     const showPlaceholder =
-      field.kind === 'text' || field.kind === 'richlite' || field.kind === 'number';
+      field.kind === 'text' ||
+      field.kind === 'richlite' ||
+      field.kind === 'number';
     const showUnit = field.kind === 'number';
     const showOptions = field.kind === 'select' || field.kind === 'multi';
     const showRequired = field.kind !== 'vitals';
@@ -287,7 +392,9 @@ const Inspector: React.FC<{
         </HStack>
 
         <FormControl>
-          <FormLabel fontSize="12px" color="text.body" mb={1.5}>Etiqueta</FormLabel>
+          <FormLabel fontSize="12px" color="text.body" mb={1.5}>
+            Etiqueta
+          </FormLabel>
           <Input
             size="sm"
             borderRadius="8px"
@@ -299,33 +406,43 @@ const Inspector: React.FC<{
 
         {showPlaceholder && (
           <FormControl>
-            <FormLabel fontSize="12px" color="text.body" mb={1.5}>Placeholder</FormLabel>
+            <FormLabel fontSize="12px" color="text.body" mb={1.5}>
+              Placeholder
+            </FormLabel>
             <Input
               size="sm"
               borderRadius="8px"
               value={field.placeholder ?? ''}
               placeholder="Texto de ayuda…"
-              onChange={(e) => onUpdateField({ placeholder: e.target.value || undefined })}
+              onChange={(e) =>
+                onUpdateField({ placeholder: e.target.value || undefined })
+              }
             />
           </FormControl>
         )}
 
         {showUnit && (
           <FormControl>
-            <FormLabel fontSize="12px" color="text.body" mb={1.5}>Unidad</FormLabel>
+            <FormLabel fontSize="12px" color="text.body" mb={1.5}>
+              Unidad
+            </FormLabel>
             <Input
               size="sm"
               borderRadius="8px"
               value={field.unit ?? ''}
               placeholder="mmHg, kg, °C…"
-              onChange={(e) => onUpdateField({ unit: e.target.value || undefined })}
+              onChange={(e) =>
+                onUpdateField({ unit: e.target.value || undefined })
+              }
             />
           </FormControl>
         )}
 
         {showOptions && (
           <FormControl>
-            <FormLabel fontSize="12px" color="text.body" mb={1.5}>Opciones</FormLabel>
+            <FormLabel fontSize="12px" color="text.body" mb={1.5}>
+              Opciones
+            </FormLabel>
             <Textarea
               size="sm"
               rows={4}
@@ -335,18 +452,25 @@ const Inspector: React.FC<{
               placeholder={'Opción A\nOpción B\nOpción C'}
               onChange={(e) =>
                 onUpdateField({
-                  options: e.target.value.split('\n').map((o) => o.trim()).filter(Boolean),
+                  options: e.target.value
+                    .split('\n')
+                    .map((o) => o.trim())
+                    .filter(Boolean),
                 })
               }
             />
-            <Text fontSize="11px" color="text.faint" mt={1.5}>Una opción por línea.</Text>
+            <Text fontSize="11px" color="text.faint" mt={1.5}>
+              Una opción por línea.
+            </Text>
           </FormControl>
         )}
 
         {showRequired && (
           <FormControl>
             <HStack justify="space-between" align="center">
-              <FormLabel fontSize="12px" color="text.body" mb={0}>Campo obligatorio</FormLabel>
+              <FormLabel fontSize="12px" color="text.body" mb={0}>
+                Campo obligatorio
+              </FormLabel>
               <Switch
                 size="sm"
                 colorScheme="brand"
@@ -365,7 +489,9 @@ const Inspector: React.FC<{
       <VStack align="stretch" spacing={4}>
         <MonoLabel>Sección</MonoLabel>
         <FormControl>
-          <FormLabel fontSize="12px" color="text.body" mb={1.5}>Título</FormLabel>
+          <FormLabel fontSize="12px" color="text.body" mb={1.5}>
+            Título
+          </FormLabel>
           <Input
             size="sm"
             borderRadius="8px"
@@ -375,7 +501,9 @@ const Inspector: React.FC<{
           />
         </FormControl>
         <FormControl>
-          <FormLabel fontSize="12px" color="text.body" mb={1.5}>Descripción (opcional)</FormLabel>
+          <FormLabel fontSize="12px" color="text.body" mb={1.5}>
+            Descripción (opcional)
+          </FormLabel>
           <Textarea
             size="sm"
             rows={3}
@@ -383,7 +511,9 @@ const Inspector: React.FC<{
             resize="none"
             value={section.hint ?? ''}
             placeholder="Instrucción corta para el médico…"
-            onChange={(e) => onUpdateSection({ hint: e.target.value || undefined })}
+            onChange={(e) =>
+              onUpdateSection({ hint: e.target.value || undefined })
+            }
           />
         </FormControl>
       </VStack>
@@ -469,11 +599,11 @@ const NoteBuilderPage: React.FC = () => {
 
   // ── Derived selection ────────────────────────────────────────────────────────
   const selectedSection = selection
-    ? sections.find((s) => s.id === selection.sectionId) ?? null
+    ? (sections.find((s) => s.id === selection.sectionId) ?? null)
     : null;
   const selectedField =
     selection?.type === 'field' && selectedSection
-      ? selectedSection.fields.find((f) => f.id === selection.fieldId) ?? null
+      ? (selectedSection.fields.find((f) => f.id === selection.fieldId) ?? null)
       : null;
 
   const openInspectorOnMobile = useCallback(() => {
@@ -502,9 +632,14 @@ const NoteBuilderPage: React.FC = () => {
     });
   }, []);
 
-  const updateSection = useCallback((sectionId: string, patch: Partial<SectionDef>) => {
-    setSections((prev) => prev.map((s) => (s.id === sectionId ? { ...s, ...patch } : s)));
-  }, []);
+  const updateSection = useCallback(
+    (sectionId: string, patch: Partial<SectionDef>) => {
+      setSections((prev) =>
+        prev.map((s) => (s.id === sectionId ? { ...s, ...patch } : s))
+      );
+    },
+    []
+  );
 
   // ── Field mutations ───────────────────────────────────────────────────────────
   const addField = useCallback(
@@ -518,11 +653,14 @@ const NoteBuilderPage: React.FC = () => {
         return;
       }
       const targetId =
-        selection?.sectionId && sections.some((s) => s.id === selection.sectionId)
+        selection?.sectionId &&
+        sections.some((s) => s.id === selection.sectionId)
           ? selection.sectionId
           : sections[sections.length - 1].id;
       setSections((prev) =>
-        prev.map((s) => (s.id === targetId ? { ...s, fields: [...s.fields, f] } : s))
+        prev.map((s) =>
+          s.id === targetId ? { ...s, fields: [...s.fields, f] } : s
+        )
       );
       setSelection({ type: 'field', sectionId: targetId, fieldId: f.id });
       openInspectorOnMobile();
@@ -533,7 +671,9 @@ const NoteBuilderPage: React.FC = () => {
   const deleteField = useCallback((sectionId: string, fieldId: string) => {
     setSections((prev) =>
       prev.map((s) =>
-        s.id === sectionId ? { ...s, fields: s.fields.filter((f) => f.id !== fieldId) } : s
+        s.id === sectionId
+          ? { ...s, fields: s.fields.filter((f) => f.id !== fieldId) }
+          : s
       )
     );
     setSelection((sel) =>
@@ -541,25 +681,33 @@ const NoteBuilderPage: React.FC = () => {
     );
   }, []);
 
-  const moveField = useCallback((sectionId: string, idx: number, dir: -1 | 1) => {
-    setSections((prev) =>
-      prev.map((s) => {
-        if (s.id !== sectionId) return s;
-        const j = idx + dir;
-        if (j < 0 || j >= s.fields.length) return s;
-        const fields = [...s.fields];
-        [fields[idx], fields[j]] = [fields[j], fields[idx]];
-        return { ...s, fields };
-      })
-    );
-  }, []);
+  const moveField = useCallback(
+    (sectionId: string, idx: number, dir: -1 | 1) => {
+      setSections((prev) =>
+        prev.map((s) => {
+          if (s.id !== sectionId) return s;
+          const j = idx + dir;
+          if (j < 0 || j >= s.fields.length) return s;
+          const fields = [...s.fields];
+          [fields[idx], fields[j]] = [fields[j], fields[idx]];
+          return { ...s, fields };
+        })
+      );
+    },
+    []
+  );
 
   const updateField = useCallback(
     (sectionId: string, fieldId: string, patch: Partial<FieldDef>) => {
       setSections((prev) =>
         prev.map((s) =>
           s.id === sectionId
-            ? { ...s, fields: s.fields.map((f) => (f.id === fieldId ? { ...f, ...patch } : f)) }
+            ? {
+                ...s,
+                fields: s.fields.map((f) =>
+                  f.id === fieldId ? { ...f, ...patch } : f
+                ),
+              }
             : s
         )
       );
@@ -605,10 +753,10 @@ const NoteBuilderPage: React.FC = () => {
         });
         toast({ title: 'Esquema guardado', status: 'success' });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error al guardar el esquema',
-        description: error?.message || 'Ocurrió un error al guardar',
+        description: getErrorMessage(error, 'Ocurrió un error al guardar'),
         status: 'error',
       });
     } finally {
@@ -631,7 +779,11 @@ const NoteBuilderPage: React.FC = () => {
   const paletteList = (
     <VStack align="stretch" spacing={2}>
       {PALETTE_ORDER.map((kind) => (
-        <PaletteButton key={kind} meta={KIND_META[kind]} onAdd={() => addField(kind)} />
+        <PaletteButton
+          key={kind}
+          meta={KIND_META[kind]}
+          onAdd={() => addField(kind)}
+        />
       ))}
     </VStack>
   );
@@ -806,12 +958,22 @@ const NoteBuilderPage: React.FC = () => {
                 >
                   <FiPlus size={20} />
                 </Flex>
-                <Text fontSize="14px" fontWeight={600} color="text.strong" mb={1}>
+                <Text
+                  fontSize="14px"
+                  fontWeight={600}
+                  color="text.strong"
+                  mb={1}
+                >
                   Empieza tu tipo de nota
                 </Text>
-                <Text fontSize="12.5px" color="text.muted" maxW="360px" mx="auto">
-                  Elige un campo de la paleta para crear la primera sección automáticamente,
-                  o agrega una sección vacía.
+                <Text
+                  fontSize="12.5px"
+                  color="text.muted"
+                  maxW="360px"
+                  mx="auto"
+                >
+                  Elige un campo de la paleta para crear la primera sección
+                  automáticamente, o agrega una sección vacía.
                 </Text>
                 <Button
                   mt={4}
@@ -830,18 +992,24 @@ const NoteBuilderPage: React.FC = () => {
               <VStack align="stretch" spacing={4}>
                 {sections.map((section, sIdx) => {
                   const isActive =
-                    selection?.sectionId === section.id && selection.type === 'section';
-                  const sectionInSelection = selection?.sectionId === section.id;
+                    selection?.sectionId === section.id &&
+                    selection.type === 'section';
+                  const sectionInSelection =
+                    selection?.sectionId === section.id;
                   return (
                     <Box
                       key={section.id}
                       bg="surface.card"
                       border="1px solid"
-                      borderColor={sectionInSelection ? 'brand.300' : 'border.subtle'}
+                      borderColor={
+                        sectionInSelection ? 'brand.300' : 'border.subtle'
+                      }
                       borderRadius="12px"
                       overflow="hidden"
                       transition="border-color .12s"
-                      onClick={() => setSelection({ type: 'section', sectionId: section.id })}
+                      onClick={() =>
+                        setSelection({ type: 'section', sectionId: section.id })
+                      }
                     >
                       {/* Section header */}
                       <HStack
@@ -871,8 +1039,15 @@ const NoteBuilderPage: React.FC = () => {
                         </Flex>
                         <Input
                           value={section.title}
-                          onChange={(e) => updateSection(section.id, { title: e.target.value })}
-                          onFocus={() => setSelection({ type: 'section', sectionId: section.id })}
+                          onChange={(e) =>
+                            updateSection(section.id, { title: e.target.value })
+                          }
+                          onFocus={() =>
+                            setSelection({
+                              type: 'section',
+                              sectionId: section.id,
+                            })
+                          }
                           variant="unstyled"
                           fontSize="14px"
                           fontWeight={700}
@@ -892,7 +1067,11 @@ const NoteBuilderPage: React.FC = () => {
                             Activa
                           </Badge>
                         )}
-                        <HStack spacing={0} flexShrink={0} onClick={(e) => e.stopPropagation()}>
+                        <HStack
+                          spacing={0}
+                          flexShrink={0}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <IconButton
                             aria-label="Subir sección"
                             icon={<FiArrowUp />}
@@ -901,7 +1080,10 @@ const NoteBuilderPage: React.FC = () => {
                             isDisabled={sIdx === 0}
                             onClick={() => moveSection(sIdx, -1)}
                             color="text.muted"
-                            _hover={{ bg: 'surface.hover', color: 'text.strong' }}
+                            _hover={{
+                              bg: 'surface.hover',
+                              color: 'text.strong',
+                            }}
                           />
                           <IconButton
                             aria-label="Bajar sección"
@@ -911,7 +1093,10 @@ const NoteBuilderPage: React.FC = () => {
                             isDisabled={sIdx === sections.length - 1}
                             onClick={() => moveSection(sIdx, 1)}
                             color="text.muted"
-                            _hover={{ bg: 'surface.hover', color: 'text.strong' }}
+                            _hover={{
+                              bg: 'surface.hover',
+                              color: 'text.strong',
+                            }}
                           />
                           <IconButton
                             aria-label="Eliminar sección"
@@ -920,7 +1105,10 @@ const NoteBuilderPage: React.FC = () => {
                             variant="ghost"
                             onClick={() => deleteSection(section.id)}
                             color="text.muted"
-                            _hover={{ bg: 'statusSoft.critBg', color: 'statusSoft.critFg' }}
+                            _hover={{
+                              bg: 'statusSoft.critBg',
+                              color: 'statusSoft.critFg',
+                            }}
                           />
                         </HStack>
                       </HStack>
@@ -976,7 +1164,11 @@ const NoteBuilderPage: React.FC = () => {
                   color="text.muted"
                   fontWeight={500}
                   alignSelf="flex-start"
-                  _hover={{ bg: 'surface.hover', borderColor: 'brand.300', color: 'brand.fg' }}
+                  _hover={{
+                    bg: 'surface.hover',
+                    borderColor: 'brand.300',
+                    color: 'brand.fg',
+                  }}
                   onClick={addSection}
                 >
                   Agregar sección
@@ -1063,13 +1255,29 @@ const NoteBuilderPage: React.FC = () => {
       </Drawer>
 
       {/* Live preview */}
-      <Modal isOpen={preview.isOpen} onClose={preview.onClose} size="3xl" scrollBehavior="inside" isCentered>
+      <Modal
+        isOpen={preview.isOpen}
+        onClose={preview.onClose}
+        size="3xl"
+        scrollBehavior="inside"
+        isCentered
+      >
         <ModalOverlay />
-        <ModalContent bg="surface.page" borderRadius="14px" overflow="hidden" mx={4}>
+        <ModalContent
+          bg="surface.page"
+          borderRadius="14px"
+          overflow="hidden"
+          mx={4}
+        >
           <ModalHeader borderBottom="1px solid" borderColor="border.subtle">
             <VStack align="start" spacing={1}>
               <MonoLabel>Vista previa</MonoLabel>
-              <Text fontSize="18px" fontWeight={700} color="text.strong" letterSpacing="-0.01em">
+              <Text
+                fontSize="18px"
+                fontWeight={700}
+                color="text.strong"
+                letterSpacing="-0.01em"
+              >
                 {name.trim() || 'Nota personalizada'}
               </Text>
             </VStack>

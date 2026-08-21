@@ -12,6 +12,7 @@ import {
 import { FiFile, FiImage, FiUploadCloud } from 'react-icons/fi';
 import type { Attachment } from '../types';
 import { apiService } from '../services/api';
+import { getErrorMessage } from '../utils/apiStatus';
 
 function formatSize(bytes: number): string {
   if (!bytes || bytes <= 0) return '';
@@ -53,16 +54,19 @@ const PatientDocuments: React.FC<PatientDocumentsProps> = ({
       try {
         await apiService.uploadPatientAssets(patientId, files);
         toast({
-          title: files.length === 1 ? 'Documento subido' : `${files.length} documentos subidos`,
+          title:
+            files.length === 1
+              ? 'Documento subido'
+              : `${files.length} documentos subidos`,
           status: 'success',
           duration: 3000,
           isClosable: true,
         });
         refetch();
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast({
           title: 'Error al subir',
-          description: err?.message ?? 'Intenta de nuevo.',
+          description: getErrorMessage(err, 'Intenta de nuevo.'),
           status: 'error',
           duration: 4000,
           isClosable: true,
@@ -126,10 +130,10 @@ const PatientDocuments: React.FC<PatientDocumentsProps> = ({
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
-      } catch (err: any) {
+      } catch (err: unknown) {
         toast({
           title: 'No se pudo descargar',
-          description: err?.message ?? 'Intenta de nuevo.',
+          description: getErrorMessage(err, 'Intenta de nuevo.'),
           status: 'error',
           duration: 3500,
           isClosable: true,

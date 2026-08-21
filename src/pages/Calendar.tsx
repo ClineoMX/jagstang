@@ -1,4 +1,10 @@
-import React, { useRef, useState, useMemo, useEffect, useCallback } from 'react';
+import React, {
+  useRef,
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+} from 'react';
 import { flushSync } from 'react-dom';
 import { upsertPatient } from '../lib/clinicDataStore';
 import {
@@ -62,6 +68,7 @@ import StatusBadge from '../components/StatusBadge';
 import FormDrawer from '../components/FormDrawer';
 import type { ApiAppointment, Patient } from '../types';
 import { normalizePatientSlug } from '../utils/patientSlug';
+import { getErrorMessage } from '../utils/apiStatus';
 
 const locales = { es };
 
@@ -136,8 +143,11 @@ const CalendarPage: React.FC = () => {
     updateAppointmentStatus,
     deleteAppointment,
   } = useAppointments();
-  const { patients, loading: patientsLoading, refetch: refetchPatients } =
-    usePatients();
+  const {
+    patients,
+    loading: patientsLoading,
+    refetch: refetchPatients,
+  } = usePatients();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
     isOpen: isNewOpen,
@@ -294,10 +304,10 @@ const CalendarPage: React.FC = () => {
         isClosable: true,
       });
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: 'Error',
-        description: err?.message ?? 'No se pudo confirmar la cita',
+        description: getErrorMessage(err, 'No se pudo confirmar la cita'),
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -326,10 +336,10 @@ const CalendarPage: React.FC = () => {
       });
       onCancelClose();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         title: 'Error',
-        description: err?.message ?? 'No se pudo cancelar la cita',
+        description: getErrorMessage(err, 'No se pudo cancelar la cita'),
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -562,7 +572,11 @@ const CalendarPage: React.FC = () => {
             borderBottom="1px solid"
             borderColor={borderColor}
           >
-            <HStack spacing={3} minW={0} flex={{ base: '1 1 auto', md: '0 1 auto' }}>
+            <HStack
+              spacing={3}
+              minW={0}
+              flex={{ base: '1 1 auto', md: '0 1 auto' }}
+            >
               <Button
                 size="xs"
                 h="30px"
@@ -643,11 +657,11 @@ const CalendarPage: React.FC = () => {
                       i < viewOptions.length - 1 ? '1px solid' : 'none'
                     }
                     borderColor="border.default"
-                    _hover={!on ? { bg: 'surface.hover', color: 'text.strong' } : {}}
+                    _hover={
+                      !on ? { bg: 'surface.hover', color: 'text.strong' } : {}
+                    }
                     display={
-                      hideOnMobile
-                        ? { base: 'none', md: 'block' }
-                        : 'block'
+                      hideOnMobile ? { base: 'none', md: 'block' } : 'block'
                     }
                   >
                     {v.label}

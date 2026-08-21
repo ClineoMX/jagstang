@@ -76,4 +76,3 @@ const CollapsibleSideCard: React.FC<Props> = ({
 };
 
 export default CollapsibleSideCard;
-

@@ -22,7 +22,9 @@ import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { ContactType } from '../types';
 import { apiService } from '../services/api';
-import PhoneNumberField, { phoneNumberFieldUtils } from '../components/PhoneNumberField';
+import PhoneNumberField, {
+  phoneNumberFieldUtils,
+} from '../components/PhoneNumberField';
 
 const ContactForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -99,7 +101,10 @@ const ContactForm: React.FC = () => {
     }
 
     try {
-      const phoneE164 = phoneNumberFieldUtils.toE164(phone.countryIso2, phone.nationalNumber);
+      const phoneE164 = phoneNumberFieldUtils.toE164(
+        phone.countryIso2,
+        phone.nationalNumber
+      );
       const payload = {
         name: firstName.trim(),
         lastname: lastName.trim(),
@@ -171,7 +176,12 @@ const ContactForm: React.FC = () => {
         <form onSubmit={handleSubmit}>
           <VStack spacing={6} align="stretch">
             {/* Basic Information */}
-            <Card bg={cardBg} borderRadius="2xl" borderWidth="1px" borderColor={borderColor}>
+            <Card
+              bg={cardBg}
+              borderRadius="2xl"
+              borderWidth="1px"
+              borderColor={borderColor}
+            >
               <CardBody>
                 <VStack spacing={6} align="stretch">
                   <Heading size="md">Información Básica</Heading>
@@ -223,7 +233,12 @@ const ContactForm: React.FC = () => {
             </Card>
 
             {/* Contact Information */}
-            <Card bg={cardBg} borderRadius="2xl" borderWidth="1px" borderColor={borderColor}>
+            <Card
+              bg={cardBg}
+              borderRadius="2xl"
+              borderWidth="1px"
+              borderColor={borderColor}
+            >
               <CardBody>
                 <VStack spacing={6} align="stretch">
                   <Heading size="md">Información de Contacto</Heading>
@@ -239,14 +254,23 @@ const ContactForm: React.FC = () => {
                       />
                     </FormControl>
 
-                    <PhoneNumberField value={phone} onChange={setPhone} e164Value={loadedPhoneE164} />
+                    <PhoneNumberField
+                      value={phone}
+                      onChange={setPhone}
+                      e164Value={loadedPhoneE164}
+                    />
                   </SimpleGrid>
                 </VStack>
               </CardBody>
             </Card>
 
             {/* Professional Information */}
-            <Card bg={cardBg} borderRadius="2xl" borderWidth="1px" borderColor={borderColor}>
+            <Card
+              bg={cardBg}
+              borderRadius="2xl"
+              borderWidth="1px"
+              borderColor={borderColor}
+            >
               <CardBody>
                 <VStack spacing={6} align="stretch">
                   <Heading size="md">Información Profesional</Heading>
@@ -275,7 +299,12 @@ const ContactForm: React.FC = () => {
             </Card>
 
             {/* Notes */}
-            <Card bg={cardBg} borderRadius="2xl" borderWidth="1px" borderColor={borderColor}>
+            <Card
+              bg={cardBg}
+              borderRadius="2xl"
+              borderWidth="1px"
+              borderColor={borderColor}
+            >
               <CardBody>
                 <VStack spacing={6} align="stretch">
                   <Heading size="md">Notas</Heading>
@@ -310,4 +339,3 @@ const ContactForm: React.FC = () => {
 };
 
 export default ContactForm;
-
